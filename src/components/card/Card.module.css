@@ -1,0 +1,155 @@
+/**
+ * Layout note: the portrait inset percentages below (--window-*) were
+ * measured directly from the actual template PNG pixel data (connected-
+ * component analysis of the parchment window vs. the frame border), not
+ * eyeballed - see the commit message / ROADMAP.md for how. If the template
+ * art ever changes, re-measure rather than guessing new values.
+ */
+.card {
+  --window-top: 26.76%;
+  --window-bottom: 89.45%;
+  --window-left: 15.53%;
+  --window-right: 84.38%;
+
+  position: relative;
+  width: var(--card-width, 140px);
+  aspect-ratio: 1024 / 1536;
+  border: none;
+  padding: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card.interactive {
+  cursor: pointer;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.portraitWindow {
+  position: absolute;
+  top: var(--window-top);
+  bottom: calc(100% - var(--window-bottom));
+  left: var(--window-left);
+  right: calc(100% - var(--window-right));
+  overflow: hidden;
+  z-index: 1;
+  background: var(--color-surface-alt);
+}
+
+.portrait {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portraitFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  text-align: center;
+  padding: var(--space-xs);
+  background: var(--color-surface-alt);
+}
+
+.name {
+  position: absolute;
+  top: 6.5%;
+  left: 12%;
+  right: 12%;
+  height: 11%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent-gold);
+  font-family: var(--font-display);
+  font-size: clamp(0.5rem, calc(var(--card-width, 140px) * 0.055), 1rem);
+  line-height: 1.05;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--space-xs);
+}
+
+.stat {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  height: 1.6em;
+  padding: 0 0.15em;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-void);
+  border: 1.5px solid var(--color-accent-gold);
+  color: var(--color-text-primary);
+  font-family: var(--font-display);
+  font-size: clamp(0.55rem, calc(var(--card-width, 140px) * 0.075), 1.1rem);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.statTop {
+  top: calc(var(--window-top) - 0.9em);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.statBottom {
+  top: calc(var(--window-bottom) - 0.8em);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.statLeft {
+  top: 50%;
+  left: calc(var(--window-left) - 0.9em);
+  transform: translateY(-50%);
+}
+
+.statRight {
+  top: 50%;
+  left: calc(var(--window-right) - 0.7em);
+  transform: translateY(-50%);
+}
+
+.card.owner-blue .stat {
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.card.owner-red .stat {
+  box-shadow: var(--shadow-glow-red);
+}
+
+.card.selected .frame {
+  filter: drop-shadow(0 0 10px var(--color-accent-gold)) brightness(1.08);
+}
+
+.card.interactive:hover .frame,
+.card.interactive:focus-visible .frame {
+  filter: drop-shadow(0 0 8px var(--color-accent-gold));
+}
+
+.card.interactive:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
