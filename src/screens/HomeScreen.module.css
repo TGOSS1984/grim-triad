@@ -1,0 +1,74 @@
+.home {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  background: radial-gradient(
+    ellipse at center,
+    var(--color-surface) 0%,
+    var(--color-bg-void) 70%
+  );
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--color-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.newGameButton {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface-alt);
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-xl);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition:
+    box-shadow 200ms ease,
+    transform 150ms ease,
+    background 150ms ease;
+}
+
+.newGameButton:hover,
+.newGameButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+  background: var(--color-bg-void);
+  transform: translateY(-2px);
+}
+
+.newGameButton:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 3px;
+}
+
+.newGameButton:active {
+  transform: translateY(0);
+}
