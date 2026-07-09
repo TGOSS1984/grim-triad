@@ -19,7 +19,7 @@
  * field, or if its Verification Status isn't "Matched to Munitorum Field
  * Manual v2.3" (i.e. no confirmed points value) - see ROADMAP.md Section 4.4.
  */
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx';
 
 const SHEET_NAME = 'Master Catalogue';
 const VERIFIED_STATUS_SUBSTRING = 'Matched';

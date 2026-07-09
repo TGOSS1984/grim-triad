@@ -50,8 +50,14 @@ export type Unit = z.infer<typeof unitSchema>;
 
 export const factionSchema = z.object({
   slug: z.string().min(1),
+  /**
+   * The selectable army-roster name shown in the army builder. For most
+   * factions this is the top-level Faction (e.g. "Tyranids"); for Space
+   * Marine chapters with their own unit pool (Blood Angels, Dark Angels,
+   * etc.) this is the chapter/subfaction name - see parseCatalogue.ts's
+   * faction rollup and ROADMAP.md Section 4.2.
+   */
   name: z.string().min(1),
-  colour: z.enum(['red', 'blue']),
   active: z.boolean(),
   unitCount: z.number().int().nonnegative(),
 });
