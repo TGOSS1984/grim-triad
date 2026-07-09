@@ -14,6 +14,7 @@ import { useGameStore } from '../state/gameStore';
 import { getUnitById } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
 import { emptyPositions } from '../engine/board';
+import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, PlayerColour, Position } from '../engine/types';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
@@ -57,12 +58,24 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }
 
   const isHumanTurn = game.activePlayer === humanPlayer;
 
-  const boardCells: (BoardCardData | null)[][] = game.board.map((row) =>
-    row.map((cell) => {
+  /**
+   * Maps each captured position from the most recent move to a stagger
+   * delay, so a multi-card combo chain flips one card at a time instead
+   * of all at once - see Card.tsx's flipDelayMs (a fast, fully-simultaneous
+   * flip was hard to actually see for multi-card captures).
+   */
+  const flipDelayByPosition = new Map<string, number>();
+  game.lastCapture?.positions.forEach((pos, index) => {
+    flipDelayByPosition.set(`${pos.row},${pos.col}`, index * CAPTURE_FLIP_STAGGER_MS);
+  });
+
+  const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
+    row.map((cell, colIndex) => {
       if (!cell.card) return null;
       return {
         instanceId: cell.card.instanceId,
         owner: cell.card.owner,
+        flipDelayMs: flipDelayByPosition.get(`${rowIndex},${colIndex}`),
         ...toDisplayFields(cell.card),
       };
     }),

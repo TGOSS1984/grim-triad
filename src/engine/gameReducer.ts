@@ -134,7 +134,12 @@ export function applyMove(state: GameState, move: Move): GameState {
   assertLegalMove(state, move);
 
   let board = placeCard(state.board, move.card, move);
-  const { captured } = resolveCaptures(board, move.card, move.position, state.ruleSet);
+  const { captured, comboTriggered } = resolveCaptures(
+    board,
+    move.card,
+    move.position,
+    state.ruleSet,
+  );
   if (captured.length > 0) {
     board = flipCard(board, captured, move.player);
   }
@@ -158,5 +163,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     phase: boardFull ? 'finished' : state.phase,
     winner: boardFull ? determineWinner(board) : null,
     history: [...state.history, move],
+    lastCapture: { positions: captured, comboTriggered },
   };
 }

@@ -166,6 +166,29 @@ describe('Card', () => {
     const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
     expect(frame.src).toContain('template-blue.png');
   });
+
+  it('respects flipDelayMs, only swapping the template after the delay has elapsed', async () => {
+    const { rerender } = render(<Card {...baseProps} owner="blue" flipDelayMs={400} />);
+    rerender(<Card {...baseProps} owner="red" flipDelayMs={400} />);
+
+    // Immediately after the rerender (well under the 400ms delay plus the
+    // flip's own transition time), the template should NOT have swapped
+    // yet - the delay is actually being honoured, not just accepted as a
+    // no-op prop.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    let frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue.png');
+
+    // After enough time for the delay plus the flip itself, it should
+    // have completed.
+    await waitFor(
+      () => {
+        frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+        expect(frame.src).toContain('template-red.png');
+      },
+      { timeout: 2000 },
+    );
+  });
 });
 
 describe('CardBack', () => {

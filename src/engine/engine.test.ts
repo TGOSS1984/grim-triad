@@ -169,4 +169,29 @@ describe('applyMove', () => {
     expect(state.phase).toBe('finished');
     expect(state.winner).toBe('blue');
   });
+
+  it('records an empty lastCapture when the move captures nothing', () => {
+    const state = newTestGame();
+    const move: Move = { player: 'blue', card: state.players.blue.hand[0], position: { row: 0, col: 0 } };
+
+    const next = applyMove(state, move);
+
+    expect(next.lastCapture).toEqual({ positions: [], comboTriggered: false });
+  });
+
+  it('records the captured position(s) in lastCapture when a move does capture', () => {
+    let state = newTestGame();
+    const weakBlue = makeCard('blue', 'blue-weak', { top: 1, bottom: 1, left: 1, right: 1 });
+    state.players.blue.hand[0] = weakBlue;
+    state = applyMove(state, { player: 'blue', card: weakBlue, position: { row: 1, col: 0 } });
+
+    const strongRed = makeCard('red', 'red-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.red.hand[0] = strongRed;
+    state = applyMove(state, { player: 'red', card: strongRed, position: { row: 1, col: 1 } });
+
+    expect(state.lastCapture).toEqual({
+      positions: [{ row: 1, col: 0 }],
+      comboTriggered: false,
+    });
+  });
 });

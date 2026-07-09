@@ -44,10 +44,17 @@
  *    that midpoint, then it expands back out. This reads as "the card
  *    flipping over" without needing true 3D perspective plumbing from
  *    whatever parent happens to render it.
+ *  - `flipDelayMs`: when a single move captures multiple cards (a Same/
+ *    Plus combo chain), passing an increasing delay per card (see
+ *    GameScreen, which reads GameState.lastCapture to compute these) lets
+ *    them flip one after another instead of all at the exact same instant
+ *    - much easier to actually see what happened, especially for a long
+ *    chain.
  */
 import { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import type { CardStats, PlayerColour } from '../../engine/types';
+import { CAPTURE_FLIP_DURATION_MS } from '../../state/animationTiming';
 import styles from './Card.module.css';
 
 export interface CardProps {
@@ -66,6 +73,8 @@ export interface CardProps {
   className?: string;
   /** Unique per-card-instance id enabling the hand-to-board flying placement animation. */
   layoutId?: string;
+  /** Delay (ms) before this card's capture flip animation starts - staggers multi-card combo captures. */
+  flipDelayMs?: number;
 }
 
 function toPublicPath(path: string): string {
@@ -79,7 +88,18 @@ function displayStat(value: number): string {
 
 type PortraitStage = 'primary' | 'fallbackImage' | 'none';
 
-const FLIP_HALF_DURATION = 0.15;
+/**
+ * Half the total flip duration (shrink-to-edge-on, then expand back out),
+ * in seconds for Framer Motion. Derived from the shared
+ * CAPTURE_FLIP_DURATION_MS constant (see state/animationTiming.ts) rather
+ * than its own hardcoded value, so this and gameStore's AI-turn delay
+ * calculation can never silently drift apart from each other.
+ */
+const FLIP_HALF_DURATION = CAPTURE_FLIP_DURATION_MS / 2 / 1000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function Card({
   name,
@@ -93,6 +113,7 @@ export function Card({
   onClick,
   className,
   layoutId,
+  flipDelayMs = 0,
 }: CardProps) {
   const [stage, setStage] = useState<PortraitStage>('primary');
 
@@ -117,6 +138,11 @@ export function Card({
     let cancelled = false;
 
     (async () => {
+      if (flipDelayMs > 0) {
+        await delay(flipDelayMs);
+        if (cancelled) return;
+      }
+
       await flipControls.start({
         scaleX: 0,
         transition: { duration: FLIP_HALF_DURATION, ease: 'easeIn' },
@@ -132,7 +158,7 @@ export function Card({
     return () => {
       cancelled = true;
     };
-  }, [owner, displayOwner, flipControls]);
+  }, [owner, displayOwner, flipControls, flipDelayMs]);
 
   const rootClassName = [
     styles.card,

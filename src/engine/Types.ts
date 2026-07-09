@@ -1,5 +1,5 @@
 /**
- * Core types for the Grim Triad game engine. File adjust - lower case t for commit.
+ * Core types for the Grim Triad game engine.
  *
  * This module has ZERO dependencies on React, the DOM, or any UI library.
  * It is pure data + the shapes that `board.ts`, `capture.ts`, `gameReducer.ts`,
@@ -99,6 +99,15 @@ export interface GameState {
   winner: PlayerColour | 'draw' | null;
   /** Move history, useful for animation replay, undo (dev tooling), and later networked sync. */
   history: Move[];
+  /**
+   * The capture result of the most recent move, in the order captures
+   * actually resolved (immediate captures first, then any combo-chain
+   * captures in discovery order) - optional so it's a non-breaking
+   * addition for any code constructing a GameState directly. Lets the UI
+   * (see GameScreen) stagger flip animations for multi-card captures
+   * instead of flipping every captured card at the exact same instant.
+   */
+  lastCapture?: { positions: Position[]; comboTriggered: boolean };
 }
 
 /** A player action: place a card from hand onto a board position. */

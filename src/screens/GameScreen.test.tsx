@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GameScreen } from './GameScreen';
 import { useGameStore } from '../state/gameStore';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
-import type { Card, PlayerState } from '../engine/types';
+import type { Card, PlayerState, Board } from '../engine/types';
 
 // Real generated unit ids (see src/data/units.generated.json).
 const BA_CAPTAIN = 'blood-angels-blood-angels-captain';
@@ -118,5 +118,67 @@ describe('GameScreen', () => {
     // not just a missed guard inside the click handler.
     const card = screen.getByRole('img', { name: 'Lychguard' });
     expect(card.tagName).toBe('DIV');
+  });
+
+  it('staggers a multi-card combo capture instead of flipping every card at once', async () => {
+    const user = userEvent.setup();
+
+    // Set up a board where placing blue's card triggers a genuine Same
+    // combo, capturing two red cards in one move (mirrors the fixture
+    // pattern used in engine/rules/same.test.ts).
+    const triggerCard: Card = {
+      instanceId: 'blue-trigger',
+      unitId: BA_CAPTAIN,
+      owner: 'blue',
+      stats: { top: 5, bottom: 1, left: 1, right: 5 },
+    };
+    const redTop: Card = {
+      instanceId: 'red-top',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 5, left: 1, right: 1 },
+    };
+    const redRight: Card = {
+      instanceId: 'red-right',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 1, left: 5, right: 1 },
+    };
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getByLabelText('Empty cell, row 2, column 2'));
+
+    // Both captured Lychguards (plus the placed trigger card) should end
+    // up blue - confirms GameScreen correctly reads game.lastCapture and
+    // wires a flipDelayMs through to each captured card (the precise
+    // per-card delay timing itself is already locked in by Card.test.tsx).
+    await waitFor(
+      () => {
+        const blueFrames = document.querySelectorAll('img[src*="template-blue.png"]');
+        expect(blueFrames.length).toBeGreaterThanOrEqual(3);
+      },
+      { timeout: 3000 },
+    );
   });
 });

@@ -19,8 +19,8 @@ beforeEach(() => {
 });
 
 describe('startGame', () => {
-  it('creates a game with no AI (local PvP) and does not auto-play any move', () => {
-    useGameStore.getState().startGame({
+  it('creates a game with no AI (local PvP) and does not auto-play any move', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
@@ -32,8 +32,8 @@ describe('startGame', () => {
     expect(game?.history).toHaveLength(0);
   });
 
-  it('auto-plays the AI immediately when the AI is the starting player', () => {
-    useGameStore.getState().startGame({
+  it('auto-plays the AI after a real delay when the AI is the starting player', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'red',
@@ -46,26 +46,43 @@ describe('startGame', () => {
     expect(game?.history[0].player).toBe('red');
     expect(game?.activePlayer).toBe('blue');
   });
+
+  it('does not apply the AI move until startGame actually resolves (real delay, not instant)', async () => {
+    const promise = useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'red',
+      aiPlayer: 'red',
+    });
+
+    // Immediately after calling (before awaiting), the AI's move must not
+    // have been applied yet - this is the actual behaviour being fixed:
+    // previously everything resolved synchronously in one go.
+    expect(useGameStore.getState().game?.history).toHaveLength(0);
+
+    await promise;
+    expect(useGameStore.getState().game?.history).toHaveLength(1);
+  });
 });
 
 describe('playCard', () => {
-  it('applies a human move and does not auto-play when there is no AI', () => {
-    useGameStore.getState().startGame({
+  it('applies a human move and does not auto-play when there is no AI', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
     });
 
     const card = useGameStore.getState().game!.players.blue.hand[0];
-    useGameStore.getState().playCard(card, { row: 0, col: 0 });
+    await useGameStore.getState().playCard(card, { row: 0, col: 0 });
 
     const { game } = useGameStore.getState();
     expect(game?.history).toHaveLength(1);
     expect(game?.activePlayer).toBe('red');
   });
 
-  it('auto-plays the AI turn immediately after a human move', () => {
-    useGameStore.getState().startGame({
+  it('commits the human move to the store immediately, before the AI response', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
@@ -73,24 +90,29 @@ describe('playCard', () => {
     });
 
     const card = useGameStore.getState().game!.players.blue.hand[0];
-    useGameStore.getState().playCard(card, { row: 0, col: 0 });
+    const promise = useGameStore.getState().playCard(card, { row: 0, col: 0 });
 
-    const { game } = useGameStore.getState();
-    // Blue's move + red (AI)'s auto-played response = 2 history entries.
-    expect(game?.history).toHaveLength(2);
-    expect(game?.history[1].player).toBe('red');
-    expect(game?.activePlayer).toBe('blue');
+    // The human's move should be visible right away (this is what lets
+    // the player actually see their own capture before the AI responds) -
+    // but the AI has not moved yet.
+    expect(useGameStore.getState().game?.history).toHaveLength(1);
+    expect(useGameStore.getState().game?.history[0].player).toBe('blue');
+
+    await promise;
+    expect(useGameStore.getState().game?.history).toHaveLength(2);
+    expect(useGameStore.getState().game?.history[1].player).toBe('red');
+    expect(useGameStore.getState().game?.activePlayer).toBe('blue');
   });
 
-  it('throws if called before a game has started', () => {
+  it('throws if called before a game has started', async () => {
     const card = makeCard('blue', 'blue-1');
-    expect(() => useGameStore.getState().playCard(card, { row: 0, col: 0 })).toThrow(
-      'Cannot play a card before a game has started',
-    );
+    await expect(
+      useGameStore.getState().playCard(card, { row: 0, col: 0 }),
+    ).rejects.toThrow('Cannot play a card before a game has started');
   });
 
-  it('throws if called for a human move while it is actually the AI turn', () => {
-    useGameStore.getState().startGame({
+  it('throws if called for a human move while it is actually the AI turn', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
@@ -105,9 +127,9 @@ describe('playCard', () => {
     useGameStore.setState({ game: { ...game!, activePlayer: 'red' } });
 
     const card = useGameStore.getState().game!.players.red.hand[0];
-    expect(() => useGameStore.getState().playCard(card, { row: 1, col: 1 })).toThrow(
-      "It is the AI's turn",
-    );
+    await expect(
+      useGameStore.getState().playCard(card, { row: 1, col: 1 }),
+    ).rejects.toThrow("It is the AI's turn");
   });
 });
 
@@ -134,54 +156,54 @@ describe('triggerSuddenDeathRematch', () => {
     });
   }
 
-  it('starts a new live game (phase suddenDeath) after a drawn finished game', () => {
-    useGameStore.getState().startGame({
+  it('starts a new live game (phase suddenDeath) after a drawn finished game', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
     });
     finishAsDraw();
 
-    useGameStore.getState().triggerSuddenDeathRematch();
+    await useGameStore.getState().triggerSuddenDeathRematch();
 
     const { game } = useGameStore.getState();
     expect(game?.phase).toBe('suddenDeath');
     expect(game?.winner).toBeNull();
   });
 
-  it('rebuilds each hand from what that side controlled on the board', () => {
-    useGameStore.getState().startGame({
+  it('rebuilds each hand from what that side controlled on the board', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
     });
     finishAsDraw();
 
-    useGameStore.getState().triggerSuddenDeathRematch();
+    await useGameStore.getState().triggerSuddenDeathRematch();
 
     const { game } = useGameStore.getState();
     expect(game?.players.blue.hand.map((c) => c.instanceId)).toEqual(['blue-onboard']);
     expect(game?.players.red.hand.map((c) => c.instanceId)).toEqual(['red-onboard']);
   });
 
-  it('throws if there is no game at all', () => {
-    expect(() => useGameStore.getState().triggerSuddenDeathRematch()).toThrow(
+  it('throws if there is no game at all', async () => {
+    await expect(useGameStore.getState().triggerSuddenDeathRematch()).rejects.toThrow(
       'Cannot start Sudden Death without a game',
     );
   });
 
-  it('throws (via the engine) if the game is not actually a finished draw', () => {
-    useGameStore.getState().startGame({
+  it('throws (via the engine) if the game is not actually a finished draw', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',
     });
 
-    expect(() => useGameStore.getState().triggerSuddenDeathRematch()).toThrow();
+    await expect(useGameStore.getState().triggerSuddenDeathRematch()).rejects.toThrow();
   });
 
-  it('auto-plays the AI if the AI is the rematch starting player', () => {
-    useGameStore.getState().startGame({
+  it('auto-plays the AI if the AI is the rematch starting player', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'red',
@@ -189,7 +211,7 @@ describe('triggerSuddenDeathRematch', () => {
     });
     finishAsDraw();
 
-    useGameStore.getState().triggerSuddenDeathRematch();
+    await useGameStore.getState().triggerSuddenDeathRematch();
 
     const { game } = useGameStore.getState();
     // Red (AI) started, per the original startingPlayer, and should have
@@ -199,8 +221,8 @@ describe('triggerSuddenDeathRematch', () => {
 });
 
 describe('reset', () => {
-  it('clears the game and aiPlayer back to null', () => {
-    useGameStore.getState().startGame({
+  it('clears the game and aiPlayer back to null', async () => {
+    await useGameStore.getState().startGame({
       bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
       redPlayer: { colour: 'red', hand: makeHand('red', 5) },
       startingPlayer: 'blue',

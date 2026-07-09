@@ -20,6 +20,8 @@ export interface BoardCardData {
   portraitPath: string;
   fallbackPortraitPath?: string;
   owner: PlayerColour;
+  /** Delay (ms) before this card's capture flip animation starts - see Card.tsx. */
+  flipDelayMs?: number;
 }
 
 export interface BoardCellProps {
@@ -42,6 +44,7 @@ export function BoardCell({ position, card, highlighted = false, cardWidth, onCl
           fallbackPortraitPath={card.fallbackPortraitPath}
           owner={card.owner}
           width={cardWidth}
+          flipDelayMs={card.flipDelayMs}
         />
       </div>
     );
