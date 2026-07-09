@@ -6,8 +6,13 @@ dist/
 dist-ssr/
 *.local
 *.tsbuildinfo
+
+# stray compiled output from the composite tsconfig.node.json project
+# (it emits .js/.d.ts next to .ts source for vite.config.ts and scripts/**)
 vite.config.js
 vite.config.d.ts
+scripts/*.js
+scripts/*.d.ts
 
 # logs
 npm-debug.log*
