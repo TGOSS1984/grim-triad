@@ -1,0 +1,85 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-sm);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.points {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--color-accent-gold);
+  white-space: nowrap;
+}
+
+.addButton,
+.removeButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+  border: 1px solid var(--color-accent-gold);
+  background: transparent;
+  color: var(--color-accent-gold);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--color-accent-gold);
+  color: var(--color-bg-void);
+}
+
+.addButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--color-border-muted);
+  color: var(--color-text-muted);
+}
+
+.removeButton {
+  border-color: var(--color-player-red);
+  color: var(--color-player-red);
+}
+
+.removeButton:hover {
+  background: var(--color-player-red);
+  color: var(--color-text-primary);
+}

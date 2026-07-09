@@ -1,0 +1,73 @@
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  max-width: 720px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.capRow {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.capButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.capButton:hover,
+.capButton:focus-visible {
+  border-color: var(--color-accent-gold);
+}
+
+.capButtonSelected {
+  border-color: var(--color-accent-gold);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.continueButton {
+  align-self: flex-start;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease, opacity 150ms ease;
+}
+
+.continueButton:hover:not(:disabled),
+.continueButton:focus-visible:not(:disabled) {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.continueButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--color-border-muted);
+}
