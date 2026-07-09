@@ -1,0 +1,100 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.toggleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 800px;
+}
+
+.tradeFieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 800px;
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+.toggleRow {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+}
+
+.toggleLabel {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggleDescription {
+  grid-column: 2 / -1;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.randomizeButton,
+.continueButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease;
+}
+
+.randomizeButton {
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.randomizeButton:hover,
+.randomizeButton:focus-visible {
+  border-color: var(--color-accent-gold);
+}
+
+.continueButton {
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.continueButton:hover,
+.continueButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+}
