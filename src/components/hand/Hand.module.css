@@ -3,6 +3,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
+  --card-width: 110px;
 }
 
 .side-left {
@@ -24,18 +25,37 @@
 .stack {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-md) * -1);
 }
 
 .slot {
   transition: transform 150ms ease;
+  position: relative;
 }
 
-.slot:hover {
-  transform: translateX(var(--space-sm));
-  z-index: 2;
+/*
+ * Overlap via negative margin, NOT negative gap - the CSS `gap` property
+ * does not accept negative values (invalid per spec, silently ignored by
+ * the browser), which is why an earlier attempt at this using a negative
+ * gap produced no overlap at all. Margin supports negative values and
+ * works reliably here.
+ *
+ * The overlap amount is computed from the actual card height (width *
+ * 1536/1024, matching the template's fixed aspect ratio) so a 5-card hand
+ * scales down to roughly match the board's height rather than needing a
+ * hand-tuned pixel constant that only looks right at one cardWidth.
+ */
+.slot:not(:first-child) {
+  /* 0.5 = each card covers about half of the card above it (a classic
+     fanned-hand look, showing the name plate and top stat of covered
+     cards). This is a starting point, not a precisely derived value -
+     tune alongside the cardWidth prop once visible, since the right
+     balance between "hand height roughly matches the board" and "cards
+     overlap enough to look intentional" is a visual judgment call. */
+  margin-top: calc(var(--card-width) * 1536 / 1024 * -0.5);
 }
 
-.side-right .slot:hover {
-  transform: translateX(calc(var(--space-sm) * -1));
+.slot:hover,
+.slot:focus-within {
+  z-index: 10;
+  transform: translateY(calc(var(--card-width) * 1536 / 1024 * -0.12));
 }

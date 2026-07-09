@@ -42,9 +42,12 @@ export function Hand({
   side = 'left',
 }: HandProps) {
   const interactive = faceUp && !!onSelectCard;
+  const style = cardWidth
+    ? ({ '--card-width': `${cardWidth}px` } as React.CSSProperties)
+    : undefined;
 
   return (
-    <div className={[styles.hand, styles[`side-${side}`]].join(' ')}>
+    <div className={[styles.hand, styles[`side-${side}`]].join(' ')} style={style}>
       <div className={styles.count} aria-hidden="true">
         {cards.length}
       </div>

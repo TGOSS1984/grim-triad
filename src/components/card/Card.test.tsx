@@ -71,12 +71,16 @@ describe('Card', () => {
     );
   });
 
-  it('falls straight to the text placeholder when the primary fails and no fallback image is configured', () => {
+  it('renders nothing in the portrait window (letting parchment show through) when the primary fails and no fallback image is configured', () => {
     render(<Card {...baseProps} />);
     fireEvent.error(screen.getByTestId('card-portrait'));
 
     expect(screen.queryByTestId('card-portrait')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Commander Dante').length).toBeGreaterThan(0);
+    // The name should appear exactly once (the name plate) - it must NOT
+    // be duplicated as a fallback placeholder, since that duplication is
+    // what previously caused stacked/overlapped hand cards to look like
+    // illegible text soup (see Hand overlap fix history).
+    expect(screen.getAllByText('Commander Dante')).toHaveLength(1);
   });
 
   it('falls to the faction fallback image when the primary fails and a fallback is configured', () => {
@@ -93,7 +97,7 @@ describe('Card', () => {
     expect(img.getAttribute('src')).toBe('/assets/factions/blood-angels/_fallback.png');
   });
 
-  it('falls to the text placeholder if both the primary and the fallback image fail', () => {
+  it('renders nothing in the portrait window if both the primary and the fallback image fail', () => {
     render(
       <Card
         {...baseProps}
@@ -102,10 +106,10 @@ describe('Card', () => {
     );
 
     fireEvent.error(screen.getByTestId('card-portrait')); // primary fails -> fallback image
-    fireEvent.error(screen.getByTestId('card-portrait')); // fallback image also fails -> text
+    fireEvent.error(screen.getByTestId('card-portrait')); // fallback image also fails -> nothing
 
     expect(screen.queryByTestId('card-portrait')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Commander Dante').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Commander Dante')).toHaveLength(1);
   });
 
   it('resets to the primary portrait when portraitPath changes (reused component, different unit)', () => {
