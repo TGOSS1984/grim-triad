@@ -6,10 +6,10 @@
 
 .factionButton {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
-  min-width: 180px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-md);
+  min-width: 220px;
   padding: var(--space-md) var(--space-lg);
   background: var(--color-surface);
   border: 2px solid var(--color-border-muted);
@@ -35,6 +35,21 @@
 .factionButton.selected {
   border-color: var(--color-accent-gold);
   box-shadow: var(--shadow-glow-gold);
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.textBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .name {

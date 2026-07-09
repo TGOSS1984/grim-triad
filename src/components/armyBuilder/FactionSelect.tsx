@@ -5,12 +5,40 @@
  * factions is app-wide configuration, not something a caller should need
  * to thread through.
  */
+import { useState } from 'react';
 import { ACTIVE_FACTIONS } from '../../data/activeFactions';
 import styles from './FactionSelect.module.css';
 
 export interface FactionSelectProps {
   selectedRosterName: string | null;
   onSelectRoster: (rosterName: string) => void;
+}
+
+type IconExtension = 'png' | 'webp';
+
+/**
+ * A faction's icon, e.g. assets/factions/blood-angels/icon.png (see
+ * ROADMAP.md's asset structure). Tries .png first, falls back to .webp,
+ * then hides itself entirely if neither loads - no icon art exists for
+ * most factions yet, and rather than show a broken-image icon this stays
+ * silent, same "graceful missing art" philosophy as Card.tsx's portrait
+ * fallback. Nothing else needs to change once real icons (in either
+ * format) are dropped into place; they'll just start appearing.
+ */
+function FactionIcon({ slug }: { slug: string }) {
+  const [extension, setExtension] = useState<IconExtension | null>('png');
+  if (extension === null) return null;
+
+  return (
+    <img
+      className={styles.icon}
+      src={`/assets/factions/${slug}/icon.${extension}`}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      onError={() => setExtension((current) => (current === 'png' ? 'webp' : null))}
+    />
+  );
 }
 
 export function FactionSelect({ selectedRosterName, onSelectRoster }: FactionSelectProps) {
@@ -28,8 +56,11 @@ export function FactionSelect({ selectedRosterName, onSelectRoster }: FactionSel
             onClick={() => onSelectRoster(faction.name)}
             aria-pressed={isSelected}
           >
-            <span className={styles.name}>{faction.name}</span>
-            <span className={styles.count}>{faction.unitCount} units available</span>
+            <FactionIcon slug={faction.slug} />
+            <div className={styles.textBlock}>
+              <span className={styles.name}>{faction.name}</span>
+              <span className={styles.count}>{faction.unitCount} units available</span>
+            </div>
           </button>
         );
       })}

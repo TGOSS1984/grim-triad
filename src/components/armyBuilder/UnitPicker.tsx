@@ -4,6 +4,7 @@
  * reads as a natural progression, matching how the army builder brief
  * described browsing "all available options and a points tally".
  */
+import { useState } from 'react';
 import type { Unit } from '../../data/schema';
 import styles from './UnitPicker.module.css';
 
@@ -14,6 +15,45 @@ export interface UnitPickerProps {
   remainingPoints: number | null;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
+}
+
+function toPublicPath(path: string): string {
+  return path.startsWith('/') ? path : `/${path}`;
+}
+
+/** Swaps a path's extension to .webp, e.g. "units/dante.png" -> "units/dante.webp". */
+function toWebpPath(path: string): string {
+  return path.replace(/\.[a-z0-9]+$/i, '.webp');
+}
+
+type ThumbnailStage = 'original' | 'webp' | 'none';
+
+/**
+ * A small portrait thumbnail for a unit picker row. Tries the unit's
+ * portraitPath as given (normally .png), falls back to a same-named .webp,
+ * then shows a plain placeholder block if neither loads - most units have
+ * no portrait art yet, and rather than show a broken-image icon this
+ * degrades gracefully (same pattern as Card.tsx's portrait fallback and
+ * FactionSelect's FactionIcon). Nothing else needs to change once real
+ * portraits (in either format) are dropped into place; they just start
+ * appearing.
+ */
+function UnitThumbnail({ portraitPath }: { portraitPath: string }) {
+  const [stage, setStage] = useState<ThumbnailStage>('original');
+  if (stage === 'none') return <div className={styles.thumbnailPlaceholder} aria-hidden="true" />;
+
+  const src = stage === 'original' ? toPublicPath(portraitPath) : toWebpPath(toPublicPath(portraitPath));
+
+  return (
+    <img
+      className={styles.thumbnail}
+      src={src}
+      alt=""
+      aria-hidden="true"
+      draggable={false}
+      onError={() => setStage((current) => (current === 'original' ? 'webp' : 'none'))}
+    />
+  );
 }
 
 export function UnitPicker({ units, selectedIds, remainingPoints, onAdd, onRemove }: UnitPickerProps) {
@@ -29,6 +69,7 @@ export function UnitPicker({ units, selectedIds, remainingPoints, onAdd, onRemov
 
         return (
           <li key={unit.id} className={styles.row}>
+            <UnitThumbnail portraitPath={unit.portraitPath} />
             <div className={styles.info}>
               <span className={styles.name}>{unit.name}</span>
               <span className={styles.meta}>

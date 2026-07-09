@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FactionSelect } from './FactionSelect';
 
@@ -34,5 +34,35 @@ describe('FactionSelect', () => {
       'aria-pressed',
       'false',
     );
+  });
+
+  it('tries .png first for the faction icon', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const necronsRow = screen.getByRole('listitem', { name: /Necrons/ });
+    const icon = necronsRow.querySelector('img') as HTMLImageElement;
+    expect(icon.getAttribute('src')).toBe('/assets/factions/necrons/icon.png');
+  });
+
+  it('falls back to .webp if .png fails to load', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const necronsRow = screen.getByRole('listitem', { name: /Necrons/ });
+    const icon = necronsRow.querySelector('img') as HTMLImageElement;
+
+    fireEvent.error(icon);
+
+    const updated = necronsRow.querySelector('img') as HTMLImageElement;
+    expect(updated.getAttribute('src')).toBe('/assets/factions/necrons/icon.webp');
+  });
+
+  it('hides gracefully (renders nothing) if both .png and .webp fail', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const necronsRow = screen.getByRole('listitem', { name: /Necrons/ });
+    fireEvent.error(necronsRow.querySelector('img')!); // .png fails
+    fireEvent.error(necronsRow.querySelector('img')!); // .webp fails too
+
+    expect(necronsRow.querySelector('img')).not.toBeInTheDocument();
   });
 });

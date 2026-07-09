@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UnitPicker } from './UnitPicker';
 import type { Unit } from '../../data/schema';
@@ -84,5 +84,37 @@ describe('UnitPicker', () => {
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={null} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+  });
+
+  it("renders each unit's portrait thumbnail with a root-relative src", () => {
+    const units = [makeUnit({ id: 'a', portraitPath: 'assets/factions/necrons/units/a.png' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    const row = screen.getAllByRole('listitem')[0];
+    const thumbnail = row.querySelector('img') as HTMLImageElement;
+    expect(thumbnail.getAttribute('src')).toBe('/assets/factions/necrons/units/a.png');
+  });
+
+  it('falls back to a same-named .webp if the original (.png) fails to load', () => {
+    const units = [makeUnit({ id: 'a', portraitPath: 'assets/factions/necrons/units/a.png' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    const row = screen.getAllByRole('listitem')[0];
+    fireEvent.error(row.querySelector('img')!);
+
+    const updated = row.querySelector('img') as HTMLImageElement;
+    expect(updated.getAttribute('src')).toBe('/assets/factions/necrons/units/a.webp');
+  });
+
+  it('falls back to a placeholder block if both the original and .webp fail to load', () => {
+    const units = [makeUnit({ id: 'a' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    const row = screen.getAllByRole('listitem')[0];
+    fireEvent.error(row.querySelector('img')!); // original fails
+    fireEvent.error(row.querySelector('img')!); // .webp fails too
+
+    expect(row.querySelector('img')).not.toBeInTheDocument();
+    expect(row.querySelector('[class*="thumbnailPlaceholder"]')).toBeInTheDocument();
   });
 });
