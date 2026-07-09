@@ -6,17 +6,16 @@
  * replay tooling, and eventually from networked PvP (apply a remote move
  * exactly the same way a local move is applied).
  *
- * NOTE: this Phase-1 version resolves captures using only the base rule
- * (resolveBaseCaptures). Phase 2 introduces optional rule modifiers (Same,
- * Plus, Elemental, Trade Rules, etc.) composed in ruleEngine.ts; once that
- * lands, this file's capture step will be updated to delegate to the
- * composed rule engine instead of calling resolveBaseCaptures directly.
- * That is an internal swap only — the public `applyMove` signature and all
- * behaviour for the base game does not change.
+ * NOTE: capture resolution is delegated to ruleEngine.ts's `resolveCaptures`,
+ * which composes whichever optional rule modifiers (Same, Plus, Elemental,
+ * Same Wall) are active for this match's RuleSet, falling back to the base
+ * rule when none apply or none trigger. This keeps applyMove itself
+ * unaware of individual rule mechanics - it only needs to know "resolve
+ * captures for this placement" and apply whatever comes back.
  */
 import type { Board, Card, GameState, Move, PlayerColour, PlayerState, RuleSet } from './types';
 import { createEmptyBoard, getCell, isBoardFull, isPositionEmpty } from './board';
-import { resolveBaseCaptures } from './capture';
+import { resolveCaptures } from './ruleEngine';
 
 export const DEFAULT_RULE_SET: RuleSet = {
   open: false,
@@ -135,7 +134,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   assertLegalMove(state, move);
 
   let board = placeCard(state.board, move.card, move);
-  const captured = resolveBaseCaptures(board, move.card, move.position);
+  const { captured } = resolveCaptures(board, move.card, move.position, state.ruleSet);
   if (captured.length > 0) {
     board = flipCard(board, captured, move.player);
   }
