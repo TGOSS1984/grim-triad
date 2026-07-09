@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Card } from './Card';
 import { CardBack } from './CardBack';
 
@@ -135,6 +135,36 @@ describe('Card', () => {
     render(<Card {...baseProps} portraitPath="assets/factions/necrons/units/lychguard.png" />);
     const img = screen.getByTestId('card-portrait') as HTMLImageElement;
     expect(img.getAttribute('src')).toBe('/assets/factions/necrons/units/lychguard.png');
+  });
+
+  it('applies the given layoutId to the rendered root element (enables the flying placement animation)', () => {
+    render(<Card {...baseProps} layoutId="card-instance-42" />);
+    // Framer Motion's layoutId isn't exposed as a DOM attribute directly,
+    // but the root element should still render normally with it applied -
+    // this is mostly a smoke test that passing layoutId doesn't break
+    // rendering (Framer Motion manages the actual animation internally).
+    expect(screen.getByRole('img', { name: 'Commander Dante' })).toBeInTheDocument();
+  });
+
+  it('eventually swaps the rendered template to the new owner after a capture (owner prop change)', async () => {
+    const { rerender } = render(<Card {...baseProps} owner="blue" />);
+    let frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue.png');
+
+    rerender(<Card {...baseProps} owner="red" />);
+
+    await waitFor(() => {
+      frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+      expect(frame.src).toContain('template-red.png');
+    });
+  });
+
+  it('does not change the rendered template if owner stays the same across a rerender', () => {
+    const { rerender } = render(<Card {...baseProps} owner="blue" />);
+    rerender(<Card {...baseProps} owner="blue" stats={{ top: 1, bottom: 1, left: 1, right: 1 }} />);
+
+    const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue.png');
   });
 });
 

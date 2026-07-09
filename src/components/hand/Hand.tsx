@@ -56,6 +56,7 @@ export function Hand({
           faceUp ? (
             <div key={card.instanceId} role="listitem" className={styles.slot}>
               <Card
+                layoutId={card.instanceId}
                 name={card.name}
                 stats={card.stats}
                 portraitPath={card.portraitPath}

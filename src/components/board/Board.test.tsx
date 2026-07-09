@@ -12,6 +12,7 @@ function emptyCells(): (BoardCardData | null)[][] {
 }
 
 const sampleCard: BoardCardData = {
+  instanceId: 'necron-lychguard-1',
   name: 'Lychguard',
   stats: { top: 5, bottom: 5, left: 6, right: 6 },
   portraitPath: 'assets/factions/necrons/units/lychguard.png',

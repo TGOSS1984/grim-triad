@@ -28,9 +28,10 @@ const redHand: HandCardData[] = [
 
 export default function App() {
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>();
+  const [lychguardOwner, setLychguardOwner] = useState<'blue' | 'red'>('red');
 
   const boardCells: (BoardCardData | null)[][] = [
-    [null, { name: 'Lychguard', stats: { top: 5, bottom: 5, left: 6, right: 6 }, portraitPath: 'assets/factions/necrons/units/lychguard.png', owner: 'red' }, null],
+    [null, { instanceId: 'necron-lychguard-1', name: 'Lychguard', stats: { top: 5, bottom: 5, left: 6, right: 6 }, portraitPath: 'assets/factions/necrons/units/lychguard.png', owner: lychguardOwner }, null],
     [null, null, null],
     [null, null, null],
   ];
@@ -86,6 +87,14 @@ export default function App() {
         />
         <Hand cards={redHand} owner="red" faceUp={false} side="right" cardWidth={110} />
       </div>
+
+      <button
+        type="button"
+        onClick={() => setLychguardOwner((o) => (o === 'blue' ? 'red' : 'blue'))}
+        style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}
+      >
+        Simulate capture (flip Lychguard)
+      </button>
     </div>
   );
 }

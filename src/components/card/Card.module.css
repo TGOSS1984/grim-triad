@@ -24,6 +24,7 @@
   font-family: var(--font-body);
   cursor: default;
   -webkit-tap-highlight-color: transparent;
+  transform-origin: center;
 }
 
 .card.interactive {

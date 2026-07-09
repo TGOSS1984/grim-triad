@@ -14,6 +14,7 @@ import { Card } from '../card/Card';
 import styles from './Board.module.css';
 
 export interface BoardCardData {
+  instanceId: string;
   name: string;
   stats: CardStats;
   portraitPath: string;
@@ -34,6 +35,7 @@ export function BoardCell({ position, card, highlighted = false, cardWidth, onCl
     return (
       <div className={styles.cell}>
         <Card
+          layoutId={card.instanceId}
           name={card.name}
           stats={card.stats}
           portraitPath={card.portraitPath}

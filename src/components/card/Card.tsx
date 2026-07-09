@@ -26,8 +26,27 @@
  * matching the asset convention in ROADMAP.md Section 3:
  * assets/factions/<faction-slug>/units/_fallback.png). If both are missing
  * or fail to load, nothing is drawn - see above.
+ *
+ * Animation (Framer Motion):
+ *  - Placement: passing a `layoutId` (the card's unique instanceId) makes
+ *    this card participate in Framer Motion's automatic shared-layout
+ *    animation - when the SAME layoutId is rendered in a different place
+ *    in the tree on a later render (e.g. a card moving from Hand's DOM
+ *    subtree into Board's), Framer Motion animates the transition between
+ *    the two positions/sizes automatically, producing the "card flies
+ *    from hand to board" effect. Hand and Board are responsible for
+ *    passing the engine's card.instanceId through as layoutId so the
+ *    identity actually matches across both contexts.
+ *  - Capture flip: when the `owner` prop changes on an already-mounted
+ *    Card (a capture flipping this card to the other player), it animates
+ *    a flip rather than snapping instantly - scaleX shrinks the card to
+ *    edge-on, the owner-dependent visuals (template colour/glow) swap at
+ *    that midpoint, then it expands back out. This reads as "the card
+ *    flipping over" without needing true 3D perspective plumbing from
+ *    whatever parent happens to render it.
  */
 import { useEffect, useState } from 'react';
+import { motion, useAnimation } from 'framer-motion';
 import type { CardStats, PlayerColour } from '../../engine/types';
 import styles from './Card.module.css';
 
@@ -45,6 +64,8 @@ export interface CardProps {
   interactive?: boolean;
   onClick?: () => void;
   className?: string;
+  /** Unique per-card-instance id enabling the hand-to-board flying placement animation. */
+  layoutId?: string;
 }
 
 function toPublicPath(path: string): string {
@@ -58,6 +79,8 @@ function displayStat(value: number): string {
 
 type PortraitStage = 'primary' | 'fallbackImage' | 'none';
 
+const FLIP_HALF_DURATION = 0.15;
+
 export function Card({
   name,
   stats,
@@ -69,6 +92,7 @@ export function Card({
   interactive = false,
   onClick,
   className,
+  layoutId,
 }: CardProps) {
   const [stage, setStage] = useState<PortraitStage>('primary');
 
@@ -80,9 +104,39 @@ export function Card({
     setStage('primary');
   }, [portraitPath, fallbackPortraitPath]);
 
+  // Capture-flip animation: `displayOwner` is what's actually rendered
+  // (template colour, glow), and only updates at the midpoint of the flip
+  // - the `owner` prop itself may already have changed, but we don't want
+  // the colour to snap instantly, we want it to swap while the card is
+  // edge-on (scaleX near 0) so it reads as a physical flip.
+  const [displayOwner, setDisplayOwner] = useState(owner);
+  const flipControls = useAnimation();
+
+  useEffect(() => {
+    if (owner === displayOwner) return;
+    let cancelled = false;
+
+    (async () => {
+      await flipControls.start({
+        scaleX: 0,
+        transition: { duration: FLIP_HALF_DURATION, ease: 'easeIn' },
+      });
+      if (cancelled) return;
+      setDisplayOwner(owner);
+      await flipControls.start({
+        scaleX: 1,
+        transition: { duration: FLIP_HALF_DURATION, ease: 'easeOut' },
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [owner, displayOwner, flipControls]);
+
   const rootClassName = [
     styles.card,
-    styles[`owner-${owner}`],
+    styles[`owner-${displayOwner}`],
     interactive ? styles.interactive : '',
     selected ? styles.selected : '',
     className ?? '',
@@ -126,7 +180,7 @@ export function Card({
     <>
       <img
         className={styles.frame}
-        src={`/assets/cardTemplates/template-${owner}.png`}
+        src={`/assets/cardTemplates/template-${displayOwner}.png`}
         alt=""
         draggable={false}
       />
@@ -141,8 +195,11 @@ export function Card({
 
   if (interactive) {
     return (
-      <button
+      <motion.button
         type="button"
+        layout
+        layoutId={layoutId}
+        animate={flipControls}
         className={rootClassName}
         style={style}
         onClick={onClick}
@@ -150,13 +207,21 @@ export function Card({
         aria-label={`${name}: top ${stats.top}, bottom ${stats.bottom}, left ${stats.left}, right ${stats.right}`}
       >
         {content}
-      </button>
+      </motion.button>
     );
   }
 
   return (
-    <div className={rootClassName} style={style} role="img" aria-label={name}>
+    <motion.div
+      layout
+      layoutId={layoutId}
+      animate={flipControls}
+      className={rootClassName}
+      style={style}
+      role="img"
+      aria-label={name}
+    >
       {content}
-    </div>
+    </motion.div>
   );
 }
