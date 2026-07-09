@@ -11,8 +11,22 @@
  *     Section 4.1 for the worked examples this was designed against.
  *
  *  2. budgetToSides: distributes that budget unevenly across the 4 sides
- *     based on a "shape" derived from the unit's battlefield role/type, so
- *     cards have personality rather than being 4 identical numbers.
+ *     based on a randomly-chosen archetype (see below), so cards have
+ *     personality rather than being 4 identical numbers.
+ *
+ * REVISION (post-playtest): the original version hard-coded WHICH sides
+ * got the strong allocation per role (Character always favoured top,
+ * Vehicle always favoured top+bottom, Beast always favoured top+left).
+ * Across the whole dataset this meant top/bottom were structurally
+ * stronger than left/right in 3 of 4 shapes, and right was never
+ * specifically favoured by any shape - exactly the bias real playtesting
+ * surfaced. This version instead randomly picks WHICH side (or pair of
+ * sides) gets the strong allocation per card, so the advantage is spread
+ * evenly across all four sides over the roster as a whole, while still
+ * giving each card a genuine, sometimes-pronounced personality rather
+ * than a uniformly mild lean. It also allows a deliberately weak
+ * remaining side (a real risk/reward tradeoff on cheap cards) and a rare,
+ * budget-scaled chance of a second maxed ("A") side on expensive cards.
  */
 import type { NormalizedUnit } from './parseCatalogue';
 
@@ -29,6 +43,12 @@ export interface CardStats {
   left: number;
   right: number;
 }
+
+type Side = keyof CardStats;
+const SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
+
+/** A source of randomness, injectable for deterministic tests. Defaults to Math.random in production. */
+export type Rng = () => number;
 
 const MIN_POINTS = 20;
 const MAX_POINTS = 800;
@@ -53,39 +73,70 @@ export function pointsToBudget(points: number): number {
   return Math.round(Math.max(MIN_BUDGET, Math.min(MAX_BUDGET, raw)));
 }
 
-export type StatShape = 'frontLoaded' | 'hullHeavy' | 'balanced' | 'flanker';
+export type StatArchetype = 'signature' | 'pair' | 'balanced';
 
-/** Relative weight of each side for a given shape; must sum to 1. */
-const SHAPE_WEIGHTS: Record<StatShape, CardStats> = {
-  // Character/Epic Hero: strong on one signature side (top, by convention -
-  // the side that "faces" an opponent placed above), weaker flanks.
-  frontLoaded: { top: 0.34, bottom: 0.22, left: 0.22, right: 0.22 },
-  // Vehicle/Monster/Super-heavy: hard to punch through head-on.
-  hullHeavy: { top: 0.3, bottom: 0.3, left: 0.2, right: 0.2 },
-  // Infantry/Battleline: no side far from the others.
-  balanced: { top: 0.25, bottom: 0.25, left: 0.25, right: 0.25 },
-  // Beast/Mounted/Bike: mobile flanker, strong on two adjacent sides.
-  flanker: { top: 0.3, bottom: 0.2, left: 0.3, right: 0.2 },
-};
+/** All 6 ways to pick 2 of the 4 sides - deliberately includes top+bottom AND left+right as just two of six equally-likely options, not a favoured default. */
+const ALL_PAIRS: [Side, Side][] = [
+  ['top', 'bottom'],
+  ['top', 'left'],
+  ['top', 'right'],
+  ['bottom', 'left'],
+  ['bottom', 'right'],
+  ['left', 'right'],
+];
 
-const SIDES: (keyof CardStats)[] = ['top', 'bottom', 'left', 'right'];
+interface ArchetypeWeights {
+  signature: number;
+  pair: number;
+  balanced: number;
+}
 
 /**
- * Distributes `budget` across the 4 sides according to `shape`, clamping
- * every side to [1, 10] and guaranteeing the sides sum to exactly `budget`
- * (assuming budget is within the achievable range 4-40 for 4 sides of
- * 1-10; values from pointsToBudget always are).
+ * Role still flavours the ODDS of each archetype (a Character is more
+ * often spiky, a Vehicle is more often a strong pair), but never which
+ * specific side(s) - that's always randomized. This keeps role-appropriate
+ * flavour on average without making every unit of a given role look the
+ * same shape.
  */
-export function budgetToSides(budget: number, shape: StatShape): CardStats {
-  const weights = SHAPE_WEIGHTS[shape];
+const ROLE_ARCHETYPE_WEIGHTS: Record<string, ArchetypeWeights> = {
+  character: { signature: 0.65, pair: 0.25, balanced: 0.1 },
+  vehicle: { signature: 0.2, pair: 0.65, balanced: 0.15 },
+  beast: { signature: 0.3, pair: 0.55, balanced: 0.15 },
+  default: { signature: 0.2, pair: 0.25, balanced: 0.55 },
+};
 
-  // Initial proportional allocation, floored.
+function roleCategoryForUnit(
+  unit: Pick<NormalizedUnit, 'battlefieldRole' | 'unitType' | 'keywords'>,
+): keyof typeof ROLE_ARCHETYPE_WEIGHTS {
+  const isEpicHero = unit.keywords.some((k) => k.toLowerCase() === 'epic hero');
+  if (isEpicHero || /character/i.test(unit.battlefieldRole)) return 'character';
+  if (/vehicle|monster|walker|aircraft/i.test(unit.unitType)) return 'vehicle';
+  if (/beast|mounted|bike|cavalry/i.test(unit.unitType)) return 'beast';
+  return 'default';
+}
+
+/** Picks an archetype for a unit, weighted by role but otherwise random - see file header. */
+export function shapeForUnit(
+  unit: Pick<NormalizedUnit, 'battlefieldRole' | 'unitType' | 'keywords'>,
+  rng: Rng = Math.random,
+): StatArchetype {
+  const weights = ROLE_ARCHETYPE_WEIGHTS[roleCategoryForUnit(unit)];
+  const roll = rng();
+  if (roll < weights.signature) return 'signature';
+  if (roll < weights.signature + weights.pair) return 'pair';
+  return 'balanced';
+}
+
+function randomBetween(rng: Rng, min: number, max: number): number {
+  return min + rng() * (max - min);
+}
+
+/** Converts a weight-per-side map into final integer stats summing to exactly `budget`, each in [1, 10]. Used for the 'balanced' archetype, which has no distinct "strong" side(s). */
+function weightsToSides(weights: Record<Side, number>, budget: number): CardStats {
   const raw = SIDES.map((side) => budget * weights[side]);
   const floored = raw.map((v) => Math.floor(v));
   let remainder = budget - floored.reduce((a, b) => a + b, 0);
 
-  // Distribute the rounding remainder to the sides with the largest
-  // fractional part first (largest-remainder method).
   const fractional = raw.map((v, i) => ({ i, frac: v - floored[i] }));
   fractional.sort((a, b) => b.frac - a.frac);
   const values = [...floored];
@@ -94,16 +145,10 @@ export function budgetToSides(budget: number, shape: StatShape): CardStats {
     remainder--;
   }
 
-  // Clamp into [MIN_SIDE, MAX_SIDE], then redistribute any resulting
-  // surplus/deficit so the total still sums to exactly `budget`.
   const clamp = (v: number) => Math.max(MIN_SIDE, Math.min(MAX_SIDE, v));
   const clamped = values.map(clamp);
   let diff = budget - clamped.reduce((a, b) => a + b, 0);
 
-  // diff > 0: budget was clamped down somewhere, need to add it back
-  //           to sides with headroom below MAX_SIDE.
-  // diff < 0: budget was clamped up somewhere, need to remove it from
-  //           sides with headroom above MIN_SIDE.
   let guard = 0;
   while (diff !== 0 && guard < 100) {
     for (let i = 0; i < clamped.length && diff !== 0; i++) {
@@ -118,36 +163,179 @@ export function budgetToSides(budget: number, shape: StatShape): CardStats {
     guard++;
   }
 
-  return {
-    top: clamped[0],
-    bottom: clamped[1],
-    left: clamped[2],
-    right: clamped[3],
-  };
+  return { top: clamped[0], bottom: clamped[1], left: clamped[2], right: clamped[3] };
 }
 
-/** Determines which stat-distribution shape applies to a unit. */
-export function shapeForUnit(
-  unit: Pick<NormalizedUnit, 'battlefieldRole' | 'unitType' | 'keywords'>,
-): StatShape {
-  const isEpicHero = unit.keywords.some((k) => k.toLowerCase() === 'epic hero');
-  if (isEpicHero || /character/i.test(unit.battlefieldRole)) {
-    return 'frontLoaded';
+/**
+ * Rare, budget-scaled chance of bumping a high-budget card's strongest
+ * side up to the max (10/"A") even if the base allocation didn't reach
+ * it - "for high-end cards we shouldn't worry about having 2xA's
+ * (although sparingly)". Only applies above ~400pt-equivalent budgets
+ * (32+), and the chance itself scales up gradually toward the very top of
+ * the range rather than jumping straight to common. The bonus is funded by
+ * trimming other sides (largest first) so the total still sums to budget.
+ */
+function maybeApplyDoubleMaxBonus(stats: CardStats, budget: number, rng: Rng): CardStats {
+  const bonusChance = Math.max(0, Math.min(1, (budget - 32) / 8)) * 0.3;
+  if (rng() >= bonusChance) return stats;
+
+  const values: [Side, number][] = SIDES.map((s) => [s, stats[s]]);
+  const candidates = values.filter(([, v]) => v < MAX_SIDE).sort((a, b) => b[1] - a[1]);
+  if (candidates.length === 0) return stats; // already all maxed, nothing to do
+
+  const [boostSide, boostValue] = candidates[0];
+  const needed = MAX_SIDE - boostValue;
+
+  const result: CardStats = { ...stats, [boostSide]: MAX_SIDE };
+  const donors = SIDES.filter((s) => s !== boostSide).sort((a, b) => result[b] - result[a]);
+
+  let remaining = needed;
+  let guard = 0;
+  while (remaining > 0 && guard < 100) {
+    for (const side of donors) {
+      if (remaining <= 0) break;
+      if (result[side] > MIN_SIDE) {
+        result[side]--;
+        remaining--;
+      }
+    }
+    guard++;
   }
-  if (/vehicle|monster|walker|aircraft/i.test(unit.unitType)) {
-    return 'hullHeavy';
+
+  return result;
+}
+
+/**
+ * Distributes `totalBudget` across exactly `sides`, using a wide random
+ * jitter per side so the result can be genuinely unequal (a real weak
+ * side, not just a mild dip) - not merely proportionally-equal shares.
+ * Same largest-remainder + clamp/redistribute mechanics as weightsToSides,
+ * but scoped to a specific subset of sides and a specific sub-budget, so
+ * any redistribution needed here only ever has to move a handful of
+ * points, not the large swings that used to flatten out intended
+ * inequality when a single strong side's raw target vastly exceeded 10.
+ */
+function distributeAmongSides(sides: Side[], totalBudget: number, rng: Rng): Record<Side, number> {
+  const jitters = sides.map(() => randomBetween(rng, 0.2, 1.8));
+  const jitterTotal = jitters.reduce((a, b) => a + b, 0);
+  const raw = sides.map((_, i) => totalBudget * (jitters[i] / jitterTotal));
+  const floored = raw.map((v) => Math.floor(v));
+  let remainder = totalBudget - floored.reduce((a, b) => a + b, 0);
+
+  const fractional = raw.map((v, i) => ({ i, frac: v - floored[i] }));
+  fractional.sort((a, b) => b.frac - a.frac);
+  const values = [...floored];
+  for (let k = 0; k < fractional.length && remainder > 0; k++) {
+    values[fractional[k].i]++;
+    remainder--;
   }
-  if (/beast|mounted|bike|cavalry/i.test(unit.unitType)) {
-    return 'flanker';
+
+  const clamp = (v: number) => Math.max(MIN_SIDE, Math.min(MAX_SIDE, v));
+  const clamped = values.map(clamp);
+  let diff = totalBudget - clamped.reduce((a, b) => a + b, 0);
+  let guard = 0;
+  while (diff !== 0 && guard < 100) {
+    for (let i = 0; i < clamped.length && diff !== 0; i++) {
+      if (diff > 0 && clamped[i] < MAX_SIDE) {
+        clamped[i]++;
+        diff--;
+      } else if (diff < 0 && clamped[i] > MIN_SIDE) {
+        clamped[i]--;
+        diff++;
+      }
+    }
+    guard++;
   }
-  return 'balanced';
+
+  const result = {} as Record<Side, number>;
+  sides.forEach((s, i) => {
+    result[s] = clamped[i];
+  });
+  return result;
+}
+
+/**
+ * Distributes `budget` across the 4 sides according to `archetype`,
+ * randomizing which side(s) get the strong allocation (see file header
+ * for why this matters), guaranteeing the sides sum to exactly `budget`
+ * and each stays within [1, 10].
+ *
+ * Two-stage for 'signature'/'pair': the strong side(s) get a target value
+ * directly (rounded and clamped to [1, 10]) BEFORE any redistribution
+ * happens, and only the genuine leftover budget is distributed among the
+ * remaining sides. This avoids the old single-pass approach, where a
+ * strong side's raw fractional target could vastly exceed 10 (e.g. 21.5
+ * at a high budget), and dumping that much overflow onto the other sides
+ * via round-robin both erased intended inequality AND made a second side
+ * hit the max almost as often as the "rare" bonus was meant to.
+ */
+export function budgetToSides(
+  budget: number,
+  archetype: StatArchetype,
+  rng: Rng = Math.random,
+): CardStats {
+  if (archetype === 'balanced') {
+    // Mild multiplicative jitter around an equal split - even "balanced"
+    // units get some texture, without a dramatic spike.
+    const jitters = SIDES.map(() => randomBetween(rng, 0.86, 1.14));
+    const jitterTotal = jitters.reduce((a, b) => a + b, 0);
+    const weights = {} as Record<Side, number>;
+    SIDES.forEach((s, i) => {
+      weights[s] = jitters[i] / jitterTotal;
+    });
+    return maybeApplyDoubleMaxBonus(weightsToSides(weights, budget), budget, rng);
+  }
+
+  const strongSides: Side[] =
+    archetype === 'signature'
+      ? [SIDES[Math.floor(rng() * SIDES.length)]]
+      : ALL_PAIRS[Math.floor(rng() * ALL_PAIRS.length)];
+  const fractionRange: [number, number] = archetype === 'signature' ? [0.4, 0.58] : [0.24, 0.36];
+
+  const values: Record<Side, number> = { top: 0, bottom: 0, left: 0, right: 0 };
+  let usedBudget = 0;
+  for (const side of strongSides) {
+    const target = Math.max(
+      MIN_SIDE,
+      Math.min(MAX_SIDE, Math.round(randomBetween(rng, fractionRange[0], fractionRange[1]) * budget)),
+    );
+    values[side] = target;
+    usedBudget += target;
+  }
+
+  const remainingSides = SIDES.filter((s) => !strongSides.includes(s));
+  let remainingBudget = budget - usedBudget;
+
+  // Defensive guard: with the fraction ranges and budget bounds [11, 37]
+  // this shouldn't actually be reachable, but if it ever were, nudge the
+  // last strong side rather than let the remainder fall outside what
+  // remainingSides can represent (each must stay within [1, 10]).
+  const minPossible = remainingSides.length * MIN_SIDE;
+  const maxPossible = remainingSides.length * MAX_SIDE;
+  if (remainingBudget < minPossible) {
+    const deficit = minPossible - remainingBudget;
+    const lastStrong = strongSides[strongSides.length - 1];
+    values[lastStrong] = Math.max(MIN_SIDE, values[lastStrong] - deficit);
+    remainingBudget = budget - strongSides.reduce((sum, s) => sum + values[s], 0);
+  } else if (remainingBudget > maxPossible) {
+    const excess = remainingBudget - maxPossible;
+    const lastStrong = strongSides[strongSides.length - 1];
+    values[lastStrong] = Math.min(MAX_SIDE, values[lastStrong] + excess);
+    remainingBudget = budget - strongSides.reduce((sum, s) => sum + values[s], 0);
+  }
+
+  const remainingValues = distributeAmongSides(remainingSides, remainingBudget, rng);
+  for (const s of remainingSides) values[s] = remainingValues[s];
+
+  return maybeApplyDoubleMaxBonus(values, budget, rng);
 }
 
 /** Convenience: derives both the stat budget and the final 4-side stats for a unit. */
 export function deriveCardStats(
   unit: Pick<NormalizedUnit, 'points' | 'battlefieldRole' | 'unitType' | 'keywords'>,
+  rng: Rng = Math.random,
 ): { statBudget: number; stats: CardStats } {
   const statBudget = pointsToBudget(unit.points);
-  const stats = budgetToSides(statBudget, shapeForUnit(unit));
+  const stats = budgetToSides(statBudget, shapeForUnit(unit, rng), rng);
   return { statBudget, stats };
 }
