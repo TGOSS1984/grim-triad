@@ -1,0 +1,176 @@
+[
+  {
+    "slug": "adepta-sororitas",
+    "name": "Adepta Sororitas",
+    "active": false,
+    "unitCount": 26
+  },
+  {
+    "slug": "adeptus-custodes",
+    "name": "Adeptus Custodes",
+    "active": false,
+    "unitCount": 17
+  },
+  {
+    "slug": "adeptus-mechanicus",
+    "name": "Adeptus Mechanicus",
+    "active": false,
+    "unitCount": 26
+  },
+  {
+    "slug": "aeldari",
+    "name": "Aeldari",
+    "active": true,
+    "unitCount": 47
+  },
+  {
+    "slug": "astra-militarum",
+    "name": "Astra Militarum",
+    "active": false,
+    "unitCount": 49
+  },
+  {
+    "slug": "black-templars",
+    "name": "Black Templars",
+    "active": false,
+    "unitCount": 11
+  },
+  {
+    "slug": "blood-angels",
+    "name": "Blood Angels",
+    "active": true,
+    "unitCount": 13
+  },
+  {
+    "slug": "chaos-daemons",
+    "name": "Chaos Daemons",
+    "active": false,
+    "unitCount": 42
+  },
+  {
+    "slug": "chaos-knights",
+    "name": "Chaos Knights",
+    "active": false,
+    "unitCount": 10
+  },
+  {
+    "slug": "chaos-space-marines",
+    "name": "Chaos Space Marines",
+    "active": false,
+    "unitCount": 42
+  },
+  {
+    "slug": "dark-angels",
+    "name": "Dark Angels",
+    "active": false,
+    "unitCount": 12
+  },
+  {
+    "slug": "death-guard",
+    "name": "Death Guard",
+    "active": false,
+    "unitCount": 31
+  },
+  {
+    "slug": "deathwatch",
+    "name": "Deathwatch",
+    "active": false,
+    "unitCount": 7
+  },
+  {
+    "slug": "drukhari",
+    "name": "Drukhari",
+    "active": false,
+    "unitCount": 23
+  },
+  {
+    "slug": "emperor-s-children",
+    "name": "Emperor's Children",
+    "active": false,
+    "unitCount": 8
+  },
+  {
+    "slug": "genestealer-cults",
+    "name": "Genestealer Cults",
+    "active": false,
+    "unitCount": 22
+  },
+  {
+    "slug": "grey-knights",
+    "name": "Grey Knights",
+    "active": false,
+    "unitCount": 17
+  },
+  {
+    "slug": "harlequins",
+    "name": "Harlequins",
+    "active": false,
+    "unitCount": 8
+  },
+  {
+    "slug": "imperial-agents",
+    "name": "Imperial Agents",
+    "active": false,
+    "unitCount": 13
+  },
+  {
+    "slug": "imperial-knights",
+    "name": "Imperial Knights",
+    "active": false,
+    "unitCount": 11
+  },
+  {
+    "slug": "leagues-of-votann",
+    "name": "Leagues of Votann",
+    "active": false,
+    "unitCount": 13
+  },
+  {
+    "slug": "necrons",
+    "name": "Necrons",
+    "active": true,
+    "unitCount": 46
+  },
+  {
+    "slug": "orks",
+    "name": "Orks",
+    "active": false,
+    "unitCount": 48
+  },
+  {
+    "slug": "space-marines",
+    "name": "Space Marines",
+    "active": false,
+    "unitCount": 80
+  },
+  {
+    "slug": "space-wolves",
+    "name": "Space Wolves",
+    "active": false,
+    "unitCount": 25
+  },
+  {
+    "slug": "t-au-empire",
+    "name": "T'au Empire",
+    "active": false,
+    "unitCount": 31
+  },
+  {
+    "slug": "thousand-sons",
+    "name": "Thousand Sons",
+    "active": false,
+    "unitCount": 22
+  },
+  {
+    "slug": "tyranids",
+    "name": "Tyranids",
+    "active": true,
+    "unitCount": 46
+  },
+  {
+    "slug": "world-eaters",
+    "name": "World Eaters",
+    "active": false,
+    "unitCount": 22
+  }
+]
