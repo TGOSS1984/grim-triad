@@ -1,0 +1,72 @@
+/**
+ * Design tokens: colour palette and spacing/radius scale for the whole
+ * app. Colour values are the exact hex palette supplied for the project's
+ * visual direction (Space Marine 2 UI references + the card template art),
+ * mapped to semantic roles so components never hardcode a raw hex - if the
+ * palette ever shifts, it shifts here once.
+ *
+ * Two colours were NOT in the supplied palette and were added to fill a
+ * genuine gap - flagged explicitly here rather than silently invented:
+ *  - --color-text-primary: the supplied palette has no light/near-white
+ *    tone, and body text needs one against these dark surfaces. Chosen to
+ *    match the warm parchment tone of the card templates' inner paper, so
+ *    text reads as part of the same material rather than a generic white.
+ *  - --color-player-red: the supplied palette is blue/green/gold only
+ *    (drawn from Imperium-leaning references); the game needs a red
+ *    player colour to pair with blue for the two card templates. Chosen
+ *    to match the red card template's dominant frame tone.
+ */
+:root {
+  /* Supplied palette, kept as raw tokens for traceability back to source */
+  --palette-green-bright: #63bc55;
+  --palette-charcoal: #1c2124;
+  --palette-tan: #9d896e;
+  --palette-bronze: #82653a;
+  --palette-blue-grey: #283b46;
+  --palette-warm-grey: #524c40;
+  --palette-green-mid: #509145;
+  --palette-green-deep: #284f32;
+  --palette-gold: #af833b;
+  --palette-cool-grey: #89989e;
+
+  /* Semantic tokens - components should reference these, not the raw
+     palette above, so a future palette change never requires touching
+     component code. */
+  --color-bg-void: var(--palette-charcoal);
+  --color-surface: var(--palette-blue-grey);
+  --color-surface-alt: var(--palette-warm-grey);
+  --color-border: var(--palette-gold);
+  --color-border-muted: var(--palette-bronze);
+
+  --color-accent-gold: var(--palette-gold);
+  --color-accent-gold-dark: var(--palette-bronze);
+  --color-accent-parchment: var(--palette-tan);
+
+  --color-success: var(--palette-green-bright);
+  --color-success-mid: var(--palette-green-mid);
+  --color-success-deep: var(--palette-green-deep);
+
+  --color-text-primary: #e8dcc0; /* added to fill a gap - see file header */
+  --color-text-muted: var(--palette-cool-grey);
+
+  /* Player colours - drive which card template (template-blue.png /
+     template-red.png) and UI accents apply to each side of a match. Blue
+     is brightened slightly from the raw palette's --palette-blue-grey for
+     clearer contrast as an active-state UI colour, not just a background. */
+  --color-player-blue: #3b5b73;
+  --color-player-red: #7a2320; /* added to fill a gap - see file header */
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+
+  /* Radius / elevation */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --shadow-glow-gold: 0 0 12px rgba(175, 131, 59, 0.5);
+  --shadow-glow-blue: 0 0 12px rgba(59, 91, 115, 0.6);
+  --shadow-glow-red: 0 0 12px rgba(122, 35, 32, 0.6);
+}

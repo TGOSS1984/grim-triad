@@ -155,7 +155,7 @@ grim-triad/
         ├── backgrounds/
         │   └── battle-01.jpg ... battle-NN.jpg
         └── fonts/
-            └── (chosen 40k-style font files)
+            └── (self-hosted via @fontsource npm packages, see Section 6.1 note - not manual files here)
 ```
 
 ### Card template strategy (your question)
@@ -176,7 +176,37 @@ render time — do not pre-bake hundreds of flattened card images.**
   fallback is also missing). This is a simple existence-check + `onError` swap in the
   image loader — you can add real art incrementally with zero code changes, as you said.
 
-## 4. Data Model (confirmed against real Munitorum Field Manual data)
+### 3.1 Visual Theme (confirmed in Phase 6.1)
+
+**Colour palette**: supplied by the user (Space Marine 2 UI references + the
+card template art), mapped to semantic CSS custom properties in
+`src/theme/tokens.css` rather than used as raw hex in components. Two
+colours were added to fill genuine gaps in the supplied palette (which had
+no light/near-white tone and no red) - flagged explicitly in that file's
+header rather than silently invented.
+
+**Typography**: a two-font system rather than a single face, since Zen Dots
+(the user's suggested display font - geometric, blocky, futuristic-stencil)
+is too heavy to read comfortably at small sizes for body copy:
+- **Zen Dots** - titles, faction/unit names, card stat numbers.
+- **Rajdhani** - buttons, descriptions, rule text, any longer-form UI copy.
+  Condensed technical sans with a HUD/military terminal feel matching the
+  Space Marine 2 reference screenshots.
+
+Both are self-hosted via `@fontsource/zen-dots` and `@fontsource/rajdhani`
+npm packages rather than manually-managed files under `public/assets/fonts/`
+as originally planned - Vite's asset pipeline already bundles, hashes, and
+cache-busts anything imported as CSS/JS, so there's no binary font file to
+hand around or keep in sync; `npm install` is sufficient.
+
+**Card templates**: `template-blue.png` / `template-red.png` (renamed from
+the user-supplied `blue_card.png`/`red_card.png` to match this document's
+existing naming convention) live in `public/assets/cardTemplates/`, each
+1024x1536 with genuine alpha transparency outside the ornate frame border -
+confirmed by inspecting actual pixel data, not assumed - so they composite
+cleanly over any background in the Card component (Phase 7).
+
+
 
 Source: `Warhammer_40K_10th_Edition_Full_Catalogue_With_MFM_March_2025_Points.xlsx`,
 `Master Catalogue` sheet — 819 rows, 29 factions, 768 with verified points (20–800pt range).
@@ -368,7 +398,7 @@ git history once we scaffold the repo).
   `feat(state): army builder points/roster state`
 
 ### Phase 6 — Theming & Design Tokens
-- **6.1** `NEW`: `src/theme/tokens.css`, `src/theme/fonts.css`, chosen font files under `public/assets/fonts/`
+- **6.1** `NEW`: `src/theme/tokens.css`, `src/theme/fonts.css`; `NEW` (assets): `public/assets/cardTemplates/template-blue.png`, `template-red.png`; fonts self-hosted via `@fontsource/zen-dots` + `@fontsource/rajdhani` npm packages (see note below) `OVERWRITE`: `src/main.tsx` (imports global theme)
   `feat(theme): 40k design tokens, colour palette, typography`
 
 ### Phase 7 — Card & Board Components

@@ -1,0 +1,35 @@
+/**
+ * Self-hosted webfonts via @fontsource (see package.json) - no external
+ * network requests at runtime, works offline, bundled and cache-busted by
+ * Vite like any other asset. This is a deliberate improvement over the
+ * original ROADMAP.md plan of manually managing font files under
+ * public/assets/fonts/: Vite's asset pipeline already does this correctly
+ * for anything imported as CSS/JS, so there's no binary font file to hand
+ * around or keep in sync - `npm install` is enough.
+ *
+ * Two-font system, chosen from the provided Space Marine 2 UI references
+ * and font-style examples:
+ *
+ *  - Zen Dots: display/header font. Geometric, blocky, futuristic-stencil
+ *    feel - used for big titles, faction/unit names, and card stat numbers
+ *    (legible at a glance even at its heavy weight, similar role to the
+ *    condensed bold headers seen in the "VICTORY" / "ARMOURING HALL"
+ *    reference screenshots).
+ *  - Rajdhani: body/UI font. Condensed technical sans with a HUD/military
+ *    terminal feel matching the weapon-combo and class-select reference
+ *    screenshots - used for buttons, descriptions, rule text, and any
+ *    longer-form UI copy where Zen Dots would be too heavy/blocky to read
+ *    comfortably at small sizes.
+ *
+ * Only the weights actually needed are imported, to keep the bundle lean -
+ * add more only when a specific design calls for them.
+ */
+@import '@fontsource/zen-dots/400.css';
+@import '@fontsource/rajdhani/500.css';
+@import '@fontsource/rajdhani/600.css';
+@import '@fontsource/rajdhani/700.css';
+
+:root {
+  --font-display: 'Zen Dots', system-ui, sans-serif;
+  --font-body: 'Rajdhani', system-ui, sans-serif;
+}
