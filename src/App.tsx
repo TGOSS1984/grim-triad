@@ -78,7 +78,7 @@ export default function App() {
     setStep('game');
   }
 
-  function handleNewGameFromResult() {
+  function handleReturnToHome() {
     resetGame();
     resetArmyBuilder();
     setHumanArmyUnitIds([]);
@@ -103,9 +103,9 @@ export default function App() {
       );
 
     case 'game':
-      return <GameScreen humanPlayer={HUMAN_PLAYER} />;
+      return <GameScreen humanPlayer={HUMAN_PLAYER} onQuit={handleReturnToHome} />;
 
     case 'result':
-      return <ResultScreen onNewGame={handleNewGameFromResult} />;
+      return <ResultScreen onNewGame={handleReturnToHome} />;
   }
 }

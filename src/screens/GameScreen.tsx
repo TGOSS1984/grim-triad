@@ -29,6 +29,8 @@ export interface GameScreenProps {
   humanPlayer: PlayerColour;
   backgroundImagePath?: string;
   cardWidth?: number;
+  /** Called when the player confirms they want to abandon the current match and return to the menu. Omit to hide the Quit button entirely. */
+  onQuit?: () => void;
 }
 
 /** A portrait path that will 404 cleanly (not "" - see the note in Card.tsx about empty src being a footgun) if a unit can't be resolved. This should only happen for malformed/stale data. */
@@ -67,10 +69,11 @@ function resolveHandFactionSlug(game: GameState, colour: PlayerColour): string |
   return undefined;
 }
 
-export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }: GameScreenProps) {
+export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, onQuit }: GameScreenProps) {
   const game = useGameStore((s) => s.game);
   const playCard = useGameStore((s) => s.playCard);
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>();
+  const [confirmingQuit, setConfirmingQuit] = useState(false);
 
   if (!game) {
     return (
@@ -139,12 +142,41 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }
   return (
     <div className={styles.screen}>
       <BackgroundLayer imagePath={backgroundImagePath} />
-      <div className={styles.turnBanner}>
-        {game.phase === 'finished'
-          ? 'Match finished'
-          : isHumanTurn
-            ? 'Your turn'
-            : "Opponent's turn"}
+      <div className={styles.header}>
+        <div className={styles.turnBanner}>
+          {game.phase === 'finished'
+            ? 'Match finished'
+            : isHumanTurn
+              ? 'Your turn'
+              : "Opponent's turn"}
+        </div>
+        {onQuit && (
+          <div className={styles.quitArea}>
+            {confirmingQuit ? (
+              <>
+                <span className={styles.quitConfirmText}>Quit this match?</span>
+                <button type="button" className={styles.quitConfirmButton} onClick={onQuit}>
+                  Yes, Quit
+                </button>
+                <button
+                  type="button"
+                  className={styles.quitCancelButton}
+                  onClick={() => setConfirmingQuit(false)}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className={styles.quitButton}
+                onClick={() => setConfirmingQuit(true)}
+              >
+                Quit Game
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <ResponsiveGameLayout
         left={

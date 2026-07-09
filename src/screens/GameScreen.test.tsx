@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GameScreen } from './GameScreen';
@@ -190,5 +190,55 @@ describe('GameScreen', () => {
       },
       { timeout: 3000 },
     );
+  });
+
+  it('does not show a Quit button when onQuit is not provided', () => {
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" />);
+    expect(screen.queryByRole('button', { name: 'Quit Game' })).not.toBeInTheDocument();
+  });
+
+  it('shows a Quit button when onQuit is provided', () => {
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" onQuit={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Quit Game' })).toBeInTheDocument();
+  });
+
+  it('does not call onQuit immediately on the first click - requires confirmation', async () => {
+    const user = userEvent.setup();
+    const onQuit = vi.fn();
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" onQuit={onQuit} />);
+
+    await user.click(screen.getByRole('button', { name: 'Quit Game' }));
+
+    expect(onQuit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Yes, Quit' })).toBeInTheDocument();
+  });
+
+  it('calls onQuit only after confirming', async () => {
+    const user = userEvent.setup();
+    const onQuit = vi.fn();
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" onQuit={onQuit} />);
+
+    await user.click(screen.getByRole('button', { name: 'Quit Game' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, Quit' }));
+
+    expect(onQuit).toHaveBeenCalledOnce();
+  });
+
+  it('Cancel returns to the normal Quit button without calling onQuit', async () => {
+    const user = userEvent.setup();
+    const onQuit = vi.fn();
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" onQuit={onQuit} />);
+
+    await user.click(screen.getByRole('button', { name: 'Quit Game' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onQuit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Quit Game' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Yes, Quit' })).not.toBeInTheDocument();
   });
 });

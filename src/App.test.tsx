@@ -108,4 +108,23 @@ describe('App (full flow integration)', () => {
     // (real unit names visible) rather than as CardBacks.
     expect(screen.queryByRole('img', { name: 'Face-down card' })).not.toBeInTheDocument();
   });
+
+  it('Quit Game (after confirming) returns to the Home screen and clears state', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await buildBloodAngelsArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    await user.click(screen.getByRole('button', { name: 'Quit Game' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, Quit' }));
+
+    expect(screen.getByRole('heading', { name: 'Grim Triad' })).toBeInTheDocument();
+    expect(useGameStore.getState().game).toBeNull();
+    expect(useArmyBuilderStore.getState().rosterName).toBeNull();
+  });
 });
