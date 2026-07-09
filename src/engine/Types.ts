@@ -1,5 +1,5 @@
 /**
- * Core types for the Grim Triad game engine.
+ * Core types for the Grim Triad game engine. File adjust - lower case t for commit.
  *
  * This module has ZERO dependencies on React, the DOM, or any UI library.
  * It is pure data + the shapes that `board.ts`, `capture.ts`, `gameReducer.ts`,
