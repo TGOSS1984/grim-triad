@@ -1,0 +1,13 @@
+.background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-bg-void);
+  background-image: radial-gradient(
+    ellipse at center,
+    var(--color-surface) 0%,
+    var(--color-bg-void) 70%
+  );
+  background-size: cover;
+  background-position: center;
+}

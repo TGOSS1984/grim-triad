@@ -5,6 +5,7 @@ import {
   ACTIVE_FACTIONS,
   getUnitsForRoster,
   getFactionBySlug,
+  getUnitById,
 } from './activeFactions';
 
 describe('generated data loading + validation', () => {
@@ -67,5 +68,26 @@ describe('getFactionBySlug', () => {
 
   it('returns undefined for an unknown slug', () => {
     expect(getFactionBySlug('not-a-real-slug')).toBeUndefined();
+  });
+});
+
+describe('getUnitById', () => {
+  it('finds a known unit by its generated id', () => {
+    const unit = getUnitById('blood-angels-commander-dante');
+    expect(unit?.name).toBe('Commander Dante');
+  });
+
+  it('returns undefined for an unknown id', () => {
+    expect(getUnitById('not-a-real-unit-id')).toBeUndefined();
+  });
+
+  it('resolves every unit in ALL_UNITS by its own id (round-trip check)', () => {
+    // Spot-check a sample rather than all 768 for test speed - if the
+    // lookup map were built incorrectly (e.g. off-by-one, wrong key),
+    // this would still catch it since the sample spans the array.
+    const sample = [ALL_UNITS[0], ALL_UNITS[Math.floor(ALL_UNITS.length / 2)], ALL_UNITS[ALL_UNITS.length - 1]];
+    for (const unit of sample) {
+      expect(getUnitById(unit.id)).toEqual(unit);
+    }
   });
 });

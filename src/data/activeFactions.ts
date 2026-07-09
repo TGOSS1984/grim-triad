@@ -38,3 +38,18 @@ export function getUnitsForRoster(rosterName: string): Unit[] {
 export function getFactionBySlug(slug: string): Faction | undefined {
   return ALL_FACTIONS.find((f) => f.slug === slug);
 }
+
+/**
+ * O(1) lookup from a unit's id back to its full data - built once at
+ * module load. Used wherever a live engine Card (which only carries
+ * unitId + stats + owner, not display info) needs to be resolved back to
+ * a name/portrait for rendering, e.g. GameScreen mapping board/hand cards
+ * to what Board/Hand actually display. A per-render .find() over ~800
+ * units would work but there's no reason to pay that cost repeatedly when
+ * the mapping never changes after load.
+ */
+const UNITS_BY_ID = new Map<string, Unit>(ALL_UNITS.map((u) => [u.id, u]));
+
+export function getUnitById(unitId: string): Unit | undefined {
+  return UNITS_BY_ID.get(unitId);
+}

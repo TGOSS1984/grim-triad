@@ -1,0 +1,22 @@
+.layout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  flex-wrap: wrap;
+  min-height: 100vh;
+  width: 100%;
+  padding: var(--space-xl);
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
