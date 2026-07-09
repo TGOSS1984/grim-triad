@@ -13,13 +13,18 @@
  * it, and the caller (Board/Hand/ArmyBuilder) is responsible for pulling
  * those fields out of whatever combination of engine Card + Unit it has.
  *
- * Portrait fallback: if the unit's portraitPath 404s (no art authored yet,
- * expected for most units in early development - see ROADMAP.md Section
- * 4/9 on the fallback convention), this swaps to a plain text placeholder
- * showing the unit's name rather than a broken image icon. A dedicated
- * fallback silhouette image is a natural follow-up once one exists.
+ * Three-tier portrait fallback, matching the asset convention in
+ * ROADMAP.md Section 3 (assets/factions/<faction-slug>/units/_fallback.png):
+ *   1. The unit's own portraitPath.
+ *   2. If that fails to load and a fallbackPortraitPath is provided (a
+ *      faction-level generic silhouette), try that instead.
+ *   3. If that also fails, or no fallback was provided, show a plain text
+ *      placeholder with the unit's name rather than a broken image icon.
+ * No fallback silhouette art exists yet at the time of writing, but the
+ * component is ready for it - passing fallbackPortraitPath just works,
+ * with zero further changes needed once real fallback art is authored.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CardStats, PlayerColour } from '../../engine/types';
 import styles from './Card.module.css';
 
@@ -28,6 +33,8 @@ export interface CardProps {
   stats: CardStats;
   /** Root-relative path, e.g. "assets/factions/blood-angels/units/commander-dante.png" */
   portraitPath: string;
+  /** Root-relative path to a faction-level generic fallback silhouette, if one exists. */
+  fallbackPortraitPath?: string;
   owner: PlayerColour;
   /** Card width in px; height follows the template's fixed aspect ratio. Defaults to 140px. */
   width?: number;
@@ -46,10 +53,13 @@ function displayStat(value: number): string {
   return value >= 10 ? 'A' : String(value);
 }
 
+type PortraitStage = 'primary' | 'fallbackImage' | 'text';
+
 export function Card({
   name,
   stats,
   portraitPath,
+  fallbackPortraitPath,
   owner,
   width,
   selected = false,
@@ -57,7 +67,15 @@ export function Card({
   onClick,
   className,
 }: CardProps) {
-  const [portraitFailed, setPortraitFailed] = useState(false);
+  const [stage, setStage] = useState<PortraitStage>('primary');
+
+  // Reset to the primary image whenever the underlying unit's art paths
+  // change, so a reused/re-rendered Card (rather than a fresh remount)
+  // never gets stuck showing a stale fallback from a previously-displayed
+  // unit that lacked art.
+  useEffect(() => {
+    setStage('primary');
+  }, [portraitPath, fallbackPortraitPath]);
 
   const rootClassName = [
     styles.card,
@@ -71,6 +89,34 @@ export function Card({
 
   const style = width ? ({ '--card-width': `${width}px` } as React.CSSProperties) : undefined;
 
+  function renderPortraitContent() {
+    if (stage === 'text') {
+      return <div className={styles.portraitFallback}>{name}</div>;
+    }
+
+    const src =
+      stage === 'fallbackImage' && fallbackPortraitPath
+        ? toPublicPath(fallbackPortraitPath)
+        : toPublicPath(portraitPath);
+
+    return (
+      <img
+        className={styles.portrait}
+        src={src}
+        alt=""
+        data-testid="card-portrait"
+        draggable={false}
+        onError={() => {
+          if (stage === 'primary') {
+            setStage(fallbackPortraitPath ? 'fallbackImage' : 'text');
+          } else {
+            setStage('text');
+          }
+        }}
+      />
+    );
+  }
+
   const content = (
     <>
       <img
@@ -79,20 +125,7 @@ export function Card({
         alt=""
         draggable={false}
       />
-      <div className={styles.portraitWindow}>
-        {portraitFailed ? (
-          <div className={styles.portraitFallback}>{name}</div>
-        ) : (
-          <img
-            className={styles.portrait}
-            src={toPublicPath(portraitPath)}
-            alt=""
-            data-testid="card-portrait"
-            draggable={false}
-            onError={() => setPortraitFailed(true)}
-          />
-        )}
-      </div>
+      <div className={styles.portraitWindow}>{renderPortraitContent()}</div>
       <div className={styles.name}>{name}</div>
       <div className={`${styles.stat} ${styles.statTop}`}>{displayStat(stats.top)}</div>
       <div className={`${styles.stat} ${styles.statBottom}`}>{displayStat(stats.bottom)}</div>

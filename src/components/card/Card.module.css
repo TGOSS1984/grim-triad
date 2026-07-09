@@ -10,6 +10,10 @@
   --window-bottom: 89.45%;
   --window-left: 15.53%;
   --window-right: 84.38%;
+  /* Vertical midpoint of the window (not the full card) - the header bars
+     push the window down, so centering on the full card height puts the
+     left/right badges noticeably above where the window actually sits. */
+  --window-mid-v: 58.1%;
 
   position: relative;
   width: var(--card-width, 140px);
@@ -33,7 +37,7 @@
   height: 100%;
   object-fit: contain;
   pointer-events: none;
-  z-index: 2;
+  z-index: 1;
 }
 
 .portraitWindow {
@@ -43,7 +47,7 @@
   left: var(--window-left);
   right: calc(100% - var(--window-right));
   overflow: hidden;
-  z-index: 1;
+  z-index: 2;
   background: var(--color-surface-alt);
 }
 
@@ -70,22 +74,21 @@
 
 .name {
   position: absolute;
-  top: 6.5%;
+  top: 5.5%;
   left: 12%;
   right: 12%;
-  height: 11%;
+  height: 17%;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-accent-gold);
   font-family: var(--font-display);
-  font-size: clamp(0.5rem, calc(var(--card-width, 140px) * 0.055), 1rem);
-  line-height: 1.05;
+  font-size: clamp(0.4rem, calc(var(--card-width, 140px) * 0.042), 0.85rem);
+  line-height: 1.15;
   text-align: center;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   padding: 0 var(--space-xs);
 }
 
@@ -120,13 +123,13 @@
 }
 
 .statLeft {
-  top: 50%;
+  top: var(--window-mid-v);
   left: calc(var(--window-left) - 0.9em);
   transform: translateY(-50%);
 }
 
 .statRight {
-  top: 50%;
+  top: var(--window-mid-v);
   left: calc(var(--window-right) - 0.7em);
   transform: translateY(-50%);
 }

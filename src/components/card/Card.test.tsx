@@ -63,14 +63,68 @@ describe('Card', () => {
     expect(portrait).toHaveAttribute('alt', '');
   });
 
-  it('falls back to a text placeholder when the portrait image fails to load', () => {
+  it('shows the primary portrait when it loads successfully (no fallback needed)', () => {
     render(<Card {...baseProps} />);
-    const portraitImg = screen.getByTestId('card-portrait');
+    const img = screen.getByTestId('card-portrait') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe(
+      '/assets/factions/blood-angels/units/commander-dante.png',
+    );
+  });
 
-    fireEvent.error(portraitImg);
+  it('falls straight to the text placeholder when the primary fails and no fallback image is configured', () => {
+    render(<Card {...baseProps} />);
+    fireEvent.error(screen.getByTestId('card-portrait'));
 
     expect(screen.queryByTestId('card-portrait')).not.toBeInTheDocument();
     expect(screen.getAllByText('Commander Dante').length).toBeGreaterThan(0);
+  });
+
+  it('falls to the faction fallback image when the primary fails and a fallback is configured', () => {
+    render(
+      <Card
+        {...baseProps}
+        fallbackPortraitPath="assets/factions/blood-angels/_fallback.png"
+      />,
+    );
+
+    fireEvent.error(screen.getByTestId('card-portrait'));
+
+    const img = screen.getByTestId('card-portrait') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe('/assets/factions/blood-angels/_fallback.png');
+  });
+
+  it('falls to the text placeholder if both the primary and the fallback image fail', () => {
+    render(
+      <Card
+        {...baseProps}
+        fallbackPortraitPath="assets/factions/blood-angels/_fallback.png"
+      />,
+    );
+
+    fireEvent.error(screen.getByTestId('card-portrait')); // primary fails -> fallback image
+    fireEvent.error(screen.getByTestId('card-portrait')); // fallback image also fails -> text
+
+    expect(screen.queryByTestId('card-portrait')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Commander Dante').length).toBeGreaterThan(0);
+  });
+
+  it('resets to the primary portrait when portraitPath changes (reused component, different unit)', () => {
+    const { rerender } = render(<Card {...baseProps} />);
+    fireEvent.error(screen.getByTestId('card-portrait')); // -> text fallback
+    expect(screen.queryByTestId('card-portrait')).not.toBeInTheDocument();
+
+    rerender(
+      <Card
+        {...baseProps}
+        name="Lychguard"
+        portraitPath="assets/factions/necrons/units/lychguard.png"
+      />,
+    );
+
+    // A different unit's portrait should get a fresh attempt, not stay
+    // stuck on the previous unit's fallback state.
+    const img = screen.getByTestId('card-portrait') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe('/assets/factions/necrons/units/lychguard.png');
   });
 
   it('builds the portrait src as root-relative regardless of a leading slash', () => {
