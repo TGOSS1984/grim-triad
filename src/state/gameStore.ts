@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 import type { Card, GameState, PlayerColour, PlayerState, Position, RuleSet } from '../engine/types';
 import { createGame, applyMove, DEFAULT_RULE_SET } from '../engine/gameReducer';
+import { startSuddenDeathRematch } from '../engine/rules/suddenDeath';
 import { chooseMove } from '../ai/heuristicAI';
 
 export interface StartGameOptions {
@@ -32,6 +33,13 @@ export interface GameStoreState {
   startGame: (options: StartGameOptions) => void;
   /** Plays a card for the current human turn, then auto-plays the AI's turn(s) if applicable. */
   playCard: (card: Card, position: Position) => void;
+  /**
+   * Starts a Sudden Death rematch after a drawn, finished game - uses each
+   * side's board-controlled cards as their new hand (engine/rules/
+   * suddenDeath.ts). Throws if there is no game, or it isn't actually a
+   * finished draw, matching the engine function's own precondition.
+   */
+  triggerSuddenDeathRematch: () => void;
   reset: () => void;
 }
 
@@ -76,6 +84,16 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
 
     let nextGame = applyMove(game, { player: game.activePlayer, card, position });
+    nextGame = playAITurnsUntilHuman(nextGame, aiPlayer);
+    set({ game: nextGame });
+  },
+
+  triggerSuddenDeathRematch: () => {
+    const { game, aiPlayer } = get();
+    if (!game) {
+      throw new Error('Cannot start Sudden Death without a game');
+    }
+    let nextGame = startSuddenDeathRematch(game);
     nextGame = playAITurnsUntilHuman(nextGame, aiPlayer);
     set({ game: nextGame });
   },

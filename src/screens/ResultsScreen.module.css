@@ -1,0 +1,113 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  margin: 0;
+}
+
+.score {
+  display: flex;
+  gap: var(--space-xl);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.scoreBlue {
+  color: var(--color-player-blue);
+}
+
+.scoreRed {
+  color: var(--color-player-red);
+}
+
+.tradeSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: 480px;
+}
+
+.subtitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.tradeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.noTrade {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.suddenDeathButton,
+.newGameButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease;
+}
+
+.suddenDeathButton {
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.suddenDeathButton:hover,
+.suddenDeathButton:focus-visible {
+  border-color: var(--color-accent-gold);
+}
+
+.newGameButton {
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.newGameButton:hover,
+.newGameButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.empty {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+}
