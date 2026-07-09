@@ -53,3 +53,19 @@ const UNITS_BY_ID = new Map<string, Unit>(ALL_UNITS.map((u) => [u.id, u]));
 export function getUnitById(unitId: string): Unit | undefined {
   return UNITS_BY_ID.get(unitId);
 }
+
+/** O(1) lookup from a roster name (e.g. "Blood Angels") to its slug - built once at module load, same reasoning as UNITS_BY_ID above. */
+const FACTION_SLUG_BY_ROSTER_NAME = new Map<string, string>(
+  ALL_FACTIONS.map((f) => [f.name, f.slug]),
+);
+
+/**
+ * Resolves a unit back to its roster's icon slug (e.g. "blood-angels"),
+ * for anywhere the UI needs to show that faction's logo alongside a card
+ * whose only display data is the unit itself - see CardBack, which shows
+ * the owning faction's logo centered on a face-down card.
+ */
+export function getFactionSlugForUnit(unit: Unit): string | undefined {
+  const rosterName = unit.subfaction ?? unit.faction;
+  return FACTION_SLUG_BY_ROSTER_NAME.get(rosterName);
+}

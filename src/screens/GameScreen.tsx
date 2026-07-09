@@ -11,11 +11,11 @@
  */
 import { useState } from 'react';
 import { useGameStore } from '../state/gameStore';
-import { getUnitById } from '../data/activeFactions';
+import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
-import type { Card as EngineCard, PlayerColour, Position } from '../engine/types';
+import type { Card as EngineCard, GameState, PlayerColour, Position } from '../engine/types';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
 import { Hand } from '../components/hand/Hand';
@@ -41,6 +41,30 @@ function toDisplayFields(card: EngineCard): Pick<HandCardData, 'name' | 'stats' 
     stats: card.stats,
     portraitPath: unit?.portraitPath ?? UNKNOWN_UNIT_PORTRAIT,
   };
+}
+
+/**
+ * Resolves which faction's logo a side's face-down cards should show,
+ * checking their hand first and falling back to any of their cards
+ * already on the board (the hand can be empty near the end of a match, so
+ * relying on the hand alone would lose the logo right when there's the
+ * least else on screen to identify the side).
+ */
+function resolveHandFactionSlug(game: GameState, colour: PlayerColour): string | undefined {
+  const handCard = game.players[colour].hand[0];
+  if (handCard) {
+    const unit = getUnitById(handCard.unitId);
+    if (unit) return getFactionSlugForUnit(unit);
+  }
+  for (const row of game.board) {
+    for (const cell of row) {
+      if (cell.card?.owner === colour) {
+        const unit = getUnitById(cell.card.unitId);
+        if (unit) return getFactionSlugForUnit(unit);
+      }
+    }
+  }
+  return undefined;
 }
 
 export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }: GameScreenProps) {
@@ -109,6 +133,8 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }
 
   const blueFaceUp = isHandVisibleTo(game.ruleSet, humanPlayer, 'blue');
   const redFaceUp = isHandVisibleTo(game.ruleSet, humanPlayer, 'red');
+  const blueFactionSlug = resolveHandFactionSlug(game, 'blue');
+  const redFactionSlug = resolveHandFactionSlug(game, 'red');
 
   return (
     <div className={styles.screen}>
@@ -126,6 +152,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }
             cards={blueHandCards}
             owner="blue"
             faceUp={blueFaceUp}
+            factionSlug={blueFactionSlug}
             side="left"
             cardWidth={cardWidth}
             selectedCardId={humanPlayer === 'blue' ? selectedCardId : undefined}
@@ -149,6 +176,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130 }
             cards={redHandCards}
             owner="red"
             faceUp={redFaceUp}
+            factionSlug={redFactionSlug}
             side="right"
             cardWidth={cardWidth}
             selectedCardId={humanPlayer === 'red' ? selectedCardId : undefined}

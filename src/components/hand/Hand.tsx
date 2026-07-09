@@ -26,6 +26,8 @@ export interface HandProps {
   cards: HandCardData[];
   owner: PlayerColour;
   faceUp: boolean;
+  /** The hand's owning faction icon slug (e.g. "blood-angels") - shown centered on face-down cards. A hand is always single-faction, so this applies to every CardBack in it. */
+  factionSlug?: string;
   selectedCardId?: string;
   onSelectCard?: (instanceId: string) => void;
   cardWidth?: number;
@@ -36,6 +38,7 @@ export function Hand({
   cards,
   owner,
   faceUp,
+  factionSlug,
   selectedCardId,
   onSelectCard,
   cardWidth,
@@ -70,7 +73,7 @@ export function Hand({
             </div>
           ) : (
             <div key={card.instanceId} role="listitem" className={styles.slot}>
-              <CardBack owner={owner} width={cardWidth} />
+              <CardBack owner={owner} factionSlug={factionSlug} width={cardWidth} />
             </div>
           ),
         )}

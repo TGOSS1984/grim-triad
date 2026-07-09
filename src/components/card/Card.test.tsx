@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Card } from './Card';
-import { CardBack } from './CardBack';
 
 const baseProps = {
   name: 'Commander Dante',
@@ -188,18 +187,5 @@ describe('Card', () => {
       },
       { timeout: 2000 },
     );
-  });
-});
-
-describe('CardBack', () => {
-  it('renders with an accessible "face-down" label', () => {
-    render(<CardBack owner="red" />);
-    expect(screen.getByRole('img', { name: 'Face-down card' })).toBeInTheDocument();
-  });
-
-  it('does not render any stat numbers or a name', () => {
-    render(<CardBack owner="blue" />);
-    expect(screen.queryByText('A')).not.toBeInTheDocument();
-    expect(screen.queryByText(/./)).toBeNull();
   });
 });

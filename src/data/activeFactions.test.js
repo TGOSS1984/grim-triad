@@ -6,6 +6,7 @@ import {
   getUnitsForRoster,
   getFactionBySlug,
   getUnitById,
+  getFactionSlugForUnit,
 } from './activeFactions';
 
 describe('generated data loading + validation', () => {
@@ -89,5 +90,22 @@ describe('getUnitById', () => {
     for (const unit of sample) {
       expect(getUnitById(unit.id)).toEqual(unit);
     }
+  });
+});
+
+describe('getFactionSlugForUnit', () => {
+  it('resolves a subfaction unit to the subfaction (chapter) slug, not the parent faction', () => {
+    const dante = getUnitById('blood-angels-commander-dante')!;
+    expect(getFactionSlugForUnit(dante)).toBe('blood-angels');
+  });
+
+  it('resolves a base-faction unit (no subfaction) to the faction slug', () => {
+    const lychguard = getUnitById('necrons-lychguard')!;
+    expect(getFactionSlugForUnit(lychguard)).toBe('necrons');
+  });
+
+  it('returns undefined for a unit whose roster somehow has no matching faction record', () => {
+    const fakeUnit = { ...getUnitById('necrons-lychguard')!, faction: 'Not A Real Faction', subfaction: undefined };
+    expect(getFactionSlugForUnit(fakeUnit)).toBeUndefined();
   });
 });

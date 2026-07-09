@@ -64,6 +64,16 @@ describe('GameScreen', () => {
     expect(screen.getByRole('img', { name: 'Face-down card' })).toBeInTheDocument();
   });
 
+  it("shows the correct faction logo on the opponent's face-down cards", () => {
+    startTestGame({ open: false });
+    render(<GameScreen humanPlayer="blue" />);
+
+    const back = screen.getByRole('img', { name: 'Face-down card' });
+    const logo = back.querySelectorAll('img')[1];
+    // Red's hand in this fixture is a Necron unit (NECRON_LYCHGUARD).
+    expect(logo.getAttribute('src')).toBe('/assets/factions/necrons/icon.png');
+  });
+
   it('shows the opponent hand face-up with real names when Open is active', () => {
     startTestGame({ open: true });
     render(<GameScreen humanPlayer="blue" />);

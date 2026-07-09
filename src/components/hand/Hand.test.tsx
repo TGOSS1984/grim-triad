@@ -77,4 +77,14 @@ describe('Hand', () => {
     expect(screen.getByText('0')).toBeInTheDocument();
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
+
+  it('passes factionSlug through to face-down CardBacks', () => {
+    render(<Hand cards={cards} owner="red" faceUp={false} factionSlug="necrons" />);
+
+    const backs = screen.getAllByRole('img', { name: 'Face-down card' });
+    for (const back of backs) {
+      const logo = back.querySelectorAll('img')[1];
+      expect(logo.getAttribute('src')).toBe('/assets/factions/necrons/icon.png');
+    }
+  });
 });
