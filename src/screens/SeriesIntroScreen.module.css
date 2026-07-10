@@ -1,0 +1,84 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  margin: 0;
+}
+
+.poolNote {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.rulesBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  max-width: 480px;
+  width: 100%;
+}
+
+.rulesTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
+.rulesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+}
+
+.ruleItem {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-muted);
+  background: var(--color-bg-void);
+}
+
+.startButton {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease;
+}
+
+.startButton:hover,
+.startButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+}

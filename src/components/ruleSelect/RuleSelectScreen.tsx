@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import type { RuleSet } from '../../engine/types';
 import { DEFAULT_RULE_SET } from '../../engine/gameReducer';
+import { randomRuleSet } from './randomRuleSet';
 import styles from './RuleSelectScreen.module.css';
 
 export interface RuleSelectScreenProps {
@@ -78,21 +79,6 @@ const TRADE_RULES: TradeRuleInfo[] = [
   },
   { key: 'all', label: 'All', description: "Winner takes every one of the loser's cards." },
 ];
-
-function randomRuleSet(): RuleSet {
-  const randomBool = () => Math.random() < 0.5;
-  const tradeOptions: RuleSet['tradeRule'][] = ['one', 'diff', 'direct', 'all'];
-  return {
-    open: randomBool(),
-    suddenDeath: randomBool(),
-    random: randomBool(),
-    same: randomBool(),
-    sameWall: randomBool(),
-    plus: randomBool(),
-    elemental: randomBool(),
-    tradeRule: tradeOptions[Math.floor(Math.random() * tradeOptions.length)],
-  };
-}
 
 export function RuleSelectScreen({
   onContinue,
