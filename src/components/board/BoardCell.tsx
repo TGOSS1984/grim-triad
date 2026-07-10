@@ -30,6 +30,8 @@ export interface BoardCardData {
   owner: PlayerColour;
   /** Delay (ms) before this card's capture flip animation starts - see Card.tsx. */
   flipDelayMs?: number;
+  /** This card's own Elemental affinity - distinct from the cell's terrain element below. Only set when the Elemental rule is active this match (see GameScreen). */
+  element?: ElementId;
 }
 
 export interface BoardCellProps {
@@ -76,6 +78,7 @@ export function BoardCell({
           owner={card.owner}
           width={cardWidth}
           flipDelayMs={card.flipDelayMs}
+          element={card.element}
         />
         {elementBadge}
       </div>

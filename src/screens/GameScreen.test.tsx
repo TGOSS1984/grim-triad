@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GameScreen } from './GameScreen';
 import { useGameStore } from '../state/gameStore';
@@ -252,5 +252,27 @@ describe('GameScreen', () => {
     startTestGame({ elemental: true });
     render(<GameScreen humanPlayer="blue" />);
     expect(screen.getAllByRole('img', { name: /terrain/ }).length).toBeGreaterThan(0);
+  });
+
+  it("shows the card's own element affinity badge on the human's visible hand when Elemental is active", () => {
+    startTestGame({ elemental: true });
+    render(<GameScreen humanPlayer="blue" />);
+    expect(screen.getAllByRole('img', { name: /affinity/ }).length).toBeGreaterThan(0);
+  });
+
+  it("shows no card affinity badges at all when Elemental is inactive, even though every unit has an element in the data", () => {
+    startTestGame({ elemental: false });
+    render(<GameScreen humanPlayer="blue" />);
+    expect(screen.queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();
+  });
+
+  it("never leaks a card's element through a face-down (hidden) opponent hand", () => {
+    startTestGame({ elemental: true, open: false });
+    render(<GameScreen humanPlayer="blue" />);
+
+    // Red's hand is face-down here - its cards' own elements must not be
+    // exposed, same secrecy principle as their name/stats/portrait.
+    const redHand = screen.getByRole('list', { name: /^red hand/ });
+    expect(within(redHand).queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();
   });
 });

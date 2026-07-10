@@ -10,6 +10,7 @@
  *    RuleSet and passes it in.
  */
 import type { CardStats, PlayerColour } from '../../engine/types';
+import type { ElementId } from '../../data/elements';
 import { Card } from '../card/Card';
 import { CardBack } from '../card/CardBack';
 import styles from './Hand.module.css';
@@ -20,6 +21,8 @@ export interface HandCardData {
   stats: CardStats;
   portraitPath: string;
   fallbackPortraitPath?: string;
+  /** This card's own Elemental affinity - only rendered when the hand is face-up (a face-down card's element stays hidden along with everything else about it). Only set when the Elemental rule is active this match (see GameScreen). */
+  element?: ElementId;
 }
 
 export interface HandProps {
@@ -69,6 +72,7 @@ export function Hand({
                 interactive={interactive}
                 selected={card.instanceId === selectedCardId}
                 onClick={interactive ? () => onSelectCard?.(card.instanceId) : undefined}
+                element={card.element}
               />
             </div>
           ) : (

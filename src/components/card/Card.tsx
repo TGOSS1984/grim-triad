@@ -50,12 +50,32 @@
  *    them flip one after another instead of all at the exact same instant
  *    - much easier to actually see what happened, especially for a long
  *    chain.
+ *
+ * Element badge: shows the card's own Elemental affinity (see
+ * src/data/elements.ts) as a small icon in the top-left corner, when the
+ * `element` prop is given. Every unit has an element regardless of
+ * whether the Elemental rule is active this match, so callers (GameScreen)
+ * are responsible for only passing this prop when ruleSet.elemental is
+ * actually on - otherwise it'd be a confusing icon that does nothing.
+ * This is what actually closes the loop the board terrain badges opened:
+ * without seeing a card's own element, there was no way to tell in
+ * advance whether placing it on an elemental tile would help or hurt.
  */
 import { useEffect, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import type { CardStats, PlayerColour } from '../../engine/types';
+import type { ElementId } from '../../data/elements';
 import { CAPTURE_FLIP_DURATION_MS } from '../../state/animationTiming';
+import { ElementIcon } from '../common/ElementIcon';
 import styles from './Card.module.css';
+
+const ELEMENT_LABELS: Record<ElementId, string> = {
+  warp: 'Warp',
+  promethium: 'Promethium',
+  void: 'Void',
+  toxic: 'Toxic',
+  radiation: 'Radiation',
+};
 
 export interface CardProps {
   name: string;
@@ -75,6 +95,8 @@ export interface CardProps {
   layoutId?: string;
   /** Delay (ms) before this card's capture flip animation starts - staggers multi-card combo captures. */
   flipDelayMs?: number;
+  /** This card's Elemental affinity - only pass when the Elemental rule is active this match (see file header). */
+  element?: ElementId;
 }
 
 function toPublicPath(path: string): string {
@@ -114,6 +136,7 @@ export function Card({
   className,
   layoutId,
   flipDelayMs = 0,
+  element,
 }: CardProps) {
   const [stage, setStage] = useState<PortraitStage>('primary');
 
@@ -212,6 +235,11 @@ export function Card({
       />
       <div className={styles.portraitWindow}>{renderPortraitContent()}</div>
       <div className={styles.name}>{name}</div>
+      {element && (
+        <div className={styles.elementBadge}>
+          <ElementIcon element={element} title={`${ELEMENT_LABELS[element]} affinity`} />
+        </div>
+      )}
       <div className={`${styles.stat} ${styles.statTop}`}>{displayStat(stats.top)}</div>
       <div className={`${styles.stat} ${styles.statBottom}`}>{displayStat(stats.bottom)}</div>
       <div className={`${styles.stat} ${styles.statLeft}`}>{displayStat(stats.left)}</div>

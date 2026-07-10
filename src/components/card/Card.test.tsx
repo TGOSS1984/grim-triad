@@ -188,4 +188,31 @@ describe('Card', () => {
       { timeout: 2000 },
     );
   });
+
+  it('shows no element badge when element is not provided', () => {
+    render(<Card {...baseProps} />);
+    expect(screen.queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();
+  });
+
+  it('shows an element badge with an accessible label when element is provided', () => {
+    render(<Card {...baseProps} element="toxic" />);
+    expect(screen.getByRole('img', { name: 'Toxic affinity' })).toBeInTheDocument();
+  });
+
+  it('shows the correct icon/label for each element', () => {
+    const cases: [string, string][] = [
+      ['warp', 'Warp affinity'],
+      ['promethium', 'Promethium affinity'],
+      ['void', 'Void affinity'],
+      ['toxic', 'Toxic affinity'],
+      ['radiation', 'Radiation affinity'],
+    ];
+    for (const [element, label] of cases) {
+      const { unmount } = render(
+        <Card {...baseProps} element={element as 'warp' | 'promethium' | 'void' | 'toxic' | 'radiation'} />,
+      );
+      expect(screen.getByRole('img', { name: label })).toBeInTheDocument();
+      unmount();
+    }
+  });
 });

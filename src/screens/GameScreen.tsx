@@ -37,12 +37,16 @@ export interface GameScreenProps {
 /** A portrait path that will 404 cleanly (not "" - see the note in Card.tsx about empty src being a footgun) if a unit can't be resolved. This should only happen for malformed/stale data. */
 const UNKNOWN_UNIT_PORTRAIT = 'assets/factions/unknown/units/unknown.png';
 
-function toDisplayFields(card: EngineCard): Pick<HandCardData, 'name' | 'stats' | 'portraitPath'> {
+function toDisplayFields(
+  card: EngineCard,
+  includeElement: boolean,
+): Pick<HandCardData, 'name' | 'stats' | 'portraitPath' | 'element'> {
   const unit = getUnitById(card.unitId);
   return {
     name: unit?.name ?? 'Unknown Unit',
     stats: card.stats,
     portraitPath: unit?.portraitPath ?? UNKNOWN_UNIT_PORTRAIT,
+    element: includeElement ? unit?.element : undefined,
   };
 }
 
@@ -104,7 +108,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, 
         instanceId: cell.card.instanceId,
         owner: cell.card.owner,
         flipDelayMs: flipDelayByPosition.get(`${rowIndex},${colIndex}`),
-        ...toDisplayFields(cell.card),
+        ...toDisplayFields(cell.card, game.ruleSet.elemental),
       };
     }),
   ) as (BoardCardData | null)[][];
@@ -121,7 +125,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, 
   function buildHandCards(colour: PlayerColour): HandCardData[] {
     return game!.players[colour].hand.map((card) => ({
       instanceId: card.instanceId,
-      ...toDisplayFields(card),
+      ...toDisplayFields(card, game!.ruleSet.elemental),
     }));
   }
 

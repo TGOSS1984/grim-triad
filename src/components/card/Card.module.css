@@ -85,6 +85,24 @@
   padding: 0 var(--space-xs);
 }
 
+.elementBadge {
+  position: absolute;
+  top: 2%;
+  left: 3%;
+  z-index: 5;
+  width: 16%;
+  aspect-ratio: 1;
+  max-width: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-void);
+  border: 1.5px solid var(--color-accent-gold);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  font-size: 0.9rem;
+}
+
 .stat {
   position: absolute;
   z-index: 3;
