@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyMove, createGame, IllegalMoveError } from './gameReducer';
+import { applyMove, createGame, DEFAULT_RULE_SET, IllegalMoveError } from './gameReducer';
 import type { Card, Move, PlayerState } from './types';
 
 function makeCard(
@@ -193,5 +193,48 @@ describe('applyMove', () => {
       positions: [{ row: 1, col: 0 }],
       comboTriggered: false,
     });
+  });
+});
+
+describe('createGame: Elemental terrain wiring', () => {
+  it('assigns no elements to the board when the Elemental rule is inactive', () => {
+    const state = createGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, elemental: false },
+      availableElements: ['warp', 'fire', 'void'],
+    });
+
+    const anyElementAssigned = state.board.flat().some((cell) => cell.element !== undefined);
+    expect(anyElementAssigned).toBe(false);
+  });
+
+  it('assigns no elements even when active, if no element pool is provided', () => {
+    const state = createGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, elemental: true },
+    });
+
+    const anyElementAssigned = state.board.flat().some((cell) => cell.element !== undefined);
+    expect(anyElementAssigned).toBe(false);
+  });
+
+  it('assigns elements to some board cells when the Elemental rule is active with a pool', () => {
+    const state = createGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, elemental: true },
+      availableElements: ['warp', 'fire', 'void'],
+    });
+
+    const elementedCells = state.board.flat().filter((cell) => cell.element !== undefined);
+    expect(elementedCells.length).toBeGreaterThan(0);
+    for (const cell of elementedCells) {
+      expect(['warp', 'fire', 'void']).toContain(cell.element);
+    }
   });
 });

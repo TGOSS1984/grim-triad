@@ -13,9 +13,10 @@
  * unaware of individual rule mechanics - it only needs to know "resolve
  * captures for this placement" and apply whatever comes back.
  */
-import type { Board, Card, GameState, Move, PlayerColour, PlayerState, RuleSet } from './types';
+import type { Board, Card, Element, GameState, Move, PlayerColour, PlayerState, RuleSet } from './types';
 import { createEmptyBoard, getCell, isBoardFull, isPositionEmpty } from './board';
 import { resolveCaptures } from './ruleEngine';
+import { assignElementalTerrain } from './rules/elemental';
 
 export const DEFAULT_RULE_SET: RuleSet = {
   open: false,
@@ -33,14 +34,36 @@ export interface CreateGameOptions {
   redPlayer: PlayerState;
   startingPlayer: PlayerColour;
   ruleSet?: RuleSet;
+  /**
+   * Pool of element ids to draw from when ruleSet.elemental is active (see
+   * src/data/elements.ts for the themed list the app actually uses). Has no
+   * effect if ruleSet.elemental is false, or if this is omitted/empty -
+   * without it, the Elemental rule toggle does nothing, since there would
+   * be nothing to assign to the board.
+   */
+  availableElements?: Element[];
 }
+
+/** How many of the 9 board cells get an element when the Elemental rule is active. */
+const ELEMENTAL_CELL_COUNT = 3;
 
 /** Builds a fresh game ready to play (post coin-flip: startingPlayer is already decided). */
 export function createGame(options: CreateGameOptions): GameState {
-  const { bluePlayer, redPlayer, startingPlayer, ruleSet = DEFAULT_RULE_SET } = options;
+  const {
+    bluePlayer,
+    redPlayer,
+    startingPlayer,
+    ruleSet = DEFAULT_RULE_SET,
+    availableElements = [],
+  } = options;
+
+  let board = createEmptyBoard();
+  if (ruleSet.elemental && availableElements.length > 0) {
+    board = applyElementalTerrain(board, availableElements);
+  }
 
   return {
-    board: createEmptyBoard(),
+    board,
     players: {
       blue: bluePlayer,
       red: redPlayer,
@@ -51,6 +74,15 @@ export function createGame(options: CreateGameOptions): GameState {
     winner: null,
     history: [],
   };
+}
+
+function applyElementalTerrain(board: Board, availableElements: Element[]): Board {
+  const assignments = assignElementalTerrain(availableElements, ELEMENTAL_CELL_COUNT);
+  const next = board.map((row) => row.map((cell) => ({ ...cell }))) as Board;
+  for (const { position, element } of assignments) {
+    next[position.row][position.col].element = element;
+  }
+  return next;
 }
 
 export class IllegalMoveError extends Error {}

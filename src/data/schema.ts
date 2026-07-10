@@ -14,6 +14,7 @@
  * layers shouldn't casually import from each other.
  */
 import { z } from 'zod';
+import { ELEMENT_IDS } from './elements';
 
 export const battlefieldRoleSchema = z.enum([
   'Character',
@@ -42,7 +43,7 @@ export const unitSchema = z.object({
     left: z.number().int().min(1).max(10),
     right: z.number().int().min(1).max(10),
   }),
-  element: z.string().optional(),
+  element: z.enum(ELEMENT_IDS),
   portraitPath: z.string(),
 });
 

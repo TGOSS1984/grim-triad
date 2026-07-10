@@ -19,13 +19,33 @@ describe('assignElementalTerrain', () => {
   });
 
   it('assigns the requested number of cells, capped at 9', () => {
-    const positions = assignElementalTerrain(['warp', 'fire', 'void'], 3);
-    expect(positions).toHaveLength(3);
+    const assignments = assignElementalTerrain(['warp', 'fire', 'void'], 3);
+    expect(assignments).toHaveLength(3);
   });
 
   it('never assigns more than 9 cells even if asked for more', () => {
-    const positions = assignElementalTerrain(['warp'], 20);
-    expect(positions).toHaveLength(9);
+    const assignments = assignElementalTerrain(['warp'], 20);
+    expect(assignments).toHaveLength(9);
+  });
+
+  it('assigns no duplicate positions', () => {
+    const assignments = assignElementalTerrain(['warp', 'fire', 'void', 'toxic'], 6);
+    const seen = new Set(assignments.map((a) => `${a.position.row},${a.position.col}`));
+    expect(seen.size).toBe(assignments.length);
+  });
+
+  it('each assignment uses an element from the given pool', () => {
+    const pool = ['warp', 'fire'];
+    const assignments = assignElementalTerrain(pool, 5);
+    for (const { element } of assignments) {
+      expect(pool).toContain(element);
+    }
+  });
+
+  it('can assign every element in the pool across enough cells (statistical)', () => {
+    // Single-element pool: every assignment must be that element.
+    const assignments = assignElementalTerrain(['warp'], 5);
+    expect(assignments.every((a) => a.element === 'warp')).toBe(true);
   });
 });
 

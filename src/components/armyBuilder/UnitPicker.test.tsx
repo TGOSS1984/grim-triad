@@ -16,6 +16,7 @@ function makeUnit(overrides: Partial<Unit> = {}): Unit {
     statBudget: 20,
     stats: { top: 5, bottom: 5, left: 5, right: 5 },
     portraitPath: 'assets/factions/necrons/units/test-unit.png',
+    element: 'void',
     ...overrides,
   };
 }

@@ -81,4 +81,34 @@ describe('Board', () => {
     // cells render with different className values.
     expect(highlightedCell.className).not.toBe(nonHighlightedCell.className);
   });
+
+  it('shows an element badge on an empty cell that has a terrain element assigned', () => {
+    const elements: ('warp' | undefined)[][] = [
+      ['warp', undefined, undefined],
+      [undefined, undefined, undefined],
+      [undefined, undefined, undefined],
+    ];
+    render(<Board cells={emptyCells()} elements={elements} />);
+
+    expect(screen.getByRole('img', { name: 'Warp terrain' })).toBeInTheDocument();
+  });
+
+  it('shows an element badge on an occupied cell too - terrain is independent of what is placed there', () => {
+    const cells = emptyCells();
+    cells[1][1] = sampleCard;
+    const elements: ('toxic' | undefined)[][] = [
+      [undefined, undefined, undefined],
+      [undefined, 'toxic', undefined],
+      [undefined, undefined, undefined],
+    ];
+    render(<Board cells={cells} elements={elements} />);
+
+    expect(screen.getByRole('img', { name: 'Lychguard' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Toxic terrain' })).toBeInTheDocument();
+  });
+
+  it('shows no element badges when elements prop is omitted', () => {
+    render(<Board cells={emptyCells()} />);
+    expect(screen.queryByRole('img', { name: /terrain/ })).not.toBeInTheDocument();
+  });
 });

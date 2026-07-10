@@ -30,7 +30,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseCatalogue, slugify, type NormalizedUnit } from './parseCatalogue';
-import { deriveCardStats, type CardStats } from './statCurve';
+import { deriveCardStats, type CardStats, type Rng } from './statCurve';
+import { ELEMENT_IDS, type ElementId } from './elements';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +58,8 @@ export interface GeneratedUnit {
   statBudget: number;
   stats: CardStats;
   portraitPath: string;
+  /** Elemental affinity (see scripts/elements.ts) - every unit gets one, uniformly at random. Without this, the Elemental rule's +1 "matching element" bonus could never fire, only its -1 penalty ever would. */
+  element: ElementId;
 }
 
 export interface GeneratedFaction {
@@ -71,8 +74,12 @@ function rosterName(unit: Pick<NormalizedUnit, 'faction' | 'subfaction'>): strin
   return unit.subfaction ?? unit.faction;
 }
 
-export function buildUnit(unit: NormalizedUnit): GeneratedUnit {
-  const { statBudget, stats } = deriveCardStats(unit);
+function assignElement(rng: Rng): ElementId {
+  return ELEMENT_IDS[Math.floor(rng() * ELEMENT_IDS.length)];
+}
+
+export function buildUnit(unit: NormalizedUnit, rng: Rng = Math.random): GeneratedUnit {
+  const { statBudget, stats } = deriveCardStats(unit, rng);
   const rosterSlug = slugify(rosterName(unit));
 
   // A small number of units are legitimately shared across multiple
@@ -101,6 +108,7 @@ export function buildUnit(unit: NormalizedUnit): GeneratedUnit {
     statBudget,
     stats,
     portraitPath: `assets/factions/${rosterSlug}/units/${unit.id}.png`,
+    element: assignElement(rng),
   };
 }
 
@@ -123,7 +131,7 @@ export function buildFactions(units: NormalizedUnit[]): GeneratedFaction[] {
 
 function run(): void {
   const normalizedUnits = parseCatalogue(SOURCE_WORKBOOK);
-  const units = normalizedUnits.map(buildUnit);
+  const units = normalizedUnits.map((u) => buildUnit(u));
   const factions = buildFactions(normalizedUnits);
 
   mkdirSync(path.dirname(UNITS_OUTPUT), { recursive: true });

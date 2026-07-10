@@ -97,7 +97,7 @@ describe('build-data integration (real workbook)', () => {
 
   it('generates units with no duplicate ids', () => {
     const normalizedUnits = parseCatalogue(workbookPath);
-    const units = normalizedUnits.map(buildUnit);
+    const units = normalizedUnits.map((u) => buildUnit(u));
     const ids = units.map((u) => u.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

@@ -18,17 +18,31 @@ const MIN_SIDE_VALUE = 1;
 /** Maximum a side value can be pushed up to by a +1 Elemental bonus. */
 const MAX_SIDE_VALUE = 10;
 
+export interface ElementalAssignment {
+  position: Position;
+  element: Element;
+}
+
 /**
  * Randomly assigns elements to a subset of board cells at the start of a
  * match. `elements` is the pool of possible terrain types to choose from
- * (e.g. a themed list defined alongside faction data); `cellCount` controls
- * how many of the 9 cells get an element (classic Triple Triad uses a
- * random subset, not the whole board).
+ * (see src/data/elements.ts for the themed list the app actually uses);
+ * `cellCount` controls how many of the 9 cells get an element (classic
+ * Triple Triad uses a random subset, not the whole board). Each chosen
+ * cell gets one element picked independently at random from the pool - two
+ * cells can end up with the same element, or different ones.
  */
-export function assignElementalTerrain(elements: Element[], cellCount = 3): Position[] {
+export function assignElementalTerrain(
+  elements: Element[],
+  cellCount = 3,
+): ElementalAssignment[] {
   if (elements.length === 0) return [];
   const shuffledPositions = [...allPositions()].sort(() => Math.random() - 0.5);
-  return shuffledPositions.slice(0, Math.min(cellCount, 9));
+  const chosenPositions = shuffledPositions.slice(0, Math.min(cellCount, 9));
+  return chosenPositions.map((position) => ({
+    position,
+    element: elements[Math.floor(Math.random() * elements.length)],
+  }));
 }
 
 function clampSide(value: number): number {

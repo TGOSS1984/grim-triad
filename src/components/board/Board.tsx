@@ -7,12 +7,15 @@
  * shape.
  */
 import type { Position } from '../../engine/types';
+import type { ElementId } from '../../data/elements';
 import { BoardCell, type BoardCardData } from './BoardCell';
 import styles from './Board.module.css';
 
 export interface BoardProps {
   /** 3x3, row-major: cells[row][col]. Null = empty. */
   cells: (BoardCardData | null)[][];
+  /** 3x3, row-major, same shape as `cells`: this cell's Elemental terrain, if any. Independent of whether the cell is occupied. */
+  elements?: (ElementId | undefined)[][];
   /** Positions that should glow as legal placement targets for the current selection. */
   highlightedPositions?: Position[];
   onCellClick?: (position: Position) => void;
@@ -23,7 +26,7 @@ function isHighlighted(highlighted: Position[] | undefined, pos: Position): bool
   return !!highlighted?.some((p) => p.row === pos.row && p.col === pos.col);
 }
 
-export function Board({ cells, highlightedPositions, onCellClick, cardWidth }: BoardProps) {
+export function Board({ cells, elements, highlightedPositions, onCellClick, cardWidth }: BoardProps) {
   return (
     <div className={styles.boardWrapper}>
       <div className={styles.grid} role="grid" aria-label="Battle grid">
@@ -35,6 +38,7 @@ export function Board({ cells, highlightedPositions, onCellClick, cardWidth }: B
                 key={`${row}-${col}`}
                 position={position}
                 card={cells[row][col]}
+                element={elements?.[row][col]}
                 highlighted={isHighlighted(highlightedPositions, position)}
                 cardWidth={cardWidth}
                 onClick={onCellClick}

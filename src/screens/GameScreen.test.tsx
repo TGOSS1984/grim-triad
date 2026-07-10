@@ -241,4 +241,16 @@ describe('GameScreen', () => {
     expect(screen.getByRole('button', { name: 'Quit Game' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Yes, Quit' })).not.toBeInTheDocument();
   });
+
+  it('shows no element badges when the Elemental rule is inactive', () => {
+    startTestGame({ elemental: false });
+    render(<GameScreen humanPlayer="blue" />);
+    expect(screen.queryByRole('img', { name: /terrain/ })).not.toBeInTheDocument();
+  });
+
+  it('shows element badges on the board when the Elemental rule is active', () => {
+    startTestGame({ elemental: true });
+    render(<GameScreen humanPlayer="blue" />);
+    expect(screen.getAllByRole('img', { name: /terrain/ }).length).toBeGreaterThan(0);
+  });
 });

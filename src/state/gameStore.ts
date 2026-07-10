@@ -16,11 +16,12 @@
  * nothing paused long enough for it to register.
  */
 import { create } from 'zustand';
-import type { Card, GameState, PlayerColour, PlayerState, Position, RuleSet } from '../engine/types';
+import type { Card, Element, GameState, PlayerColour, PlayerState, Position, RuleSet } from '../engine/types';
 import { createGame, applyMove, DEFAULT_RULE_SET } from '../engine/gameReducer';
 import { startSuddenDeathRematch } from '../engine/rules/suddenDeath';
 import { chooseMove } from '../ai/heuristicAI';
 import { computeMoveAnimationDurationMs } from './animationTiming';
+import { ELEMENT_IDS } from '../data/elements';
 
 export interface StartGameOptions {
   bluePlayer: PlayerState;
@@ -29,6 +30,8 @@ export interface StartGameOptions {
   ruleSet?: RuleSet;
   /** Which player colour (if any) the AI controls. Undefined/null = both human (local PvP). */
   aiPlayer?: PlayerColour | null;
+  /** Elemental terrain pool; defaults to the app's real themed element list (src/data/elements.ts) so callers don't need to know about Elemental at all unless they want to override it. */
+  availableElements?: Element[];
 }
 
 export interface GameStoreState {
@@ -96,8 +99,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     startingPlayer,
     ruleSet = DEFAULT_RULE_SET,
     aiPlayer = null,
+    availableElements = [...ELEMENT_IDS],
   }) => {
-    const game = createGame({ bluePlayer, redPlayer, startingPlayer, ruleSet });
+    const game = createGame({ bluePlayer, redPlayer, startingPlayer, ruleSet, availableElements });
     set({ game, aiPlayer });
     await playAITurnsWithDelay(aiPlayer, get, set);
   },

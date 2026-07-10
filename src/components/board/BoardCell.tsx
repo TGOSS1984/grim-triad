@@ -5,12 +5,20 @@
  *  - Occupied: renders the placed Card, non-interactive (board cards
  *    aren't clicked after placement in the base game).
  *
+ * When the Elemental rule is active, a cell may also have a terrain
+ * element - shown as a small badge in the corner regardless of whether
+ * the cell is empty or occupied, since the terrain exists independent of
+ * what's currently placed there (and you need to see it BEFORE placing to
+ * make an informed choice).
+ *
  * Deliberately dumb/presentational, same philosophy as Card itself - this
  * component doesn't know about game rules, legality, or engine types
  * directly; Board computes what's legal and passes the result down.
  */
 import type { CardStats, PlayerColour, Position } from '../../engine/types';
+import type { ElementId } from '../../data/elements';
 import { Card } from '../card/Card';
+import { ElementIcon } from '../common/ElementIcon';
 import styles from './Board.module.css';
 
 export interface BoardCardData {
@@ -27,12 +35,35 @@ export interface BoardCardData {
 export interface BoardCellProps {
   position: Position;
   card: BoardCardData | null;
+  /** This cell's Elemental terrain type, if the rule is active and this cell was chosen. */
+  element?: ElementId;
   highlighted?: boolean;
   cardWidth?: number;
   onClick?: (position: Position) => void;
 }
 
-export function BoardCell({ position, card, highlighted = false, cardWidth, onClick }: BoardCellProps) {
+const ELEMENT_LABELS: Record<ElementId, string> = {
+  warp: 'Warp terrain',
+  promethium: 'Promethium terrain',
+  void: 'Void terrain',
+  toxic: 'Toxic terrain',
+  radiation: 'Radiation terrain',
+};
+
+export function BoardCell({
+  position,
+  card,
+  element,
+  highlighted = false,
+  cardWidth,
+  onClick,
+}: BoardCellProps) {
+  const elementBadge = element && (
+    <div className={styles.elementBadge}>
+      <ElementIcon element={element} title={ELEMENT_LABELS[element]} />
+    </div>
+  );
+
   if (card) {
     return (
       <div className={styles.cell}>
@@ -46,6 +77,7 @@ export function BoardCell({ position, card, highlighted = false, cardWidth, onCl
           width={cardWidth}
           flipDelayMs={card.flipDelayMs}
         />
+        {elementBadge}
       </div>
     );
   }
@@ -62,6 +94,7 @@ export function BoardCell({ position, card, highlighted = false, cardWidth, onCl
         disabled={!onClick}
         aria-label={label}
       />
+      {elementBadge}
     </div>
   );
 }

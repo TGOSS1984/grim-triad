@@ -16,6 +16,7 @@ import { isHandVisibleTo } from '../engine/rules/open';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, GameState, PlayerColour, Position } from '../engine/types';
+import type { ElementId } from '../data/elements';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
 import { Hand } from '../components/hand/Hand';
@@ -108,6 +109,15 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, 
     }),
   ) as (BoardCardData | null)[][];
 
+  // The engine's Board cells carry a generic `element?: string` (see
+  // engine/types.ts - the engine itself is deliberately theme-agnostic).
+  // createGame only ever assigns values from the app's real themed pool
+  // (src/data/elements.ts, wired via gameStore's default availableElements),
+  // so this cast is safe in practice, not a real type-safety gap.
+  const boardElements: (ElementId | undefined)[][] = game.board.map((row) =>
+    row.map((cell) => cell.element as ElementId | undefined),
+  );
+
   function buildHandCards(colour: PlayerColour): HandCardData[] {
     return game!.players[colour].hand.map((card) => ({
       instanceId: card.instanceId,
@@ -198,6 +208,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, 
         center={
           <Board
             cells={boardCells}
+            elements={boardElements}
             highlightedPositions={highlightedPositions}
             onCellClick={handleCellClick}
             cardWidth={cardWidth + 10}

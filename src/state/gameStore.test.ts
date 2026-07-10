@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
+import { DEFAULT_RULE_SET } from '../engine/gameReducer';
 import type { Card } from '../engine/types';
 
 function makeCard(
@@ -217,6 +218,21 @@ describe('triggerSuddenDeathRematch', () => {
     // Red (AI) started, per the original startingPlayer, and should have
     // auto-played its first move, handing the turn to blue.
     expect(game?.activePlayer).toBe('blue');
+  });
+});
+
+describe('startGame: Elemental default element pool', () => {
+  it('assigns board elements from the real themed list when Elemental is on and no override is given', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, elemental: true },
+    });
+
+    const { game } = useGameStore.getState();
+    const elementedCells = game!.board.flat().filter((c) => c.element !== undefined);
+    expect(elementedCells.length).toBeGreaterThan(0);
   });
 });
 
