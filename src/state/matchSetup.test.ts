@@ -57,6 +57,49 @@ describe('buildRandomAIRoster', () => {
       const roster = buildRandomAIRoster(2000, 25);
       expect(roster.length).toBeGreaterThanOrEqual(25);
     }
+
+    it("with strategy 'greedy', still produces at least the minimum army size", () => {
+    const roster = buildRandomAIRoster(500, 5, 'greedy');
+    expect(roster.length).toBeGreaterThanOrEqual(5);
+    });
+
+    it("with strategy 'greedy', never exceeds the given points cap", () => {
+        const roster = buildRandomAIRoster(1000, 5, 'greedy');
+        const totalPoints = roster.reduce((sum, id) => sum + (getUnitById(id)?.points ?? 0), 0);
+        expect(totalPoints).toBeLessThanOrEqual(1000);
+    });
+
+    it("with strategy 'greedy', falls back to the balanced two-pass and still reaches minUnits even when a pure most-expensive-first fill can't", () => {
+        // A high minUnits target at a modest cap is exactly the case where a
+        // few-strongest-units fill runs out of room before reaching minUnits -
+        // the balanced fallback must still kick in rather than throwing.
+        for (let i = 0; i < 10; i++) {
+        const roster = buildRandomAIRoster(2000, 25, 'greedy');
+        expect(roster.length).toBeGreaterThanOrEqual(25);
+        }
+    });
+
+    it("with strategy 'greedy', tends toward a higher average points-per-unit than 'balanced' (Hard should field stronger units)", () => {
+        // Statistical, not exact - average over many trials of each to avoid
+        // flakiness from any single faction/shuffle roll. Empirically the
+        // underlying signal is a clear ~15-20% gap (e.g. ~107 vs ~121 avg
+        // points/unit at a 1000pt cap), but per-trial variance across which
+        // faction gets picked is high enough that a small sample can flip -
+        // 40 trials per strategy keeps this well clear of that flake zone.
+        function averagePointsPerUnit(strategy: 'balanced' | 'greedy'): number {
+        let totalPoints = 0;
+        let totalUnits = 0;
+        for (let i = 0; i < 150; i++) {
+            const roster = buildRandomAIRoster(1000, 5, strategy);
+            totalPoints += roster.reduce((sum, id) => sum + (getUnitById(id)?.points ?? 0), 0);
+            totalUnits += roster.length;
+        }
+        return totalPoints / totalUnits;
+        }
+
+        expect(averagePointsPerUnit('greedy')).toBeGreaterThan(averagePointsPerUnit('balanced'));
+    });
+
   });
 
   it('reliably builds larger series pools up to the real achievable ceiling (27 units at 2000pts)', () => {

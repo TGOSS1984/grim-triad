@@ -6,20 +6,24 @@
  * no store access, matching HomeScreen's pattern.
  */
 import { useState } from 'react';
+import { DIFFICULTY_PROFILES, DEFAULT_DIFFICULTY } from '../ai/difficulty';
+import type { Difficulty } from '../ai/difficulty';
 import styles from './ModeSelectScreen.module.css';
 
 export interface ModeSelectScreenProps {
-  onSelectSingleMatch: () => void;
-  onSelectSeries: (poolSize: number) => void;
+  onSelectSingleMatch: (difficulty: Difficulty) => void;
+  onSelectSeries: (poolSize: number, difficulty: Difficulty) => void;
 }
 
 const PRESET_POOL_SIZES = [10, 15, 20, 25];
 const MIN_POOL_SIZE = 10;
 const DEFAULT_POOL_SIZE = 15;
+const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];
 
 export function ModeSelectScreen({ onSelectSingleMatch, onSelectSeries }: ModeSelectScreenProps) {
   const [showSeriesOptions, setShowSeriesOptions] = useState(false);
   const [poolSize, setPoolSize] = useState(DEFAULT_POOL_SIZE);
+  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
 
   const isValidPoolSize = poolSize >= MIN_POOL_SIZE && poolSize % 5 === 0;
 
@@ -27,8 +31,34 @@ export function ModeSelectScreen({ onSelectSingleMatch, onSelectSeries }: ModeSe
     <div className={styles.screen}>
       <h1 className={styles.title}>Choose Your Battle</h1>
 
+      <div className={styles.difficultyBlock}>
+        <h3 className={styles.difficultyTitle}>Opponent Difficulty</h3>
+        <div className={styles.difficultyRow} role="radiogroup" aria-label="Opponent difficulty">
+          {DIFFICULTIES.map((level) => (
+            <button
+              key={level}
+              type="button"
+              role="radio"
+              aria-checked={difficulty === level}
+              className={[
+                styles.difficultyButton,
+                difficulty === level ? styles.difficultyButtonSelected : '',
+              ].join(' ')}
+              onClick={() => setDifficulty(level)}
+            >
+              {DIFFICULTY_PROFILES[level].label}
+            </button>
+          ))}
+        </div>
+        <p className={styles.difficultyDescription}>{DIFFICULTY_PROFILES[difficulty].description}</p>
+      </div>
+
       <div className={styles.modeRow}>
-        <button type="button" className={styles.modeCard} onClick={onSelectSingleMatch}>
+        <button
+          type="button"
+          className={styles.modeCard}
+          onClick={() => onSelectSingleMatch(difficulty)}
+        >
           <h2 className={styles.modeCardTitle}>Single Match</h2>
           <p className={styles.modeCardDescription}>
             One battle, a 5-card hand, winner takes it. Quick and simple.
@@ -93,7 +123,7 @@ export function ModeSelectScreen({ onSelectSingleMatch, onSelectSeries }: ModeSe
             type="button"
             className={styles.startSeriesButton}
             disabled={!isValidPoolSize}
-            onClick={() => onSelectSeries(poolSize)}
+            onClick={() => onSelectSeries(poolSize, difficulty)}
           >
             Start Series
           </button>

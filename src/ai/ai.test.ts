@@ -195,4 +195,50 @@ describe('chooseMove', () => {
     const move = chooseMove(state, 'red');
     expect(move.player).toBe('red');
   });
+
+  it('with mistakeChance 1, ignores its own scoring and can play a move other than the best one', () => {
+    const state = newTestGame();
+    state.board[1][1].card = makeCard('red', 'red-weak', {
+      top: 1,
+      bottom: 1,
+      left: 1,
+      right: 1,
+    });
+    const strongCard = makeCard('blue', 'blue-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.blue.hand = [strongCard];
+
+    // With mistakeChance forced to 1, run many trials - at least one
+    // should land somewhere other than the one obviously-best capture
+    // position (a purely-scored AI would pick that same spot every time).
+    const positions = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const chosen = chooseMove(state, 'blue', { mistakeChance: 1 });
+      positions.add(`${chosen.position.row},${chosen.position.col}`);
+    }
+    expect(positions.size).toBeGreaterThan(1);
+  });
+
+  it('with mistakeChance 0 (default), always plays the best-scored move, same as before', () => {
+    const state = newTestGame();
+    state.board[1][1].card = makeCard('red', 'red-weak', {
+      top: 1,
+      bottom: 1,
+      left: 1,
+      right: 1,
+    });
+    const strongCard = makeCard('blue', 'blue-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.blue.hand = [strongCard];
+
+    const adjacent = [
+      { row: 0, col: 1 },
+      { row: 2, col: 1 },
+      { row: 1, col: 0 },
+      { row: 1, col: 2 },
+    ];
+    for (let i = 0; i < 10; i++) {
+      const chosen = chooseMove(state, 'blue', { lookaheadWeight: 0, mistakeChance: 0 });
+      expect(adjacent).toContainEqual(chosen.position);
+    }
+  });
+  
 });

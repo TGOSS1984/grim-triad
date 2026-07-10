@@ -40,6 +40,18 @@ function greedyFill(units: { id: string; points: number }[], pointsCap: number):
 }
 
 /**
+ * 'balanced' (default): the existing random-then-cheapest-first fill - see
+ * buildRandomAIRoster's own header for why the cheapest-first fallback
+ * matters. 'greedy': fills most-expensive-first instead, so the roster
+ * leans toward the strongest individual units the cap can afford (used for
+ * Hard difficulty - see ai/difficulty.ts). Greedy still falls back to the
+ * balanced two-pass if it can't reach minUnits on its own, since a
+ * few-but-strong roster that fails the minimum-size requirement entirely
+ * would be worse than a merely-average one that actually fields a team.
+ */
+export type RosterStrategy = 'balanced' | 'greedy';
+
+/**
  * Generates a random army roster (unit ids) for the AI opponent: picks a
  * random active faction, then greedily fills it toward the points cap.
  * Tries other factions if a given one can't reach `minUnits` within the cap.
@@ -56,11 +68,27 @@ function greedyFill(units: { id: string; points: number }[], pointsCap: number):
  * cheapest-first solves easily). This was a real, reproducible crash in
  * series mode, not a theoretical edge case.
  */
-export function buildRandomAIRoster(pointsCap: number, minUnits = 5): string[] {
+export function buildRandomAIRoster(
+  pointsCap: number,
+  minUnits = 5,
+  strategy: RosterStrategy = 'balanced',
+): string[] {
   const candidateFactions = shuffle(ACTIVE_FACTIONS.map((f) => f.name));
 
   for (const factionName of candidateFactions) {
     const allUnits = getUnitsForRoster(factionName);
+
+    if (strategy === 'greedy') {
+      const mostExpensiveFirst = [...allUnits].sort((a, b) => b.points - a.points);
+      const greedyResult = greedyFill(mostExpensiveFirst, pointsCap);
+      if (greedyResult.length >= minUnits) {
+        return greedyResult;
+      }
+      // Fell short on this faction with the greedy fill - fall through to
+      // the balanced two-pass below rather than giving up on the faction
+      // entirely (see this function's header for why balanced needs both
+      // passes in the first place).
+    }
 
     const randomOrderResult = greedyFill(shuffle(allUnits), pointsCap);
     if (randomOrderResult.length >= minUnits) {

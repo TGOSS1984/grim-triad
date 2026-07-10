@@ -20,6 +20,7 @@ import type { Card, Element, GameState, PlayerColour, PlayerState, Position, Rul
 import { createGame, applyMove, DEFAULT_RULE_SET } from '../engine/gameReducer';
 import { startSuddenDeathRematch } from '../engine/rules/suddenDeath';
 import { chooseMove } from '../ai/heuristicAI';
+import type { AIOptions } from '../ai/types';
 import { computeMoveAnimationDurationMs } from './animationTiming';
 import { ELEMENT_IDS } from '../data/elements';
 
@@ -32,11 +33,14 @@ export interface StartGameOptions {
   aiPlayer?: PlayerColour | null;
   /** Elemental terrain pool; defaults to the app's real themed element list (src/data/elements.ts) so callers don't need to know about Elemental at all unless they want to override it. */
   availableElements?: Element[];
+  /** Tunes AI play strength (lookahead weight, mistake chance) - see ai/difficulty.ts. Defaults to heuristicAI's own defaults if omitted. */
+  aiOptions?: AIOptions;
 }
 
 export interface GameStoreState {
   game: GameState | null;
   aiPlayer: PlayerColour | null;
+  aiOptions: AIOptions;
 
   startGame: (options: StartGameOptions) => Promise<void>;
   /** Plays a card for the current human turn, then auto-plays the AI's turn(s) if applicable. */
@@ -65,6 +69,7 @@ function delay(ms: number): Promise<void> {
  */
 async function playAITurnsWithDelay(
   aiPlayer: PlayerColour | null,
+  aiOptions: AIOptions,
   get: () => GameStoreState,
   set: (partial: Partial<GameStoreState>) => void,
 ): Promise<void> {
@@ -83,7 +88,7 @@ async function playAITurnsWithDelay(
     const current = get().game;
     if (!current || current.activePlayer !== aiPlayer) return;
 
-    const move = chooseMove(current, aiPlayer);
+    const move = chooseMove(current, aiPlayer, aiOptions);
     const next = applyMove(current, move);
     set({ game: next });
   }
@@ -92,6 +97,7 @@ async function playAITurnsWithDelay(
 export const useGameStore = create<GameStoreState>((set, get) => ({
   game: null,
   aiPlayer: null,
+  aiOptions: {},
 
   startGame: async ({
     bluePlayer,
@@ -100,14 +106,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     ruleSet = DEFAULT_RULE_SET,
     aiPlayer = null,
     availableElements = [...ELEMENT_IDS],
+    aiOptions = {},
   }) => {
     const game = createGame({ bluePlayer, redPlayer, startingPlayer, ruleSet, availableElements });
-    set({ game, aiPlayer });
-    await playAITurnsWithDelay(aiPlayer, get, set);
+    set({ game, aiPlayer, aiOptions });
+    await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
 
   playCard: async (card, position) => {
-    const { game, aiPlayer } = get();
+    const { game, aiPlayer, aiOptions } = get();
     if (!game) {
       throw new Error('Cannot play a card before a game has started');
     }
@@ -120,18 +127,18 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const afterHuman = applyMove(game, { player: game.activePlayer, card, position });
     set({ game: afterHuman });
 
-    await playAITurnsWithDelay(aiPlayer, get, set);
+    await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
 
   triggerSuddenDeathRematch: async () => {
-    const { game, aiPlayer } = get();
+    const { game, aiPlayer, aiOptions } = get();
     if (!game) {
       throw new Error('Cannot start Sudden Death without a game');
     }
     const nextGame = startSuddenDeathRematch(game);
     set({ game: nextGame });
-    await playAITurnsWithDelay(aiPlayer, get, set);
+    await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
 
-  reset: () => set({ game: null, aiPlayer: null }),
+  reset: () => set({ game: null, aiPlayer: null, aiOptions: {} }),
 }));

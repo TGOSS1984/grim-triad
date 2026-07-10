@@ -91,6 +91,11 @@ export function chooseMove(
     throw new Error(`No legal moves available for ${player}`);
   }
 
+  const mistakeChance = options.mistakeChance ?? 0;
+  if (mistakeChance > 0 && Math.random() < mistakeChance) {
+    return legalMoves[Math.floor(Math.random() * legalMoves.length)];
+  }
+
   const scored: ScoredMove[] = legalMoves.map((move) => ({
     move,
     score: scoreMove(state, move, options),
