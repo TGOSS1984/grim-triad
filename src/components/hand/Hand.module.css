@@ -59,3 +59,32 @@
   z-index: 10;
   transform: translateY(calc(var(--card-width) * 1536 / 1024 * -0.12));
 }
+
+/* Matches ResponsiveGameLayout's breakpoint, where hands move from
+   side-by-side columns to stacked above/below the board - a vertical fan
+   reads as a tall column, which is exactly the wrong shape once a hand is
+   a horizontal strip. Row direction + horizontal overlap (negative
+   margin-left instead of margin-top) turns it into a horizontal fan
+   instead. The lift-on-hover/focus stays a vertical translateY (a card
+   still "pops up" out of the row) since that reads fine in both layouts. */
+@media (max-width: 820px) {
+  .hand {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .side-left,
+  .side-right {
+    align-items: center;
+  }
+
+  .stack {
+    flex-direction: row;
+  }
+
+  .slot:not(:first-child) {
+    margin-top: 0;
+    margin-left: calc(var(--card-width) * -0.45);
+  }
+}

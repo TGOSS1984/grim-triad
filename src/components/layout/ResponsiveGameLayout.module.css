@@ -20,3 +20,25 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Below this width, three side-by-side columns (hand/board/hand) get too
+   cramped - stack vertically instead. DOM order is left, center, right
+   (see GameScreen: blue hand, board, red hand), so a plain column switch
+   naturally produces "blue hand on top, board in the middle, red hand on
+   the bottom" with no reordering needed. Hand.module.css switches its own
+   internal fan direction from vertical to horizontal at this same
+   breakpoint, so a hand reads as a row here rather than a tall stack. */
+@media (max-width: 820px) {
+  .layout {
+    flex-direction: column;
+    gap: var(--space-md);
+    min-height: auto;
+    padding: var(--space-md);
+    padding-top: calc(var(--space-xl) * 1.75);
+  }
+
+  .side {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -23,12 +23,14 @@ import { Hand } from '../components/hand/Hand';
 import type { HandCardData } from '../components/hand/Hand';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { ResponsiveGameLayout } from '../components/layout/ResponsiveGameLayout';
+import { useResponsiveCardWidth } from '../components/layout/useResponsiveCardWidth';
 import styles from './GameScreen.module.css';
 
 export interface GameScreenProps {
   /** Which colour the local human is playing as. */
   humanPlayer: PlayerColour;
   backgroundImagePath?: string;
+  /** Explicit override for card width (px). Omit to use useResponsiveCardWidth's fluid, viewport-driven default. */
   cardWidth?: number;
   /** Called when the player confirms they want to abandon the current match and return to the menu. Omit to hide the Quit button entirely. */
   onQuit?: () => void;
@@ -74,11 +76,13 @@ function resolveHandFactionSlug(game: GameState, colour: PlayerColour): string |
   return undefined;
 }
 
-export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth = 130, onQuit }: GameScreenProps) {
+export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth: cardWidthOverride, onQuit }: GameScreenProps) {
   const game = useGameStore((s) => s.game);
   const playCard = useGameStore((s) => s.playCard);
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>();
   const [confirmingQuit, setConfirmingQuit] = useState(false);
+  const responsiveCardWidth = useResponsiveCardWidth();
+  const cardWidth = cardWidthOverride ?? responsiveCardWidth;
 
   if (!game) {
     return (
