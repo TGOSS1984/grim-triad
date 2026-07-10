@@ -5,6 +5,16 @@
   max-width: 720px;
 }
 
+.errorBanner {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-player-red);
+  background: rgba(122, 35, 32, 0.15);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+
 .section {
   display: flex;
   flex-direction: column;

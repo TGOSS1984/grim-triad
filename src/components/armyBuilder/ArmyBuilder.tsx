@@ -29,9 +29,17 @@ export interface ArmyBuilderProps {
    * default: at least DEFAULT_MIN_ARMY_SIZE, no upper limit.
    */
   requiredArmySize?: number;
+  /**
+   * Shown as a banner above the faction picker when set - used for
+   * surfacing a graceful, actionable message (e.g. "couldn't build an
+   * opponent army for this pool size/points combination, try a smaller
+   * pool or a higher points limit") rather than letting a real setup
+   * failure crash the app. See App.tsx's handleArmyReady.
+   */
+  errorMessage?: string;
 }
 
-export function ArmyBuilder({ onReady, requiredArmySize }: ArmyBuilderProps) {
+export function ArmyBuilder({ onReady, requiredArmySize, errorMessage }: ArmyBuilderProps) {
   const rosterName = useArmyBuilderStore((s) => s.rosterName);
   const pointsCap = useArmyBuilderStore((s) => s.pointsCap);
   const selectedUnitIds = useArmyBuilderStore((s) => s.selectedUnitIds);
@@ -64,6 +72,12 @@ export function ArmyBuilder({ onReady, requiredArmySize }: ArmyBuilderProps) {
 
   return (
     <div className={styles.builder}>
+      {errorMessage && (
+        <div className={styles.errorBanner} role="alert">
+          {errorMessage}
+        </div>
+      )}
+
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Choose Your Faction</h2>
         <FactionSelect selectedRosterName={rosterName} onSelectRoster={selectRoster} />

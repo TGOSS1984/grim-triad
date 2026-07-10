@@ -43,6 +43,40 @@ describe('buildRandomAIRoster', () => {
     const roster = buildRandomAIRoster(2000, 10);
     expect(roster.length).toBeGreaterThanOrEqual(10);
   });
+
+  it('reliably builds a 25-unit series pool within 2000 points (regression: real crash found in play)', () => {
+    // This exact combination (2000pts, 25 units) threw "Could not build an
+    // AI roster of at least 25 units within 2000 points" before the fix -
+    // random-order greedy fill is only budget-efficient by chance, and for
+    // a roster averaging ~120pts/unit it essentially never reaches 25
+    // units in a 2000pt budget (confirmed empirically: 100% failure rate
+    // across 500 trials). Run many times since the faction/shuffle order
+    // is randomized each call - the fix must hold up consistently, not
+    // just on a lucky roll.
+    for (let i = 0; i < 30; i++) {
+      const roster = buildRandomAIRoster(2000, 25);
+      expect(roster.length).toBeGreaterThanOrEqual(25);
+    }
+  });
+
+  it('reliably builds larger series pools up to the real achievable ceiling (27 units at 2000pts)', () => {
+    for (let i = 0; i < 10; i++) {
+      const roster = buildRandomAIRoster(2000, 27);
+      expect(roster.length).toBeGreaterThanOrEqual(27);
+    }
+  });
+
+  it('throws a clear, catchable error for a realistic infeasible combination (large pool, low points cap)', () => {
+    // Real data ceiling: 500pts can never field more than 10 units
+    // (confirmed empirically), so a 25-card pool at 500pts is a genuine
+    // combination a user could reach through completely normal UI
+    // interaction (pool size and points cap are chosen in separate
+    // steps) - not a contrived edge case. App.tsx must catch this rather
+    // than let it crash (see the try/catch around this call).
+    expect(() => buildRandomAIRoster(500, 25)).toThrow(
+      'Could not build an AI roster of at least 25 units within 500 points',
+    );
+  });
 });
 
 describe('unitIdsToHand', () => {

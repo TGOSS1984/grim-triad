@@ -272,4 +272,35 @@ describe('App (series mode flow integration)', () => {
     await screen.findByRole('heading', { name: /Wins the Series/ }, { timeout: 3000 });
     expect(useSeriesStore.getState().seriesWinner).toBe('blue');
   });
+
+  it("shows a graceful, actionable error (not a crash) if the AI's opponent army can't be generated, and preserves the player's own selection so they can retry", async () => {
+    // Regression coverage for a real crash found in play: "Could not
+    // build an AI roster of at least 25 units within 2000 points" was an
+    // UNCAUGHT error that took down the whole app. The underlying
+    // algorithm bug is fixed (see matchSetup.test.ts), which means this
+    // specific failure is no longer reachable through a fully-completed
+    // human selection (completing your own N-unit pick within a cap is
+    // itself proof at least one faction can support it, which the fixed
+    // algorithm is now guaranteed to find) - so this test forces the
+    // failure directly to verify the DEFENSIVE handling itself still
+    // works correctly as a safety net, rather than relying on it never
+    // being needed again.
+    const matchSetup = await import('./state/matchSetup');
+    vi.spyOn(matchSetup, 'buildRandomAIRoster').mockImplementation(() => {
+      throw new Error('Could not build an AI roster of at least 25 units within 2000 points');
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSeriesArmy(user, 10);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      "Couldn't build an opponent army for a 10-card pool at 2000 points",
+    );
+    // The player's own completed selection must not be lost - they should
+    // be able to see it's still there and just try a different cap/pool.
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(10);
+    // Must NOT have advanced past Army Builder.
+    expect(screen.queryByText('Round 1 Rules')).not.toBeInTheDocument();
+  });
 });

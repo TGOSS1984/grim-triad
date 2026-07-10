@@ -67,6 +67,8 @@ export default function App() {
   const [mode, setMode] = useState<Mode>('single');
   const [seriesPoolSize, setSeriesPoolSize] = useState<number | null>(null);
   const [humanArmyUnitIds, setHumanArmyUnitIds] = useState<string[]>([]);
+  /** Set when the AI's opponent army can't be generated for the chosen pool size/points cap - see handleArmyReady. Cleared on the next attempt. */
+  const [armyBuilderError, setArmyBuilderError] = useState<string | null>(null);
   /** Single-match mode's player-chosen rules, OR series mode's current round's rolled rules. */
   const [ruleSet, setRuleSet] = useState<RuleSet>(DEFAULT_RULE_SET);
 
@@ -132,15 +134,29 @@ export default function App() {
 
     if (mode === 'series' && seriesPoolSize) {
       const pointsCap = useArmyBuilderStore.getState().pointsCap ?? 500;
-      // buildRandomAIRoster can return more than requested (it greedily
-      // fills the points cap) - slice to the exact pool size so both
-      // sides have symmetric attrition potential.
-      const aiPool = buildRandomAIRoster(pointsCap, seriesPoolSize).slice(0, seriesPoolSize);
-      useSeriesStore.getState().initSeries(unitIds, aiPool);
+      try {
+        // buildRandomAIRoster can return more than requested (it greedily
+        // fills the points cap) - slice to the exact pool size so both
+        // sides have symmetric attrition potential.
+        const aiPool = buildRandomAIRoster(pointsCap, seriesPoolSize).slice(0, seriesPoolSize);
+        useSeriesStore.getState().initSeries(unitIds, aiPool);
 
-      setRuleSet(randomRuleSet());
-      setStep('seriesIntro');
+        setArmyBuilderError(null);
+        setRuleSet(randomRuleSet());
+        setStep('seriesIntro');
+      } catch {
+        // A genuinely reachable failure, not a theoretical edge case: pool
+        // size and points cap are chosen in separate steps, so a large
+        // pool with a low cap (e.g. 25 units at 500pts, whose real
+        // ceiling is 10) is easy to hit through completely normal use.
+        // Stay on this screen with a clear, actionable message rather
+        // than letting the uncaught error crash the app.
+        setArmyBuilderError(
+          `Couldn't build an opponent army for a ${seriesPoolSize}-card pool at ${pointsCap} points - try a smaller pool size or a higher points limit.`,
+        );
+      }
     } else {
+      setArmyBuilderError(null);
       setStep('ruleSelect');
     }
   }
@@ -197,6 +213,7 @@ export default function App() {
     resetArmyBuilder();
     useSeriesStore.getState().reset();
     setHumanArmyUnitIds([]);
+    setArmyBuilderError(null);
     setMode('single');
     setSeriesPoolSize(null);
     setStep('home');
@@ -219,6 +236,7 @@ export default function App() {
         <ArmyBuilderScreen
           onContinue={handleArmyReady}
           requiredArmySize={mode === 'series' ? (seriesPoolSize ?? undefined) : undefined}
+          errorMessage={armyBuilderError ?? undefined}
         />
       );
 

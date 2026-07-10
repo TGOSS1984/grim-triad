@@ -161,3 +161,29 @@ describe('ArmyBuilder with requiredArmySize (series mode)', () => {
     expect(onReady.mock.calls[0][0]).toHaveLength(2);
   });
 });
+
+describe('ArmyBuilder errorMessage', () => {
+  it('shows no error banner by default', () => {
+    render(<ArmyBuilder onReady={vi.fn()} />);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows the given error message as an alert when provided', () => {
+    render(<ArmyBuilder onReady={vi.fn()} errorMessage="Something went wrong, try again." />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong, try again.');
+  });
+
+  it('preserves the current selection when an error is shown (does not reset the builder)', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} errorMessage="Try a smaller pool." />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: '500 pts' }));
+    await user.click(addUnitByName(CAPTAIN));
+
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([
+      'blood-angels-blood-angels-captain',
+    ]);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+});
