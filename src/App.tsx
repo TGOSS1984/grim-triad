@@ -43,6 +43,7 @@ import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
 import { DEFAULT_RULE_SET } from './engine/gameReducer';
+import { computeMoveAnimationDurationMs } from './state/animationTiming';
 import styles from './App.module.css';
 
 type Step =
@@ -81,36 +82,53 @@ export default function App() {
   // GameScreen only renders/drives the live match - it doesn't navigate.
   // Watching for phase 'finished' here is what actually moves the app on
   // once a match concludes, branching for series mode's round loop.
+  //
+  // The winning move's own capture flip(s) are still mid-animation the
+  // instant `phase` flips to 'finished' (that happens synchronously in the
+  // same store update that applied the move) - navigating away immediately
+  // meant the final move's outcome was never actually seen, cutting
+  // straight to the result screen. So this waits out the same
+  // computeMoveAnimationDurationMs delay gameStore already uses between
+  // turns, keyed off game.lastCapture, before doing anything else. The
+  // timer is cleared on cleanup so a fast unmount/step-change (e.g. Quit)
+  // can't fire a stale navigation afterwards.
   useEffect(() => {
     if (step !== 'game') return;
     if (!game || game.phase !== 'finished') return;
 
-    if (mode !== 'series') {
-      setStep('result');
-      return;
-    }
+    const capturedCount = game.lastCapture?.positions.length ?? 0;
+    const delayMs = computeMoveAnimationDurationMs(capturedCount);
 
-    if (game.winner === 'draw') {
-      // Series rounds can't end undecided - auto-trigger Sudden Death
-      // rather than asking the player (there's no other sensible choice).
-      void useGameStore.getState().triggerSuddenDeathRematch();
-      return;
-    }
-    if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
+    const timer = setTimeout(() => {
+      if (mode !== 'series') {
+        setStep('result');
+        return;
+      }
 
-    const tradeResult = resolveTradeRule(game);
-    const transferred = tradeResult.transferred.map((t) => ({
-      unitId: t.card.unitId,
-      to: t.to,
-    }));
-    useSeriesStore.getState().applyRoundResult(game.winner, transferred);
+      if (game.winner === 'draw') {
+        // Series rounds can't end undecided - auto-trigger Sudden Death
+        // rather than asking the player (there's no other sensible choice).
+        void useGameStore.getState().triggerSuddenDeathRematch();
+        return;
+      }
+      if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
 
-    if (useSeriesStore.getState().seriesWinner !== null) {
-      setStep('seriesResult');
-    } else {
-      setRuleSet(randomRuleSet());
-      setStep('roundSummary');
-    }
+      const tradeResult = resolveTradeRule(game);
+      const transferred = tradeResult.transferred.map((t) => ({
+        unitId: t.card.unitId,
+        to: t.to,
+      }));
+      useSeriesStore.getState().applyRoundResult(game.winner, transferred);
+
+      if (useSeriesStore.getState().seriesWinner !== null) {
+        setStep('seriesResult');
+      } else {
+        setRuleSet(randomRuleSet());
+        setStep('roundSummary');
+      }
+    }, delayMs);
+
+    return () => clearTimeout(timer);
   }, [step, game, mode]);
 
   function handleHomeNewGame() {
