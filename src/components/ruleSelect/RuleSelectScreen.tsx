@@ -57,6 +57,12 @@ const TOGGLE_RULES: ToggleRuleInfo[] = [
     label: 'Elemental',
     description: 'Random tiles boost or weaken cards by matching or mismatched element.',
   },
+  {
+    key: 'chain',
+    label: 'Chain',
+    description:
+      'A capture can trigger a chain reaction: each card it flips immediately checks its own other neighbors too.',
+  },
 ];
 
 interface TradeRuleInfo {

@@ -87,6 +87,7 @@ describe('RuleSelectScreen', () => {
       sameWall: true,
       plus: true,
       elemental: true,
+      chain: true,
       tradeRule: 'diff',
     });
   });

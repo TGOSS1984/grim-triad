@@ -220,3 +220,100 @@ describe('resolveCaptures (composed rule engine)', () => {
     });
   });
 });
+
+describe('resolveCaptures (Chain rule)', () => {
+  it('does NOT cascade a plain base capture when chain is off (default)', () => {
+    const board = createEmptyBoard();
+    // red-right will be captured by the placed card, and could ITSELF
+    // capture red-below-right via a strong bottom side - but chain is off,
+    // so that second capture must not happen.
+    place(board, makeCard('red', { top: 1, bottom: 9, left: 1, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 1, right: 1 }, 'red-below-right'), {
+      row: 2,
+      col: 2,
+    });
+    const placed = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 9 }, 'blue-placed');
+
+    const result = resolveCaptures(board, placed, { row: 1, col: 1 }, DEFAULT_RULE_SET);
+
+    expect(result.captured).toEqual([{ row: 1, col: 2 }]);
+    expect(result.comboTriggered).toBe(false);
+  });
+
+  it('cascades a base capture into a further one when chain is on, and reports comboTriggered', () => {
+    const board = createEmptyBoard();
+    place(board, makeCard('red', { top: 1, bottom: 9, left: 1, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 1, right: 1 }, 'red-below-right'), {
+      row: 2,
+      col: 2,
+    });
+    const placed = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 9 }, 'blue-placed');
+
+    const result = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      chain: true,
+    });
+
+    expect(result.captured).toEqual(
+      expect.arrayContaining([{ row: 1, col: 2 }, { row: 2, col: 2 }]),
+    );
+    expect(result.captured).toHaveLength(2);
+    expect(result.comboTriggered).toBe(true);
+  });
+
+  it('with chain on, does nothing extra when the initial placement captures nothing at all', () => {
+    const board = createEmptyBoard();
+    place(board, makeCard('red', { top: 9, bottom: 9, left: 9, right: 9 }, 'red-strong'), {
+      row: 1,
+      col: 2,
+    });
+    const placed = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 1 }, 'blue-weak');
+
+    const result = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      chain: true,
+    });
+
+    expect(result.captured).toEqual([]);
+    expect(result.comboTriggered).toBe(false);
+  });
+
+  it('chain has no additional effect when Same already fired (Same supersedes and has its own cascade)', () => {
+    const board = createEmptyBoard();
+    // Same setup as the existing Same-combo test above: a genuine Same
+    // match that itself cascades via the shared cascade helper.
+    place(board, makeCard('red', { top: 1, bottom: 5, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 9, left: 5, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 1, right: 1 }, 'red-below-right'),
+      { row: 2, col: 2 },
+    );
+    const placed = makeCard('blue', { top: 5, bottom: 1, left: 1, right: 5 }, 'blue-combo');
+
+    const withoutChain = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      same: true,
+    });
+    const withChain = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      same: true,
+      chain: true,
+    });
+
+    expect(withChain.captured).toEqual(withoutChain.captured);
+    expect(withChain.comboTriggered).toBe(withoutChain.comboTriggered);
+  });
+});

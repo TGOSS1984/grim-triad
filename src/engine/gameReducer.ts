@@ -26,6 +26,7 @@ export const DEFAULT_RULE_SET: RuleSet = {
   sameWall: false,
   plus: false,
   elemental: false,
+  chain: false,
   tradeRule: 'one',
 };
 

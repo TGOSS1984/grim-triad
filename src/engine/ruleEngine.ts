@@ -29,6 +29,7 @@ import { resolveSameCaptures } from './rules/same';
 import { getWallValueForRuleSet } from './rules/sameWall';
 import { resolvePlusCaptures } from './rules/plus';
 import { getEffectiveStats } from './rules/elemental';
+import { cascadeCaptures } from './rules/chainCascade';
 
 /**
  * Resolves all captures for a card just placed at `pos`, given the match's
@@ -40,8 +41,10 @@ import { getEffectiveStats } from './rules/elemental';
  * (combo rules are more specific/powerful than the base rule and, per
  * standard Triple Triad behaviour, supersede a plain higher-value capture
  * on the same placement). If neither combo rule fires, falls back to the
- * base rule. Elemental modifies the *effective* stats used throughout,
- * regardless of which path is taken.
+ * base rule - at which point Chain (if active) gets its own chance to
+ * cascade that base capture, using the exact same cascade mechanic Same
+ * uses internally (see rules/chainCascade.ts). Elemental modifies the
+ * *effective* stats used throughout, regardless of which path is taken.
  */
 export function resolveCaptures(
   board: Board,
@@ -73,5 +76,11 @@ export function resolveCaptures(
   }
 
   const baseCaptured = resolveBaseCaptures(board, placedCard, pos, getStats);
+
+  if (ruleSet.chain && baseCaptured.length > 0) {
+    const cascaded = cascadeCaptures(board, baseCaptured, placedCard.owner, getStats);
+    return { captured: cascaded, comboTriggered: cascaded.length > baseCaptured.length };
+  }
+
   return { captured: baseCaptured, comboTriggered: false };
 }

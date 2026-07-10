@@ -22,6 +22,7 @@ export function randomRuleSet(): RuleSet {
     sameWall: randomBool(),
     plus: randomBool(),
     elemental: randomBool(),
+    chain: randomBool(),
     tradeRule: tradeOptions[Math.floor(Math.random() * tradeOptions.length)],
   };
 }

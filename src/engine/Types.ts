@@ -77,6 +77,16 @@ export interface RuleSet {
   sameWall: boolean;
   plus: boolean;
   elemental: boolean;
+  /**
+   * Chain: extends the plain higher-value base capture into a cascade -
+   * each card captured this way immediately re-checks its OWN other
+   * neighbors using the same higher-value rule, chaining further captures
+   * until nothing more falls. This is the same cascade mechanic Same/Plus
+   * already trigger after THEIR captures (see rules/chainCascade.ts) -
+   * Chain is what lets an ordinary capture (no Same/Plus match needed)
+   * cascade the same way.
+   */
+  chain: boolean;
   tradeRule: 'one' | 'diff' | 'direct' | 'all';
 }
 

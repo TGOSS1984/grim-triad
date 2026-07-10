@@ -28,6 +28,7 @@ export function describeRuleSet(ruleSet: RuleSet): string[] {
   if (ruleSet.sameWall) labels.push('Same Wall');
   if (ruleSet.plus) labels.push('Plus');
   if (ruleSet.elemental) labels.push('Elemental');
+  if (ruleSet.chain) labels.push('Chain');
   labels.push(TRADE_RULE_LABELS[ruleSet.tradeRule]);
   return labels;
 }

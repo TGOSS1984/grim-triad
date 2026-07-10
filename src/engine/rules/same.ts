@@ -8,7 +8,8 @@
  * Combo: each card captured this way immediately re-checks ITS OWN other
  * neighbors using the normal (higher-value-wins) base rule, since it now
  * belongs to the capturing player. Any further captures those trigger
- * chain the same way, cascading until no more captures occur.
+ * chain the same way, cascading until no more captures occur. This
+ * cascade step is shared with the Chain rule - see rules/chainCascade.ts.
  *
  * `wallValue`: when the Same Wall rule is also active, board edges count as
  * a value of 10 ("A") for matching purposes only - see sameWall.ts, which
@@ -18,7 +19,7 @@
  */
 import type { Board, Card, CaptureResult, Position, StatsResolver } from '../types';
 import { getCell, neighborsOf, opposite } from '../board';
-import { resolveBaseCaptures } from '../capture';
+import { cascadeCaptures } from './chainCascade';
 
 export interface SameOptions {
   /** If set (Same Wall active), board edges are treated as this value for matching. */
@@ -26,10 +27,6 @@ export interface SameOptions {
 }
 
 const identityStats: StatsResolver = (card) => card.stats;
-
-function cloneBoard(board: Board): Board {
-  return board.map((row) => row.map((cell) => ({ ...cell }))) as Board;
-}
 
 export function resolveSameCaptures(
   board: Board,
@@ -78,41 +75,7 @@ export function resolveSameCaptures(
     return { captured: [], comboTriggered: false };
   }
 
-  // Apply the initial Same captures to a working board copy so the combo
-  // chain below sees the flipped ownership.
-  const working = cloneBoard(board);
-  for (const p of matchedNeighborPositions) {
-    const cell = getCell(working, p);
-    if (cell.card) {
-      working[p.row][p.col] = { ...cell, card: { ...cell.card, owner: placedCard.owner } };
-    }
-  }
-
-  const allCaptured = [...matchedNeighborPositions];
-  const queue = [...matchedNeighborPositions];
-  const capturedSet = new Set(allCaptured.map((p) => `${p.row},${p.col}`));
-
-  // Combo chain: each newly-flipped card checks its own other neighbors
-  // using the standard base (higher-value) rule - still respecting
-  // positional modifiers for both sides of each chained comparison.
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    const currentCard = getCell(working, current).card;
-    if (!currentCard) continue;
-
-    const chainCaptures = resolveBaseCaptures(working, currentCard, current, getStats);
-    for (const p of chainCaptures) {
-      const key = `${p.row},${p.col}`;
-      if (capturedSet.has(key)) continue;
-      capturedSet.add(key);
-      allCaptured.push(p);
-      queue.push(p);
-      const cell = getCell(working, p);
-      if (cell.card) {
-        working[p.row][p.col] = { ...cell, card: { ...cell.card, owner: placedCard.owner } };
-      }
-    }
-  }
+  const allCaptured = cascadeCaptures(board, matchedNeighborPositions, placedCard.owner, getStats);
 
   return {
     captured: allCaptured,
