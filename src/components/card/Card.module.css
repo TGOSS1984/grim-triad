@@ -16,6 +16,16 @@
   --window-mid-v: 58.1%;
 
   position: relative;
+  /* Explicit z-index (not just position:relative) is required to establish
+     a local stacking context for this card - without it, this card's
+     internal z-index values (frame/portrait/name/stat) aren't scoped to
+     it at all, and leak into the shared stacking context of whatever
+     overlapping siblings surround it (e.g. Hand's fanned card stack).
+     That let an EARLIER card's portrait (z-index 2) paint over a LATER
+     card's frame (z-index 1), even though the later card should sit on
+     top - invisible while portraitWindow was empty, but obvious the
+     moment real portrait art was added. */
+  z-index: 0;
   width: var(--card-width, 140px);
   aspect-ratio: 1024 / 1536;
   border: none;
