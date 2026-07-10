@@ -13,6 +13,8 @@ export interface UnitPickerProps {
   selectedIds: string[];
   /** Points left to spend; used to disable Add for anything unaffordable. Null = no cap chosen yet. */
   remainingPoints: number | null;
+  /** True once the army has reached its exact required size (series mode) - disables Add for everything not already selected. */
+  atCapacity?: boolean;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
 }
@@ -56,7 +58,14 @@ function UnitThumbnail({ portraitPath }: { portraitPath: string }) {
   );
 }
 
-export function UnitPicker({ units, selectedIds, remainingPoints, onAdd, onRemove }: UnitPickerProps) {
+export function UnitPicker({
+  units,
+  selectedIds,
+  remainingPoints,
+  atCapacity = false,
+  onAdd,
+  onRemove,
+}: UnitPickerProps) {
   const sorted = [...units].sort((a, b) => a.points - b.points);
   const selectedSet = new Set(selectedIds);
 
@@ -65,7 +74,7 @@ export function UnitPicker({ units, selectedIds, remainingPoints, onAdd, onRemov
       {sorted.map((unit) => {
         const isSelected = selectedSet.has(unit.id);
         const affordable = remainingPoints !== null && unit.points <= remainingPoints;
-        const canAdd = !isSelected && affordable;
+        const canAdd = !isSelected && affordable && !atCapacity;
 
         return (
           <li key={unit.id} className={styles.row}>

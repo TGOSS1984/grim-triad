@@ -206,3 +206,79 @@ describe('selectedUnits / availableUnits', () => {
     expect(useArmyBuilderStore.getState().availableUnits()).toEqual([]);
   });
 });
+
+describe('maxArmySize', () => {
+  it('is null by default (single-match mode: no upper limit)', () => {
+    expect(useArmyBuilderStore.getState().maxArmySize).toBeNull();
+  });
+
+  it('rejects adding a unit once at capacity, even if affordable', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+    store.setMaxArmySize(2);
+    store.addUnit(CAPTAIN);
+    store.addUnit(DEATH_COMPANY);
+
+    const result = store.addUnit('blood-angels-sanguinary-priest');
+
+    expect(result).toBe(false);
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(2);
+  });
+
+  it('allows adding up to exactly the configured maximum', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+    store.setMaxArmySize(2);
+
+    expect(store.addUnit(CAPTAIN)).toBe(true);
+    expect(store.addUnit(DEATH_COMPANY)).toBe(true);
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(2);
+  });
+
+  it('trims the selection if the new max is lower than the current count', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+    store.addUnit(CAPTAIN);
+    store.addUnit(DEATH_COMPANY);
+    store.addUnit('blood-angels-sanguinary-priest');
+
+    store.setMaxArmySize(1);
+
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([CAPTAIN]);
+  });
+
+  it('does not trim anything if the new max still covers the current count', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+    store.addUnit(CAPTAIN);
+
+    store.setMaxArmySize(5);
+
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([CAPTAIN]);
+  });
+
+  it('setting max back to null removes the upper limit', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+    store.setMaxArmySize(1);
+    store.addUnit(CAPTAIN);
+
+    store.setMaxArmySize(null);
+
+    expect(store.addUnit(DEATH_COMPANY)).toBe(true);
+  });
+
+  it('reset clears maxArmySize back to null', () => {
+    const store = useArmyBuilderStore.getState();
+    store.setMaxArmySize(15);
+
+    store.reset();
+
+    expect(useArmyBuilderStore.getState().maxArmySize).toBeNull();
+  });
+});

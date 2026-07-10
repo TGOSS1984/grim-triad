@@ -118,4 +118,36 @@ describe('UnitPicker', () => {
     expect(row.querySelector('img')).not.toBeInTheDocument();
     expect(row.querySelector('[class*="thumbnailPlaceholder"]')).toBeInTheDocument();
   });
+
+  it('disables Add for an affordable, unselected unit when atCapacity is true', () => {
+    const units = [makeUnit({ id: 'a', points: 1 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        atCapacity
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+  });
+
+  it('still allows Remove on an already-selected unit even when atCapacity is true', () => {
+    const units = [makeUnit({ id: 'a' })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={['a']}
+        remainingPoints={0}
+        atCapacity
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
 });

@@ -14,6 +14,14 @@
  * v1 simplification: each unit id can only be added once (a roster is a
  * set of distinct card types, not squad-quantity stacks) - documented here
  * as a deliberate scope decision, not an oversight.
+ *
+ * maxArmySize: optional upper bound on how many units can be selected.
+ * Single-match mode leaves this null (at least 5, no upper limit). Series
+ * mode sets it to the player's chosen pool size, since that number drives
+ * the whole series' round math (rounds = pool size / 5) - letting the
+ * player select more than they committed to would make that math meaningless.
+ * Enforced here in the store (addUnit refuses once at capacity), not just
+ * in the UI, since the store is the real source of truth.
  */
 import { create } from 'zustand';
 import { getUnitsForRoster } from '../data/activeFactions';
@@ -25,9 +33,11 @@ export interface ArmyBuilderState {
   rosterName: string | null;
   pointsCap: PointsCap | null;
   selectedUnitIds: string[];
+  maxArmySize: number | null;
 
   selectRoster: (rosterName: string) => void;
   setPointsCap: (cap: PointsCap) => void;
+  setMaxArmySize: (size: number | null) => void;
   /** Returns true if the unit was added; false if the action was invalid (see rules below). */
   addUnit: (unitId: string) => boolean;
   removeUnit: (unitId: string) => void;
@@ -47,6 +57,7 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
   rosterName: null,
   pointsCap: null,
   selectedUnitIds: [],
+  maxArmySize: null,
 
   selectRoster: (rosterName) => {
     // Switching roster invalidates any prior selection - a valid army is
@@ -71,10 +82,22 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
     set({ pointsCap: cap, selectedUnitIds: trimmed });
   },
 
+  setMaxArmySize: (size) => {
+    const { selectedUnitIds } = get();
+    // Same "don't leave an invalid state" principle as setPointsCap - if
+    // the new max is below the current selection count, trim from the end.
+    const trimmed =
+      size !== null && selectedUnitIds.length > size
+        ? selectedUnitIds.slice(0, size)
+        : selectedUnitIds;
+    set({ maxArmySize: size, selectedUnitIds: trimmed });
+  },
+
   addUnit: (unitId) => {
-    const { rosterName, pointsCap, selectedUnitIds } = get();
+    const { rosterName, pointsCap, selectedUnitIds, maxArmySize } = get();
     if (!rosterName || pointsCap === null) return false;
     if (selectedUnitIds.includes(unitId)) return false;
+    if (maxArmySize !== null && selectedUnitIds.length >= maxArmySize) return false;
 
     const rosterUnits = getUnitsForRoster(rosterName);
     const unit = unitById(rosterUnits, unitId);
@@ -96,7 +119,8 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
     }));
   },
 
-  reset: () => set({ rosterName: null, pointsCap: null, selectedUnitIds: [] }),
+  reset: () =>
+    set({ rosterName: null, pointsCap: null, selectedUnitIds: [], maxArmySize: null }),
 
   totalPoints: () => {
     const { rosterName, selectedUnitIds } = get();

@@ -109,3 +109,55 @@ describe('ArmyBuilder', () => {
     expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(0);
   });
 });
+
+describe('ArmyBuilder with requiredArmySize (series mode)', () => {
+  it('Continue stays disabled below AND requires exactly the required size, not just "at least"', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={3} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: '500 pts' }));
+
+    expect(
+      screen.getByRole('button', { name: /Select exactly 3 units/ }),
+    ).toBeDisabled();
+
+    await user.click(addUnitByName(CAPTAIN));
+    await user.click(addUnitByName(DEATH_COMPANY));
+    expect(
+      screen.getByRole('button', { name: /Select exactly 3 units \(2\/3\)/ }),
+    ).toBeDisabled();
+
+    await user.click(addUnitByName(SANGUINARY_PRIEST));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('cannot select MORE than requiredArmySize, unlike single-match mode', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={2} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: '500 pts' }));
+    await user.click(addUnitByName(CAPTAIN));
+    await user.click(addUnitByName(DEATH_COMPANY));
+
+    // A third, perfectly affordable unit should now be un-addable.
+    const row = screen.getByText(SANGUINARY_PRIEST).closest('li')!;
+    expect(row.querySelector('button')).toBeDisabled();
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(2);
+  });
+
+  it('onReady receives exactly requiredArmySize unit ids when Continue is clicked', async () => {
+    const user = userEvent.setup();
+    const onReady = vi.fn();
+    render(<ArmyBuilder onReady={onReady} requiredArmySize={2} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: '500 pts' }));
+    await user.click(addUnitByName(CAPTAIN));
+    await user.click(addUnitByName(DEATH_COMPANY));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onReady.mock.calls[0][0]).toHaveLength(2);
+  });
+});

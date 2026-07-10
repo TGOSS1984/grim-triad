@@ -19,6 +19,14 @@
   letter-spacing: 0.04em;
 }
 
+.sectionSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
 .capRow {
   display: flex;
   gap: var(--space-md);
