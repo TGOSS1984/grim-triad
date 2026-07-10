@@ -1,0 +1,169 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  margin: 0;
+  text-align: center;
+}
+
+.modeRow {
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 260px;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.modeCard:hover,
+.modeCard:focus-visible {
+  border-color: var(--color-accent-gold);
+  transform: translateY(-2px);
+}
+
+.modeCardSelected {
+  border-color: var(--color-accent-gold);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.modeCardTitle {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.modeCardDescription {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.seriesOptions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  max-width: 480px;
+  width: 100%;
+}
+
+.seriesOptionsTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
+.presetRow {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.presetButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-bg-void);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.presetButton:hover,
+.presetButton:focus-visible {
+  border-color: var(--color-accent-gold);
+}
+
+.presetButtonSelected {
+  border-color: var(--color-accent-gold);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.customLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  align-items: center;
+}
+
+.customInput {
+  width: 100px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-muted);
+  background: var(--color-bg-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.roundsPreview {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.startSeriesButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease, opacity 150ms ease;
+}
+
+.startSeriesButton:hover:not(:disabled),
+.startSeriesButton:focus-visible:not(:disabled) {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.startSeriesButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

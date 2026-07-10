@@ -1,0 +1,61 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  margin: 0;
+}
+
+.summary {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.tallyRow {
+  display: flex;
+  gap: var(--space-xl);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.tallyBlue {
+  color: var(--color-player-blue);
+}
+
+.tallyRed {
+  color: var(--color-player-red);
+}
+
+.newGameButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease;
+  margin-top: var(--space-md);
+}
+
+.newGameButton:hover,
+.newGameButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+}
