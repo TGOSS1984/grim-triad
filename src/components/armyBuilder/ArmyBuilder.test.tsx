@@ -15,10 +15,21 @@ beforeEach(() => {
   useArmyBuilderStore.getState().reset();
 });
 
-function addUnitByName(name: string) {
+/**
+ * Finds a row's Add/Remove/thumbnail buttons by accessible text, not just
+ * "the/first button in the row" - the row's thumbnail is also a real
+ * <button> now (see UnitPicker.tsx's hover-zoom/lightbox), and it comes
+ * before Add/Remove in DOM order.
+ */
+function getRowActionButton(name: string) {
   const row = screen.getByText(name).closest('li')!;
-  const addButton = row.querySelector('button')!;
-  return addButton;
+  return Array.from(row.querySelectorAll('button')).find(
+    (button) => button.textContent === 'Add' || button.textContent === 'Remove',
+  )!;
+}
+
+function addUnitByName(name: string) {
+  return getRowActionButton(name);
 }
 
 describe('ArmyBuilder', () => {
@@ -87,11 +98,10 @@ describe('ArmyBuilder', () => {
     await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
     await user.click(screen.getByRole('button', { name: '500 pts' }));
 
-    const row = screen.getByText(CAPTAIN).closest('li')!;
-    await user.click(row.querySelector('button')!); // Add
+    await user.click(getRowActionButton(CAPTAIN)); // Add
     expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(1);
 
-    await user.click(row.querySelector('button')!); // now Remove
+    await user.click(getRowActionButton(CAPTAIN)); // now Remove
     expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(0);
   });
 
@@ -142,8 +152,7 @@ describe('ArmyBuilder with requiredArmySize (series mode)', () => {
     await user.click(addUnitByName(DEATH_COMPANY));
 
     // A third, perfectly affordable unit should now be un-addable.
-    const row = screen.getByText(SANGUINARY_PRIEST).closest('li')!;
-    expect(row.querySelector('button')).toBeDisabled();
+    expect(getRowActionButton(SANGUINARY_PRIEST)).toBeDisabled();
     expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(2);
   });
 

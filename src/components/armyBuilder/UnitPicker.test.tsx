@@ -150,4 +150,61 @@ describe('UnitPicker', () => {
 
     expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
   });
+
+  it('shows a floating zoom preview of the portrait on hover', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    expect(screen.queryAllByRole('presentation')).toHaveLength(0);
+    await user.hover(screen.getByRole('button', { name: 'View larger image of Dante' }));
+
+    // Two images now exist for the same unit: the small thumbnail plus
+    // the floating preview portalled to document.body.
+    expect(document.querySelectorAll('img[src="/assets/factions/necrons/units/test-unit.png"]')).toHaveLength(2);
+  });
+
+  it('hides the zoom preview again on unhover', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    const button = screen.getByRole('button', { name: 'View larger image of Dante' });
+    await user.hover(button);
+    await user.unhover(button);
+
+    expect(document.querySelectorAll('img[src="/assets/factions/necrons/units/test-unit.png"]')).toHaveLength(1);
+  });
+
+  it('opens a lightbox with the full portrait and unit name when the thumbnail is clicked', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+
+    expect(screen.getByRole('img', { name: 'Dante' })).toBeInTheDocument();
+  });
+
+  it('closes the lightbox when the close button is clicked', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    await user.click(screen.getByRole('button', { name: 'Close image' }));
+
+    expect(screen.queryByRole('img', { name: 'Dante' })).not.toBeInTheDocument();
+  });
+
+  it('closes the lightbox on Escape', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('img', { name: 'Dante' })).not.toBeInTheDocument();
+  });
 });

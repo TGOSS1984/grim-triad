@@ -39,7 +39,13 @@ afterEach(() => {
 async function addUnitsByName(user: ReturnType<typeof userEvent.setup>, names: string[]) {
   for (const unitName of names) {
     const row = screen.getByText(unitName).closest('li')!;
-    await user.click(row.querySelector('button')!);
+    // Query by accessible name, not just "the first button in the row" -
+    // the row's thumbnail is also a real <button> now (see UnitPicker.tsx's
+    // hover-zoom/lightbox), and it comes before Add/Remove in DOM order.
+    const addButton = Array.from(row.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Add',
+    )!;
+    await user.click(addButton);
   }
 }
 

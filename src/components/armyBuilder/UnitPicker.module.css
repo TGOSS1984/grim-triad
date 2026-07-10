@@ -37,6 +37,55 @@
   border: 1px solid var(--color-border-muted);
 }
 
+/* Wraps the thumbnail img in a real button (not just an onClick div) so
+   it's keyboard-focusable and gets a proper accessible name - hover AND
+   focus both trigger the zoom preview, so keyboard users get it too. */
+.thumbnailButton {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.thumbnailButton:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 2px;
+}
+
+.thumbnailButton .thumbnail {
+  transition: box-shadow 150ms ease;
+}
+
+.thumbnailButton:hover .thumbnail,
+.thumbnailButton:focus-visible .thumbnail {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+/* Floating zoom preview - portalled to document.body (see UnitPicker.tsx)
+   so it escapes the roster list's overflow-y: auto clipping. Positioned
+   via inline style computed from the thumbnail's own bounding rect. */
+.hoverPreview {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 500;
+  pointer-events: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glow-gold);
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.hoverPreview img {
+  display: block;
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+}
+
 .info {
   display: flex;
   flex-direction: column;
