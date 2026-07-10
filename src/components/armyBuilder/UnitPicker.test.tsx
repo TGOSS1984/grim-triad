@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UnitPicker } from './UnitPicker';
 import type { Unit } from '../../data/schema';
@@ -14,7 +14,7 @@ function makeUnit(overrides: Partial<Unit> = {}): Unit {
     keywords: [],
     points: 100,
     statBudget: 20,
-    stats: { top: 5, bottom: 5, left: 5, right: 5 },
+    stats: { top: 5, bottom: 6, left: 7, right: 8 },
     portraitPath: 'assets/factions/necrons/units/test-unit.png',
     element: 'void',
     ...overrides,
@@ -87,38 +87,6 @@ describe('UnitPicker', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
   });
 
-  it("renders each unit's portrait thumbnail with a root-relative src", () => {
-    const units = [makeUnit({ id: 'a', portraitPath: 'assets/factions/necrons/units/a.png' })];
-    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
-
-    const row = screen.getAllByRole('listitem')[0];
-    const thumbnail = row.querySelector('img') as HTMLImageElement;
-    expect(thumbnail.getAttribute('src')).toBe('/assets/factions/necrons/units/a.png');
-  });
-
-  it('falls back to a same-named .webp if the original (.png) fails to load', () => {
-    const units = [makeUnit({ id: 'a', portraitPath: 'assets/factions/necrons/units/a.png' })];
-    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
-
-    const row = screen.getAllByRole('listitem')[0];
-    fireEvent.error(row.querySelector('img')!);
-
-    const updated = row.querySelector('img') as HTMLImageElement;
-    expect(updated.getAttribute('src')).toBe('/assets/factions/necrons/units/a.webp');
-  });
-
-  it('falls back to a placeholder block if both the original and .webp fail to load', () => {
-    const units = [makeUnit({ id: 'a' })];
-    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
-
-    const row = screen.getAllByRole('listitem')[0];
-    fireEvent.error(row.querySelector('img')!); // original fails
-    fireEvent.error(row.querySelector('img')!); // .webp fails too
-
-    expect(row.querySelector('img')).not.toBeInTheDocument();
-    expect(row.querySelector('[class*="thumbnailPlaceholder"]')).toBeInTheDocument();
-  });
-
   it('disables Add for an affordable, unselected unit when atCapacity is true', () => {
     const units = [makeUnit({ id: 'a', points: 1 })];
     render(
@@ -151,17 +119,34 @@ describe('UnitPicker', () => {
     expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
   });
 
-  it('shows a floating zoom preview of the portrait on hover', async () => {
+  it("renders each row as a real Card showing the unit's own name and stats, not a flat portrait image", () => {
+    const units = [makeUnit({ id: 'a', name: 'Dante', stats: { top: 8, bottom: 5, left: 6, right: 4 } })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    // The Card itself (non-interactive, role="img") is nested inside the
+    // row's clickable preview button - its accessible name is the unit
+    // name, same as Hand/Board render it.
+    expect(screen.getByRole('img', { name: 'Dante' })).toBeInTheDocument();
+    expect(screen.getByText('8')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('6')).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('shows a floating zoom preview Card on hover', async () => {
     const user = userEvent.setup();
     const units = [makeUnit({ id: 'a', name: 'Dante' })];
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
-    expect(screen.queryAllByRole('presentation')).toHaveLength(0);
-    await user.hover(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    expect(screen.getAllByRole('img', { name: 'Dante' })).toHaveLength(1);
+    await user.hover(screen.getByRole('button', { name: 'View larger card for Dante' }));
 
-    // Two images now exist for the same unit: the small thumbnail plus
-    // the floating preview portalled to document.body.
-    expect(document.querySelectorAll('img[src="/assets/factions/necrons/units/test-unit.png"]')).toHaveLength(2);
+    // Two Cards now exist for the same unit: the small row card plus the
+    // floating preview portalled to document.body. The preview itself is
+    // aria-hidden (it's a decorative duplicate - the row card is already
+    // reachable), so `hidden: true` is needed here to include it in the
+    // query at all; that's intentional and correct, not a workaround.
+    expect(screen.getAllByRole('img', { name: 'Dante', hidden: true })).toHaveLength(2);
   });
 
   it('hides the zoom preview again on unhover', async () => {
@@ -169,21 +154,24 @@ describe('UnitPicker', () => {
     const units = [makeUnit({ id: 'a', name: 'Dante' })];
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
-    const button = screen.getByRole('button', { name: 'View larger image of Dante' });
+    const button = screen.getByRole('button', { name: 'View larger card for Dante' });
     await user.hover(button);
     await user.unhover(button);
 
-    expect(document.querySelectorAll('img[src="/assets/factions/necrons/units/test-unit.png"]')).toHaveLength(1);
+    expect(screen.getAllByRole('img', { name: 'Dante', hidden: true })).toHaveLength(1);
   });
 
-  it('opens a lightbox with the full portrait and unit name when the thumbnail is clicked', async () => {
+  it('opens a lightbox with a full-size Card (same name/stats) when the row card is clicked', async () => {
     const user = userEvent.setup();
-    const units = [makeUnit({ id: 'a', name: 'Dante' })];
+    const units = [
+      makeUnit({ id: 'a', name: 'Dante', stats: { top: 8, bottom: 5, left: 6, right: 4 } }),
+    ];
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    await user.click(screen.getByRole('button', { name: 'View larger card for Dante' }));
 
-    expect(screen.getByRole('img', { name: 'Dante' })).toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: 'Dante' })).toHaveLength(2); // row card + lightbox card
+    expect(screen.getAllByText('8').length).toBeGreaterThan(0);
   });
 
   it('closes the lightbox when the close button is clicked', async () => {
@@ -191,10 +179,10 @@ describe('UnitPicker', () => {
     const units = [makeUnit({ id: 'a', name: 'Dante' })];
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    await user.click(screen.getByRole('button', { name: 'View larger card for Dante' }));
     await user.click(screen.getByRole('button', { name: 'Close image' }));
 
-    expect(screen.queryByRole('img', { name: 'Dante' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: 'Dante' })).toHaveLength(1); // only the row card remains
   });
 
   it('closes the lightbox on Escape', async () => {
@@ -202,9 +190,16 @@ describe('UnitPicker', () => {
     const units = [makeUnit({ id: 'a', name: 'Dante' })];
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: 'View larger image of Dante' }));
+    await user.click(screen.getByRole('button', { name: 'View larger card for Dante' }));
     await user.keyboard('{Escape}');
 
-    expect(screen.queryByRole('img', { name: 'Dante' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('img', { name: 'Dante' })).toHaveLength(1);
+  });
+
+  it("always shows a unit's element badge, regardless of whether any match rule set is in play (roster is a catalog view, not a live match)", () => {
+    const units = [makeUnit({ id: 'a', name: 'Dante', element: 'warp' })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    expect(screen.getByTitle('Warp affinity')).toBeInTheDocument();
   });
 });

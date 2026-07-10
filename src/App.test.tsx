@@ -38,7 +38,10 @@ afterEach(() => {
 
 async function addUnitsByName(user: ReturnType<typeof userEvent.setup>, names: string[]) {
   for (const unitName of names) {
-    const row = screen.getByText(unitName).closest('li')!;
+    // getAllByText, not getByText: the unit name now appears twice per row
+    // (the row's real Card plus UnitPicker's own info panel) - either
+    // match's closest li is the same row, so take the first.
+    const row = screen.getAllByText(unitName)[0].closest('li')!;
     // Query by accessible name, not just "the first button in the row" -
     // the row's thumbnail is also a real <button> now (see UnitPicker.tsx's
     // hover-zoom/lightbox), and it comes before Add/Remove in DOM order.

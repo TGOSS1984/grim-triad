@@ -7,6 +7,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Unit } from '../../data/schema';
+import { Card } from '../card/Card';
 import { Lightbox } from '../common/Lightbox';
 import styles from './UnitPicker.module.css';
 
@@ -21,79 +22,70 @@ export interface UnitPickerProps {
   onRemove: (unitId: string) => void;
 }
 
-function toPublicPath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
-}
-
-/** Swaps a path's extension to .webp, e.g. "units/dante.png" -> "units/dante.webp". */
-function toWebpPath(path: string): string {
-  return path.replace(/\.[a-z0-9]+$/i, '.webp');
-}
-
-type ThumbnailStage = 'original' | 'webp' | 'none';
-
-/** How far past the thumbnail's edge the hover preview floats, in px. */
+/** Width (px) of the small row thumbnail card - kept tight so rows stay compact in the scrolling list. */
+const ROW_CARD_WIDTH = 44;
+/** Width (px) of the floating hover-zoom preview card. */
+const HOVER_PREVIEW_CARD_WIDTH = 170;
+/** Width (px) of the card shown full-size in the Lightbox. */
+const LIGHTBOX_CARD_WIDTH = 320;
+/** How far past the row card's edge the hover preview floats, in px. */
 const HOVER_PREVIEW_GAP = 12;
-/** Target size of the hover preview image, in px. */
-const HOVER_PREVIEW_SIZE = 180;
 
 /**
- * A small portrait thumbnail for a unit picker row. Tries the unit's
- * portraitPath as given (normally .png), falls back to a same-named .webp,
- * then shows a plain placeholder block if neither loads - most units have
- * no portrait art yet, and rather than show a broken-image icon this
- * degrades gracefully (same pattern as Card.tsx's portrait fallback and
- * FactionSelect's FactionIcon). Nothing else needs to change once real
- * portraits (in either format) are dropped into place; they just start
- * appearing.
+ * A row's unit preview: renders the SAME Card component used in Hand/Board
+ * (not a flat portrait image), at a small size, in the human's own colour
+ * (blue - the army builder is always building the human's own army, never
+ * the AI's). This is deliberate: what you see while browsing the roster
+ * should be exactly what the card looks like once it's actually in play -
+ * same frame, same stat badges, same element badge - not a simplified
+ * stand-in that then looks different once the match starts.
  *
- * Interaction: hovering (or keyboard-focusing) shows a larger floating
- * preview - portalled to document.body and positioned via the thumbnail's
- * own bounding rect, so it always renders above the roster list's
- * scrollable/overflow-clipped container rather than being cut off inside
- * it. Clicking opens a full-size Lightbox. Both are skipped entirely once
- * a unit has no resolvable art (stage === 'none') - nothing to zoom into.
+ * Element badge: unlike GameScreen (which only shows a card's element
+ * when the Elemental rule is active THIS match, since otherwise it'd be a
+ * confusing icon that does nothing), the roster picker always shows it -
+ * this is a browse/catalog context, not a specific match, so surfacing a
+ * unit's element affinity up front is useful information regardless of
+ * which rules end up active.
+ *
+ * Interaction: hovering (or keyboard-focusing) the small card shows a
+ * larger floating preview card - portalled to document.body and
+ * positioned via the row card's own bounding rect, so it always renders
+ * above the roster list's scrollable/overflow-clipped container rather
+ * than being cut off inside it. Clicking opens a full-size Card in a
+ * Lightbox.
  */
-function UnitThumbnail({ portraitPath, name }: { portraitPath: string; name: string }) {
-  const [stage, setStage] = useState<ThumbnailStage>('original');
+function UnitRowCard({ unit }: { unit: Unit }) {
   const [hovering, setHovering] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  if (stage === 'none') return <div className={styles.thumbnailPlaceholder} aria-hidden="true" />;
-
-  const src = stage === 'original' ? toPublicPath(portraitPath) : toWebpPath(toPublicPath(portraitPath));
-
-  function handleError() {
-    setStage((current) => (current === 'original' ? 'webp' : 'none'));
-  }
-
   const rect = buttonRef.current?.getBoundingClientRect();
-  // Prefer opening to the right of the thumbnail; flip to the left if
-  // there isn't enough room, so the preview never runs off-screen on
-  // narrower viewports.
-  const opensLeft = !!rect && rect.right + HOVER_PREVIEW_GAP + HOVER_PREVIEW_SIZE > window.innerWidth;
+  // Prefer opening to the right of the card; flip to the left if there
+  // isn't enough room, so the preview never runs off-screen on narrower
+  // viewports.
+  const opensLeft =
+    !!rect && rect.right + HOVER_PREVIEW_GAP + HOVER_PREVIEW_CARD_WIDTH > window.innerWidth;
 
   return (
     <>
       <button
         ref={buttonRef}
         type="button"
-        className={styles.thumbnailButton}
+        className={styles.cardButton}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
         onFocus={() => setHovering(true)}
         onBlur={() => setHovering(false)}
         onClick={() => setLightboxOpen(true)}
-        aria-label={`View larger image of ${name}`}
+        aria-label={`View larger card for ${unit.name}`}
       >
-        <img
-          className={styles.thumbnail}
-          src={src}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          onError={handleError}
+        <Card
+          name={unit.name}
+          stats={unit.stats}
+          portraitPath={unit.portraitPath}
+          owner="blue"
+          width={ROW_CARD_WIDTH}
+          element={unit.element}
         />
       </button>
       {hovering &&
@@ -109,12 +101,28 @@ function UnitThumbnail({ portraitPath, name }: { portraitPath: string; name: str
             }}
             aria-hidden="true"
           >
-            <img src={src} alt="" draggable={false} onError={handleError} />
+            <Card
+              name={unit.name}
+              stats={unit.stats}
+              portraitPath={unit.portraitPath}
+              owner="blue"
+              width={HOVER_PREVIEW_CARD_WIDTH}
+              element={unit.element}
+            />
           </div>,
           document.body,
         )}
       {lightboxOpen && (
-        <Lightbox src={src} alt={name} caption={name} onClose={() => setLightboxOpen(false)} />
+        <Lightbox onClose={() => setLightboxOpen(false)}>
+          <Card
+            name={unit.name}
+            stats={unit.stats}
+            portraitPath={unit.portraitPath}
+            owner="blue"
+            width={LIGHTBOX_CARD_WIDTH}
+            element={unit.element}
+          />
+        </Lightbox>
       )}
     </>
   );
@@ -140,7 +148,7 @@ export function UnitPicker({
 
         return (
           <li key={unit.id} className={styles.row}>
-            <UnitThumbnail portraitPath={unit.portraitPath} name={unit.name} />
+            <UnitRowCard unit={unit} />
             <div className={styles.info}>
               <span className={styles.name}>{unit.name}</span>
               <span className={styles.meta}>

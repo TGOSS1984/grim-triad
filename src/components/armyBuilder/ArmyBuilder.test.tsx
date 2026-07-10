@@ -22,7 +22,11 @@ beforeEach(() => {
  * before Add/Remove in DOM order.
  */
 function getRowActionButton(name: string) {
-  const row = screen.getByText(name).closest('li')!;
+  // getAllByText, not getByText: the unit name now appears twice per row -
+  // once inside the row's real Card (its own name plate) and once in
+  // UnitPicker's own info panel next to it. Either match's closest li is
+  // the same row, so just take the first.
+  const row = screen.getAllByText(name)[0].closest('li')!;
   return Array.from(row.querySelectorAll('button')).find(
     (button) => button.textContent === 'Add' || button.textContent === 'Remove',
   )!;

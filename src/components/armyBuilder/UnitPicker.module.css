@@ -19,28 +19,12 @@
   border-radius: var(--radius-sm);
 }
 
-.thumbnail,
-.thumbnailPlaceholder {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.thumbnail {
-  object-fit: cover;
-  border: 1px solid var(--color-border-muted);
-}
-
-.thumbnailPlaceholder {
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border-muted);
-}
-
-/* Wraps the thumbnail img in a real button (not just an onClick div) so
-   it's keyboard-focusable and gets a proper accessible name - hover AND
-   focus both trigger the zoom preview, so keyboard users get it too. */
-.thumbnailButton {
+/* The row's Card is sized entirely by its own `width` prop (see
+   UnitRowCard in UnitPicker.tsx) via Card.module.css's aspect-ratio - no
+   fixed width/height here. cardButton just needs to not add its own
+   box-model interference and to look/behave like a clickable preview
+   trigger (hover/focus zoom glow), matching the old thumbnailButton. */
+.cardButton {
   padding: 0;
   border: none;
   background: none;
@@ -48,42 +32,30 @@
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   line-height: 0;
+  transition: filter 150ms ease;
 }
 
-.thumbnailButton:focus-visible {
+.cardButton:focus-visible {
   outline: 2px solid var(--color-accent-gold);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
-.thumbnailButton .thumbnail {
-  transition: box-shadow 150ms ease;
-}
-
-.thumbnailButton:hover .thumbnail,
-.thumbnailButton:focus-visible .thumbnail {
-  box-shadow: var(--shadow-glow-gold);
+.cardButton:hover,
+.cardButton:focus-visible {
+  filter: drop-shadow(0 0 6px var(--color-accent-gold));
 }
 
 /* Floating zoom preview - portalled to document.body (see UnitPicker.tsx)
    so it escapes the roster list's overflow-y: auto clipping. Positioned
-   via inline style computed from the thumbnail's own bounding rect. */
+   via inline style computed from the row card's own bounding rect. The
+   preview Card sizes itself via its own width prop - no fixed size here. */
 .hoverPreview {
   position: fixed;
   transform: translateY(-50%);
   z-index: 500;
   pointer-events: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-glow-gold);
-  overflow: hidden;
-  background: var(--color-surface);
-}
-
-.hoverPreview img {
-  display: block;
-  width: 180px;
-  height: 180px;
-  object-fit: cover;
+  filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.6));
 }
 
 .info {
