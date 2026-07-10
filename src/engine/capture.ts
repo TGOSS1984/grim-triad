@@ -10,9 +10,19 @@
  * whichever rules/*.ts modules are active for the match. This file has no
  * knowledge of those modifiers by design, so the base rule stays simple and
  * independently testable.
+ *
+ * `getStats` resolves a card's EFFECTIVE stats given its position - by
+ * default just its raw printed stats, but ruleEngine.ts passes a resolver
+ * that applies the Elemental modifier when that rule is active. Crucially,
+ * this is called for BOTH the placed card AND every neighbor being
+ * compared against - a card's positional bonus/penalty applies whenever
+ * it's checked, whether it's attacking or defending, not only at the
+ * moment it was originally placed.
  */
-import type { Board, Card, Position } from './types';
+import type { Board, Card, Position, StatsResolver } from './types';
 import { getCell, neighborsOf, opposite } from './board';
+
+const identityStats: StatsResolver = (card) => card.stats;
 
 /**
  * Resolves base captures for a card just placed at `pos`. Returns the
@@ -20,17 +30,23 @@ import { getCell, neighborsOf, opposite } from './board';
  * board or apply the flips — callers (gameReducer, ruleEngine) own that,
  * so this function stays a pure, side-effect-free predicate.
  */
-export function resolveBaseCaptures(board: Board, placedCard: Card, pos: Position): Position[] {
+export function resolveBaseCaptures(
+  board: Board,
+  placedCard: Card,
+  pos: Position,
+  getStats: StatsResolver = identityStats,
+): Position[] {
   const captured: Position[] = [];
+  const placedStats = getStats(placedCard, pos);
 
   for (const { side, neighborPos } of neighborsOf(pos)) {
     const neighborCell = getCell(board, neighborPos);
     if (!neighborCell.card) continue;
     if (neighborCell.card.owner === placedCard.owner) continue;
 
-    const placedValue = placedCard.stats[side];
+    const placedValue = placedStats[side];
     const neighborFacingSide = opposite(side);
-    const neighborValue = neighborCell.card.stats[neighborFacingSide];
+    const neighborValue = getStats(neighborCell.card, neighborPos)[neighborFacingSide];
 
     if (placedValue > neighborValue) {
       captured.push(neighborPos);

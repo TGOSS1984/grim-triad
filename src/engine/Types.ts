@@ -128,3 +128,13 @@ export interface CaptureResult {
   /** True if this placement triggered a Same or Plus combo chain reaction. */
   comboTriggered: boolean;
 }
+
+/**
+ * Resolves a card's EFFECTIVE stats given where it's currently sitting on
+ * the board - used so positional modifiers (currently just Elemental) can
+ * apply symmetrically to whichever card is being compared in a capture
+ * check, not only the card that was just placed. Defaults to an identity
+ * resolver (a card's raw printed stats) when no positional modifier is
+ * active - see ruleEngine.ts for how this gets wired up.
+ */
+export type StatsResolver = (card: Card, pos: Position) => CardStats;

@@ -16,7 +16,7 @@
  * the "2+ matched sides" threshold but can never themselves be captured
  * (there's no card there).
  */
-import type { Board, Card, CaptureResult, Position } from '../types';
+import type { Board, Card, CaptureResult, Position, StatsResolver } from '../types';
 import { getCell, neighborsOf, opposite } from '../board';
 import { resolveBaseCaptures } from '../capture';
 
@@ -24,6 +24,8 @@ export interface SameOptions {
   /** If set (Same Wall active), board edges are treated as this value for matching. */
   wallValue?: number;
 }
+
+const identityStats: StatsResolver = (card) => card.stats;
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => row.map((cell) => ({ ...cell }))) as Board;
@@ -34,16 +36,18 @@ export function resolveSameCaptures(
   placedCard: Card,
   pos: Position,
   options: SameOptions = {},
+  getStats: StatsResolver = identityStats,
 ): CaptureResult {
   const matchedNeighborPositions: Position[] = [];
   let matchedSideCount = 0;
+  const placedStats = getStats(placedCard, pos);
 
   for (const { side, neighborPos } of neighborsOf(pos)) {
     const neighborCell = getCell(board, neighborPos);
-    const placedValue = placedCard.stats[side];
+    const placedValue = placedStats[side];
 
     if (neighborCell.card) {
-      const neighborValue = neighborCell.card.stats[opposite(side)];
+      const neighborValue = getStats(neighborCell.card, neighborPos)[opposite(side)];
       if (placedValue === neighborValue) {
         matchedSideCount++;
         if (neighborCell.card.owner !== placedCard.owner) {
@@ -64,7 +68,7 @@ export function resolveSameCaptures(
       'right',
     ];
     for (const side of allSides) {
-      if (!sidesWithNeighbors.has(side) && placedCard.stats[side] === options.wallValue) {
+      if (!sidesWithNeighbors.has(side) && placedStats[side] === options.wallValue) {
         matchedSideCount++;
       }
     }
@@ -89,13 +93,14 @@ export function resolveSameCaptures(
   const capturedSet = new Set(allCaptured.map((p) => `${p.row},${p.col}`));
 
   // Combo chain: each newly-flipped card checks its own other neighbors
-  // using the standard base (higher-value) rule.
+  // using the standard base (higher-value) rule - still respecting
+  // positional modifiers for both sides of each chained comparison.
   while (queue.length > 0) {
     const current = queue.shift()!;
     const currentCard = getCell(working, current).card;
     if (!currentCard) continue;
 
-    const chainCaptures = resolveBaseCaptures(working, currentCard, current);
+    const chainCaptures = resolveBaseCaptures(working, currentCard, current, getStats);
     for (const p of chainCaptures) {
       const key = `${p.row},${p.col}`;
       if (capturedSet.has(key)) continue;

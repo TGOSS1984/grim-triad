@@ -12,16 +12,18 @@
  * - Random: pre-game hand-drawing (rules/random.ts)
  * - Trade Rule: post-game card exchange (rules/tradeRules.ts)
  *
- * KNOWN v1 SIMPLIFICATION (Elemental): the +/-1 modifier is applied to the
- * card being placed this turn, compared against neighbors' stored (raw)
- * stats. It is NOT retroactively re-applied to a card already sitting on an
- * elemental cell when a later placement attacks it. Some Triple Triad
- * implementations do apply the modifier symmetrically to the defender too;
- * we've scoped v1 to the simpler, still-faithful "affects the active
- * placement" behaviour and flagged this here so it's a deliberate, visible
- * choice to revisit rather than an accidental gap.
+ * Elemental now applies symmetrically: a StatsResolver is built once per
+ * move and passed into base/Same/Plus, which each call it for EVERY card
+ * they compare - the card being placed AND every neighbor being checked
+ * against it, at that neighbor's own board position. Earlier this only
+ * ever applied the modifier to the card being placed, so a card sitting on
+ * a matching element got no benefit when it was later attacked, only when
+ * it was doing the attacking - caught in actual play (a card on a matching
+ * tile lost to a value it should have tied against) and confirmed by
+ * auditing the code: the old version literally never re-read a defender's
+ * position at all.
  */
-import type { Board, Card, CaptureResult, Position, RuleSet } from './types';
+import type { Board, Card, CaptureResult, Position, RuleSet, StatsResolver } from './types';
 import { resolveBaseCaptures } from './capture';
 import { resolveSameCaptures } from './rules/same';
 import { getWallValueForRuleSet } from './rules/sameWall';
@@ -47,28 +49,29 @@ export function resolveCaptures(
   pos: Position,
   ruleSet: RuleSet,
 ): CaptureResult {
-  // Elemental changes the placed card's effective stats for every other
-  // rule to compare against - apply it first, unconditionally cheap if the
-  // rule is inactive (getEffectiveStats is a no-op without a cell element).
-  const effectiveCard: Card = ruleSet.elemental
-    ? { ...placedCard, stats: getEffectiveStats(board, placedCard, pos) }
-    : placedCard;
+  // Resolves ANY card's effective stats at ITS OWN position - used for
+  // both the card being placed and every neighbor it's compared against,
+  // so Elemental applies the same way regardless of which side of a
+  // comparison a card is on. A no-op (raw stats) when Elemental is off.
+  const getStats: StatsResolver = ruleSet.elemental
+    ? (card, cardPos) => getEffectiveStats(board, card, cardPos)
+    : (card) => card.stats;
 
   if (ruleSet.same) {
     const wallValue = getWallValueForRuleSet(ruleSet);
-    const sameResult = resolveSameCaptures(board, effectiveCard, pos, { wallValue });
+    const sameResult = resolveSameCaptures(board, placedCard, pos, { wallValue }, getStats);
     if (sameResult.captured.length > 0) {
       return sameResult;
     }
   }
 
   if (ruleSet.plus) {
-    const plusResult = resolvePlusCaptures(board, effectiveCard, pos);
+    const plusResult = resolvePlusCaptures(board, placedCard, pos, getStats);
     if (plusResult.captured.length > 0) {
       return plusResult;
     }
   }
 
-  const baseCaptured = resolveBaseCaptures(board, effectiveCard, pos);
+  const baseCaptured = resolveBaseCaptures(board, placedCard, pos, getStats);
   return { captured: baseCaptured, comboTriggered: false };
 }

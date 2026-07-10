@@ -117,4 +117,106 @@ describe('resolveCaptures (composed rule engine)', () => {
     // top+left match the wall (10), right matches red-right's left (1) -> 3 matches, captures red-right.
     expect(result.captured).toEqual([{ row: 0, col: 1 }]);
   });
+
+  describe('Elemental applies to the DEFENDER too, not just the attacker', () => {
+    // Regression coverage for a real bug caught in play: a card sitting on
+    // a matching element got no benefit when later attacked, only when it
+    // was doing the attacking - because the old version only ever applied
+    // the modifier to the card being placed that turn.
+
+    it('a defender on a MATCHING element resists a capture it would otherwise lose to', () => {
+      const board = createEmptyBoard();
+      // Red card sits on a warp tile it matches - its printed left=5
+      // should become an effective 6 when defending.
+      board[1][1].element = 'warp';
+      place(
+        board,
+        makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-defender', 'warp'),
+        { row: 1, col: 1 },
+      );
+      // Blue attacks with a raw 6 on the facing side - under the old bug
+      // this beats the defender's raw 5. With the fix, the defender's
+      // effective 6 makes this a tie, so no capture.
+      const attacker = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 6 }, 'blue-attacker');
+
+      const result = resolveCaptures(board, attacker, { row: 1, col: 0 }, {
+        ...DEFAULT_RULE_SET,
+        elemental: true,
+      });
+
+      expect(result.captured).toEqual([]);
+    });
+
+    it('an attacker with just enough of an edge still beats a defended (matching-element) card', () => {
+      const board = createEmptyBoard();
+      board[1][1].element = 'warp';
+      place(
+        board,
+        makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-defender', 'warp'),
+        { row: 1, col: 1 },
+      );
+      // 7 beats the defender's boosted 6 (5+1), where it would also have
+      // beaten the raw 5 - a sanity check that genuine advantages still work.
+      const attacker = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 7 }, 'blue-attacker');
+
+      const result = resolveCaptures(board, attacker, { row: 1, col: 0 }, {
+        ...DEFAULT_RULE_SET,
+        elemental: true,
+      });
+
+      expect(result.captured).toEqual([{ row: 1, col: 1 }]);
+    });
+
+    it('a defender on a MISMATCHED element is weaker than its printed value suggests', () => {
+      const board = createEmptyBoard();
+      board[1][1].element = 'warp';
+      // Red's own element is 'toxic', mismatching the warp tile it sits on
+      // - its printed left=6 should become an effective 5 when defending.
+      place(
+        board,
+        makeCard('red', { top: 1, bottom: 1, left: 6, right: 1 }, 'red-defender', 'toxic'),
+        { row: 1, col: 1 },
+      );
+      // Raw 6 would only tie a raw 6, but the mismatch-weakened defender
+      // (effective 5) should now lose to it.
+      const attacker = makeCard('blue', { top: 1, bottom: 1, left: 1, right: 6 }, 'blue-attacker');
+
+      const result = resolveCaptures(board, attacker, { row: 1, col: 0 }, {
+        ...DEFAULT_RULE_SET,
+        elemental: true,
+      });
+
+      expect(result.captured).toEqual([{ row: 1, col: 1 }]);
+    });
+
+    it('applies independently to both cards when both are sitting on (different) elemental tiles', () => {
+      const board = createEmptyBoard();
+      board[1][0].element = 'warp'; // attacker's own tile
+      board[1][1].element = 'toxic'; // defender's own tile
+
+      // Defender matches its own tile (toxic): printed left=5 -> effective 6.
+      place(
+        board,
+        makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-defender', 'toxic'),
+        { row: 1, col: 1 },
+      );
+      // Attacker matches its own tile (warp): printed right=5 -> effective 6.
+      const attacker = makeCard(
+        'blue',
+        { top: 1, bottom: 1, left: 1, right: 5 },
+        'blue-attacker',
+        'warp',
+      );
+
+      const result = resolveCaptures(board, attacker, { row: 1, col: 0 }, {
+        ...DEFAULT_RULE_SET,
+        elemental: true,
+      });
+
+      // Both boosted to 6 - a tie, so no capture, proving each side's
+      // modifier was computed independently at its OWN position rather
+      // than only the attacker's.
+      expect(result.captured).toEqual([]);
+    });
+  });
 });

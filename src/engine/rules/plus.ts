@@ -9,9 +9,11 @@
  * card re-checks its own other neighbors using the standard base
  * (higher-value-wins) rule, cascading until no further captures occur.
  */
-import type { Board, Card, CaptureResult, Position, Side } from '../types';
+import type { Board, Card, CaptureResult, Position, Side, StatsResolver } from '../types';
 import { ALL_SIDES, getCell, neighborsOf, opposite } from '../board';
 import { resolveBaseCaptures } from '../capture';
+
+const identityStats: StatsResolver = (card) => card.stats;
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => row.map((cell) => ({ ...cell }))) as Board;
@@ -21,8 +23,10 @@ export function resolvePlusCaptures(
   board: Board,
   placedCard: Card,
   pos: Position,
+  getStats: StatsResolver = identityStats,
 ): CaptureResult {
   const neighbors = neighborsOf(pos);
+  const placedStats = getStats(placedCard, pos);
 
   // sum -> list of (side, neighborPos) that produced it
   const sumGroups = new Map<number, { side: Side; neighborPos: Position }[]>();
@@ -31,7 +35,7 @@ export function resolvePlusCaptures(
     const neighborCell = getCell(board, neighborPos);
     if (!neighborCell.card) continue;
 
-    const sum = placedCard.stats[side] + neighborCell.card.stats[opposite(side)];
+    const sum = placedStats[side] + getStats(neighborCell.card, neighborPos)[opposite(side)];
     const group = sumGroups.get(sum) ?? [];
     group.push({ side, neighborPos });
     sumGroups.set(sum, group);
@@ -72,7 +76,7 @@ export function resolvePlusCaptures(
     const currentCard = getCell(working, current).card;
     if (!currentCard) continue;
 
-    const chainCaptures = resolveBaseCaptures(working, currentCard, current);
+    const chainCaptures = resolveBaseCaptures(working, currentCard, current, getStats);
     for (const p of chainCaptures) {
       const key = `${p.row},${p.col}`;
       if (capturedSet.has(key)) continue;
