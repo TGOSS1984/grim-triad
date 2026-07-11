@@ -61,12 +61,13 @@
  * without seeing a card's own element, there was no way to tell in
  * advance whether placing it on an elemental tile would help or hurt.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import type { CardStats, PlayerColour } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { CAPTURE_FLIP_DURATION_MS } from '../../state/animationTiming';
 import { ElementIcon } from '../common/ElementIcon';
+import { CardCaptureFlame } from './CardCaptureFlame';
 import styles from './Card.module.css';
 
 const ELEMENT_LABELS: Record<ElementId, string> = {
@@ -154,10 +155,30 @@ export function Card({
   // the colour to snap instantly, we want it to swap while the card is
   // edge-on (scaleX near 0) so it reads as a physical flip.
   const [displayOwner, setDisplayOwner] = useState(owner);
+  // Mirrors displayOwner for the effect's own guard check below, WITHOUT
+  // being a dependency of that effect - see the comment on the effect
+  // itself for why that distinction matters.
+  const displayOwnerRef = useRef(owner);
+  // Drives the flame/fuse overlay (CardCaptureFlame) - 'idle' renders
+  // nothing. Tracked separately from displayOwner/flipControls because
+  // the overlay needs to render DIFFERENT visuals for the shrink half
+  // (a burning fuse) vs. the expand half (the payoff flash + embers),
+  // not just "is a flip happening".
+  const [flipPhase, setFlipPhase] = useState<'idle' | 'shrinking' | 'expanding'>('idle');
   const flipControls = useAnimation();
 
+  // IMPORTANT: displayOwner is deliberately NOT a dependency here, even
+  // though the effect reads it (via the ref) and writes it. If it WERE a
+  // dependency, calling setDisplayOwner below would itself cause this
+  // effect to re-run (React re-runs an effect whenever a value in its
+  // dependency array changes, including ones the effect just set) - which
+  // runs this SAME invocation's cleanup and sets `cancelled = true` out
+  // from under it, silently skipping everything after that point in the
+  // still-running async IIFE. That's a real bug this project hit: the
+  // final `setFlipPhase('idle')` below was being skipped every time,
+  // leaving the flame overlay mounted forever after a flip completed.
   useEffect(() => {
-    if (owner === displayOwner) return;
+    if (owner === displayOwnerRef.current) return;
     let cancelled = false;
 
     (async () => {
@@ -166,22 +187,27 @@ export function Card({
         if (cancelled) return;
       }
 
+      setFlipPhase('shrinking');
       await flipControls.start({
         scaleX: 0,
         transition: { duration: FLIP_HALF_DURATION, ease: 'easeIn' },
       });
       if (cancelled) return;
+      displayOwnerRef.current = owner;
       setDisplayOwner(owner);
+      setFlipPhase('expanding');
       await flipControls.start({
         scaleX: 1,
         transition: { duration: FLIP_HALF_DURATION, ease: 'easeOut' },
       });
+      if (cancelled) return;
+      setFlipPhase('idle');
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [owner, displayOwner, flipControls, flipDelayMs]);
+  }, [owner, flipControls, flipDelayMs]);
 
   const rootClassName = [
     styles.card,
@@ -244,6 +270,13 @@ export function Card({
       <div className={`${styles.stat} ${styles.statBottom}`}>{displayStat(stats.bottom)}</div>
       <div className={`${styles.stat} ${styles.statLeft}`}>{displayStat(stats.left)}</div>
       <div className={`${styles.stat} ${styles.statRight}`}>{displayStat(stats.right)}</div>
+      {flipPhase !== 'idle' && (
+        <CardCaptureFlame
+          phase={flipPhase}
+          newOwner={displayOwner}
+          halfDurationSeconds={FLIP_HALF_DURATION}
+        />
+      )}
     </>
   );
 

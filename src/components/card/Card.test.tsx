@@ -194,6 +194,42 @@ describe('Card', () => {
     expect(screen.queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();
   });
 
+  describe('capture flame overlay', () => {
+    it('renders no flame overlay when the card has never flipped', () => {
+      render(<Card {...baseProps} owner="blue" />);
+      expect(document.querySelector('[class*="overlay"]')).not.toBeInTheDocument();
+    });
+
+    it('renders the flame overlay while a capture flip is in progress', async () => {
+      const { rerender } = render(<Card {...baseProps} owner="blue" />);
+      rerender(<Card {...baseProps} owner="red" />);
+
+      await waitFor(() => {
+        expect(document.querySelector('[class*="overlay"]')).toBeInTheDocument();
+      });
+    });
+
+    it('removes the flame overlay once the flip has fully completed', async () => {
+      const { rerender } = render(<Card {...baseProps} owner="blue" />);
+      rerender(<Card {...baseProps} owner="red" />);
+
+      // Wait for the flip to actually finish (template swapped), then for
+      // the overlay itself to be gone.
+      await waitFor(() => {
+        const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+        expect(frame.src).toContain('template-red.png');
+      });
+      await waitFor(() => {
+        expect(document.querySelector('[class*="overlay"]')).not.toBeInTheDocument();
+      });
+    });
+
+    it('does not render a flame overlay on the initial mount, even with a flipDelayMs prop set', () => {
+      render(<Card {...baseProps} owner="blue" flipDelayMs={500} />);
+      expect(document.querySelector('[class*="overlay"]')).not.toBeInTheDocument();
+    });
+  });
+
   it('shows an element badge with an accessible label when element is provided', () => {
     render(<Card {...baseProps} element="toxic" />);
     expect(screen.getByRole('img', { name: 'Toxic affinity' })).toBeInTheDocument();
