@@ -44,6 +44,18 @@ describe('parseRow', () => {
     expect(parseRow(row)).toBeNull();
   });
 
+  it("includes a row verified via the newer 'Added from current Munitorum Field Manual' phrasing, not just 'Matched...'", () => {
+    // Real, reachable bug: a whole later addition to the source workbook
+    // (307 real units, each with a confirmed points value and a source
+    // URL) used this different wording and was being silently dropped
+    // entirely by a filter that only recognized "Matched".
+    const row: RawCatalogueRow = {
+      ...baseRow,
+      'Verification Status': 'Added from current Munitorum Field Manual v4.1 (non-Legends)',
+    };
+    expect(parseRow(row)).not.toBeNull();
+  });
+
   it('excludes a row missing points entirely', () => {
     const row: RawCatalogueRow = { ...baseRow, Points: undefined };
     expect(parseRow(row)).toBeNull();

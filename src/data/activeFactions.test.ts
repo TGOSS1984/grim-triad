@@ -15,14 +15,17 @@ describe('getUnitsForRoster', () => {
 
   it('unions in the shared generic Space Marines pool for a chapter roster', () => {
     const units = getUnitsForRoster('Blood Angels');
-    const genericUnit = units.find((u) => u.faction === 'Space Marines' && !u.subfaction);
+    const genericUnit = units.find(
+      (u) => u.faction === 'Space Marines' && (!u.subfaction || u.subfaction === u.faction),
+    );
     expect(genericUnit).toBeDefined();
   });
 
   it("gives every Space Marine chapter the SAME generic pool size on top of its own units", () => {
     const genericCount = (rosterName: string) =>
-      getUnitsForRoster(rosterName).filter((u) => u.faction === 'Space Marines' && !u.subfaction)
-        .length;
+      getUnitsForRoster(rosterName).filter(
+        (u) => u.faction === 'Space Marines' && (!u.subfaction || u.subfaction === u.faction),
+      ).length;
 
     const bloodAngelsGeneric = genericCount('Blood Angels');
     const darkAngelsGeneric = genericCount('Dark Angels');

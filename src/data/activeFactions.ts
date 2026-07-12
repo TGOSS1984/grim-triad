@@ -34,6 +34,21 @@ export const ACTIVE_FACTIONS: Faction[] = ALL_FACTIONS.filter((f) => f.active);
 const SPACE_MARINES_PARENT_FACTION = 'Space Marines';
 
 /**
+ * True when a unit has no REAL subfaction distinct from its own top-level
+ * faction. The source spreadsheet has used two different conventions for
+ * this over time: leaving `subfaction` blank/absent entirely (older
+ * exports), or - as of a later data edit - always populating it, with "no
+ * real subfaction" represented as subfaction === faction (self-
+ * referential, e.g. "Space Marines"/"Space Marines", "Necrons" units have
+ * no subfaction key at all, "Salamanders"/"Salamanders" as its own
+ * one-off roster). This checks for either convention, so a future
+ * re-export using whichever pattern still works without a code change.
+ */
+function hasNoRealSubfaction(unit: Unit): boolean {
+  return !unit.subfaction || unit.subfaction === unit.faction;
+}
+
+/**
  * All units belonging to a given roster (matches by subfaction, falling
  * back to faction) - PLUS, for a Space Marine chapter roster (Blood
  * Angels, Dark Angels, etc.), the shared pool of generic, chapter-less
@@ -44,13 +59,13 @@ const SPACE_MARINES_PARENT_FACTION = 'Space Marines';
  * like Necrons (46) - real Warhammer 40K chapters share the vast bulk of
  * their roster (Tactical Squads, Rhinos, generic Captains, etc.) with
  * every other chapter, with only a handful of named characters/units
- * being chapter-specific. The data already reflects this: 80 generic
- * units exist under `faction: 'Space Marines', subfaction: undefined`,
- * each with its OWN portrait art already in place - no image duplication
- * needed, every unit still points at its own existing asset. This
- * function is the only place that union needs to happen; everything
- * downstream (army builder, matchSetup) just calls this and gets a
- * complete roster.
+ * being chapter-specific. The data already reflects this: ~70 generic
+ * units exist under `faction: 'Space Marines'` with no real subfaction of
+ * their own (see hasNoRealSubfaction above), each with its OWN portrait
+ * art already in place - no image duplication needed, every unit still
+ * points at its own existing asset. This function is the only place that
+ * union needs to happen; everything downstream (army builder,
+ * matchSetup) just calls this and gets a complete roster.
  *
  * Detecting "is this a Space Marine chapter roster" is done from the UNIT
  * data itself (any unit with subfaction === rosterName whose OWN faction
@@ -61,12 +76,15 @@ const SPACE_MARINES_PARENT_FACTION = 'Space Marines';
 export function getUnitsForRoster(rosterName: string): Unit[] {
   const own = ALL_UNITS.filter((u) => (u.subfaction ?? u.faction) === rosterName);
   const isSpaceMarineChapter = own.some(
-    (u) => u.faction === SPACE_MARINES_PARENT_FACTION && u.subfaction === rosterName,
+    (u) =>
+      u.faction === SPACE_MARINES_PARENT_FACTION &&
+      u.subfaction === rosterName &&
+      !hasNoRealSubfaction(u),
   );
   if (!isSpaceMarineChapter) return own;
 
   const generic = ALL_UNITS.filter(
-    (u) => u.faction === SPACE_MARINES_PARENT_FACTION && !u.subfaction,
+    (u) => u.faction === SPACE_MARINES_PARENT_FACTION && hasNoRealSubfaction(u),
   );
   return [...own, ...generic];
 }
@@ -138,7 +156,7 @@ export function inferRosterNameFromUnitIds(unitIds: string[]): string | undefine
   for (const id of unitIds) {
     const unit = getUnitById(id);
     if (!unit) continue;
-    if (unit.subfaction) return unit.subfaction;
+    if (!hasNoRealSubfaction(unit)) return unit.subfaction;
     if (!fallback) fallback = unit.faction;
   }
   return fallback;

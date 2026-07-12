@@ -16,13 +16,29 @@
  * surfaced separately as `subfaction` (for army-builder roster filtering).
  *
  * Row exclusion: a row is dropped from v1 data if it's missing an essential
- * field, or if its Verification Status isn't "Matched to Munitorum Field
- * Manual v2.3" (i.e. no confirmed points value) - see ROADMAP.md Section 4.4.
+ * field, or if its Verification Status doesn't match one of the accepted
+ * phrasings in VERIFIED_STATUS_SUBSTRINGS below (i.e. no confirmed points
+ * value) - see ROADMAP.md Section 4.4.
  */
 import XLSX from 'xlsx';
 
 const SHEET_NAME = 'Master Catalogue';
-const VERIFIED_STATUS_SUBSTRING = 'Matched';
+/**
+ * Verification-status phrasings that indicate a row's points are actually
+ * confirmed from a real source (and so should be included) - a row whose
+ * status matches neither gets dropped (see this file's header). Two
+ * phrasings exist because the workbook was built up over two separate
+ * verification passes: the original MFM v2.3 sweep ("Matched to
+ * Munitorum Field Manual v2.3"), and a later addition of newer units
+ * sourced from MFM v4.1 ("Added from current Munitorum Field Manual v4.1
+ * (non-Legends)"). A real, reachable data bug: checking only for
+ * "Matched" silently dropped all 307 rows from that second pass - each
+ * with a confirmed points value and its own Source URL, so there was no
+ * actual reason to exclude them. "Not found in uploaded PDF" rows
+ * (genuinely no confirmed points source) are deliberately NOT in this
+ * list and stay excluded either way.
+ */
+const VERIFIED_STATUS_SUBSTRINGS = ['Matched', 'Added from current Munitorum Field Manual'];
 
 /** Space Marine chapter factions that roll up under the parent "Space Marines" faction. */
 const CHAPTER_ROLLUP: Record<string, string> = {
@@ -91,7 +107,7 @@ export function parseRow(row: RawCatalogueRow): NormalizedUnit | null {
 
   if (!name || !rawFaction || !battlefieldRole || !unitType) return null;
   if (typeof points !== 'number' || Number.isNaN(points) || points <= 0) return null;
-  if (!verification.includes(VERIFIED_STATUS_SUBSTRING)) return null;
+  if (!VERIFIED_STATUS_SUBSTRINGS.some((s) => verification.includes(s))) return null;
 
   const faction = CHAPTER_ROLLUP[rawFaction] ?? rawFaction;
   const subfaction = CHAPTER_ROLLUP[rawFaction]

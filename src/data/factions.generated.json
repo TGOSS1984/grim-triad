@@ -3,61 +3,73 @@
     "slug": "adepta-sororitas",
     "name": "Adepta Sororitas",
     "active": false,
-    "unitCount": 26
+    "unitCount": 32
   },
   {
     "slug": "adeptus-custodes",
     "name": "Adeptus Custodes",
     "active": false,
-    "unitCount": 17
+    "unitCount": 31
   },
   {
     "slug": "adeptus-mechanicus",
     "name": "Adeptus Mechanicus",
     "active": false,
-    "unitCount": 26
+    "unitCount": 34
+  },
+  {
+    "slug": "adeptus-titanicus",
+    "name": "Adeptus Titanicus",
+    "active": false,
+    "unitCount": 4
   },
   {
     "slug": "aeldari",
     "name": "Aeldari",
     "active": true,
-    "unitCount": 47
+    "unitCount": 76
   },
   {
     "slug": "astra-militarum",
     "name": "Astra Militarum",
     "active": false,
-    "unitCount": 49
+    "unitCount": 72
   },
   {
     "slug": "black-templars",
     "name": "Black Templars",
     "active": false,
-    "unitCount": 11
+    "unitCount": 14
   },
   {
     "slug": "blood-angels",
     "name": "Blood Angels",
     "active": true,
-    "unitCount": 13
+    "unitCount": 15
   },
   {
     "slug": "chaos-daemons",
     "name": "Chaos Daemons",
     "active": false,
-    "unitCount": 42
+    "unitCount": 52
   },
   {
     "slug": "chaos-knights",
     "name": "Chaos Knights",
     "active": false,
-    "unitCount": 10
+    "unitCount": 20
   },
   {
     "slug": "chaos-space-marines",
     "name": "Chaos Space Marines",
     "active": false,
-    "unitCount": 42
+    "unitCount": 53
+  },
+  {
+    "slug": "chaos-titan-legions",
+    "name": "Chaos Titan Legions",
+    "active": false,
+    "unitCount": 4
   },
   {
     "slug": "crimson-fists",
@@ -69,43 +81,43 @@
     "slug": "dark-angels",
     "name": "Dark Angels",
     "active": false,
-    "unitCount": 12
+    "unitCount": 15
   },
   {
     "slug": "death-guard",
     "name": "Death Guard",
     "active": false,
-    "unitCount": 31
+    "unitCount": 45
   },
   {
     "slug": "deathwatch",
     "name": "Deathwatch",
     "active": false,
-    "unitCount": 7
+    "unitCount": 9
   },
   {
     "slug": "drukhari",
     "name": "Drukhari",
     "active": false,
-    "unitCount": 23
+    "unitCount": 27
   },
   {
     "slug": "emperor-s-children",
     "name": "Emperor's Children",
     "active": false,
-    "unitCount": 8
+    "unitCount": 23
   },
   {
     "slug": "genestealer-cults",
     "name": "Genestealer Cults",
     "active": false,
-    "unitCount": 22
+    "unitCount": 24
   },
   {
     "slug": "grey-knights",
     "name": "Grey Knights",
     "active": false,
-    "unitCount": 17
+    "unitCount": 27
   },
   {
     "slug": "harlequins",
@@ -117,7 +129,7 @@
     "slug": "imperial-agents",
     "name": "Imperial Agents",
     "active": false,
-    "unitCount": 13
+    "unitCount": 28
   },
   {
     "slug": "imperial-fists",
@@ -129,84 +141,90 @@
     "slug": "imperial-knights",
     "name": "Imperial Knights",
     "active": false,
-    "unitCount": 11
+    "unitCount": 22
+  },
+  {
+    "slug": "iron-hands",
+    "name": "Iron Hands",
+    "active": false,
+    "unitCount": 2
   },
   {
     "slug": "leagues-of-votann",
     "name": "Leagues of Votann",
     "active": false,
-    "unitCount": 13
+    "unitCount": 22
   },
   {
     "slug": "necrons",
     "name": "Necrons",
     "active": true,
-    "unitCount": 46
+    "unitCount": 52
   },
   {
     "slug": "orks",
     "name": "Orks",
     "active": false,
-    "unitCount": 48
+    "unitCount": 58
   },
   {
     "slug": "raven-guard",
     "name": "Raven Guard",
     "active": false,
-    "unitCount": 1
+    "unitCount": 2
   },
   {
     "slug": "salamanders",
     "name": "Salamanders",
     "active": false,
-    "unitCount": 1
+    "unitCount": 2
   },
   {
     "slug": "space-marines",
     "name": "Space Marines",
     "active": false,
-    "unitCount": 70
+    "unitCount": 84
   },
   {
     "slug": "space-wolves",
     "name": "Space Wolves",
     "active": false,
-    "unitCount": 25
+    "unitCount": 32
   },
   {
     "slug": "t-au-empire",
     "name": "T'au Empire",
     "active": false,
-    "unitCount": 31
+    "unitCount": 43
   },
   {
     "slug": "thousand-sons",
     "name": "Thousand Sons",
     "active": false,
-    "unitCount": 22
+    "unitCount": 39
   },
   {
     "slug": "tyranids",
     "name": "Tyranids",
     "active": true,
-    "unitCount": 46
+    "unitCount": 52
   },
   {
     "slug": "ultramarines",
     "name": "Ultramarines",
     "active": false,
-    "unitCount": 4
+    "unitCount": 10
   },
   {
     "slug": "white-scars",
     "name": "White Scars",
     "active": false,
-    "unitCount": 1
+    "unitCount": 2
   },
   {
     "slug": "world-eaters",
     "name": "World Eaters",
     "active": false,
-    "unitCount": 22
+    "unitCount": 37
   }
 ]
