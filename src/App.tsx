@@ -37,6 +37,7 @@ import { RoundSummaryScreen } from './screens/RoundSummaryScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { SeriesResultScreen } from './screens/SeriesResultScreen';
 import { CampaignHomeScreen } from './screens/CampaignHomeScreen';
+import { CampaignResultScreen } from './screens/CampaignResultScreen';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
@@ -467,7 +468,11 @@ export default function App() {
     }
 
     case 'result':
-      return <ResultScreen onNewGame={mode === 'campaign' ? handleCampaignMatchDone : handleReturnToHome} />;
+      return mode === 'campaign' ? (
+        <CampaignResultScreen onContinue={handleCampaignMatchDone} />
+      ) : (
+        <ResultScreen onNewGame={handleReturnToHome} />
+      );
 
     case 'campaignHome':
       return (

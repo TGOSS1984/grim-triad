@@ -408,10 +408,10 @@ describe('App (campaign mode flow integration)', () => {
     await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
     expect(useCampaignStore.getState().wins).toBe(1);
 
-    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
 
     // Back at the campaign hub (with updated stats), NOT the main Home
-    // screen - a campaign match's "New Game" means "next match", not
+    // screen - a campaign match's "Continue" means "next match", not
     // "leave campaign mode".
     expect(screen.getByRole('heading', { name: 'Campaign' })).toBeInTheDocument();
     expect(screen.getByText('Wins')).toBeInTheDocument();
@@ -439,21 +439,28 @@ describe('App (campaign mode flow integration)', () => {
     await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
     await screen.findByText('Your turn', {}, { timeout: 3000 });
     const { game } = useGameStore.getState();
-    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    useGameStore.setState({
+      game: {
+        ...game!,
+        phase: 'finished',
+        winner: 'blue',
+        ruleSet: { ...game!.ruleSet, tradeRule: 'direct' },
+      },
+    });
     await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
-    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
 
-    // Now at the campaign hub with an active run - Continue should skip
-    // straight past Army Builder to the coin flip.
+    // Now at the campaign hub with an active run - Continue Campaign
+    // should skip straight past Army Builder to the coin flip.
     await user.click(screen.getByRole('button', { name: 'Continue Campaign' }));
 
     expect(screen.queryByText('Choose Your Faction')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
     await screen.findByText('Your turn', {}, { timeout: 3000 });
 
-    // Collection is unchanged (this commit doesn't move cards yet, just
-    // records wins/losses) - still the same 15 units, still fielding a
-    // real 5-card hand from them.
+    // 'direct' trade rule forced above means no cards changed hands -
+    // still the same 15 units, still fielding a real 5-card hand from
+    // them for round 2.
     expect(useCampaignStore.getState().collection).toHaveLength(15);
   });
 
@@ -466,7 +473,7 @@ describe('App (campaign mode flow integration)', () => {
     const { game } = useGameStore.getState();
     useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
     await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
-    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(useCampaignStore.getState().wins).toBe(1);
 
     await user.click(screen.getByRole('button', { name: 'Start New Run' }));

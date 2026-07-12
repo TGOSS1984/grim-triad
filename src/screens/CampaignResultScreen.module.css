@@ -1,0 +1,102 @@
+.screen {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--color-bg-void);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  margin: 0;
+}
+
+.score {
+  display: flex;
+  gap: var(--space-xl);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+
+.scoreBlue {
+  color: var(--color-player-blue);
+}
+
+.scoreRed {
+  color: var(--color-player-red);
+}
+
+.tradeSection,
+.recordSection,
+.collectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: 520px;
+}
+
+.subtitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.recordRow {
+  display: flex;
+  gap: var(--space-lg);
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.badgeRow {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.badge {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.continueButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: box-shadow 200ms ease;
+  margin-top: var(--space-md);
+  border: 2px solid var(--color-accent-gold);
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+}
+
+.continueButton:hover,
+.continueButton:focus-visible {
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.empty {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+}
