@@ -323,7 +323,7 @@ export default function App() {
           redPoolRemaining={seriesState.redPool.length}
           blueWins={seriesState.blueWins}
           redWins={seriesState.redWins}
-          tradeTransferredCount={lastRound.tradeTransferredCount}
+          tradeTransferred={lastRound.tradeTransferred}
           nextRoundRuleSet={ruleSet}
           onContinue={handleRoundSummaryContinue}
         />

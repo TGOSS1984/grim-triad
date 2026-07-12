@@ -32,7 +32,8 @@ export const ROUND_HAND_SIZE = 5;
 export interface RoundRecord {
   roundNumber: number;
   winner: PlayerColour;
-  tradeTransferredCount: number;
+  /** Which units moved via the Trade Rule this round, and to which side - kept as the full list (not just a count) so RoundSummaryScreen can name them, the same way ResultScreen does for single-match mode. */
+  tradeTransferred: { unitId: string; to: PlayerColour }[];
 }
 
 export interface SeriesState {
@@ -144,7 +145,7 @@ export const useSeriesStore = create<SeriesState>((set, get) => ({
     const record: RoundRecord = {
       roundNumber: state.roundNumber,
       winner,
-      tradeTransferredCount: tradeTransferred.length,
+      tradeTransferred,
     };
 
     const seriesWinner = resolveSeriesEnd(bluePool, redPool, blueWins, redWins);

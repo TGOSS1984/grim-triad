@@ -9,6 +9,7 @@
  */
 import type { PlayerColour, RuleSet } from '../engine/types';
 import { describeRuleSet } from '../utils/describeRuleSet';
+import { getUnitById } from '../data/activeFactions';
 import styles from './RoundSummaryScreen.module.css';
 
 export interface RoundSummaryScreenProps {
@@ -19,7 +20,8 @@ export interface RoundSummaryScreenProps {
   redPoolRemaining: number;
   blueWins: number;
   redWins: number;
-  tradeTransferredCount: number;
+  /** Which units moved via the Trade Rule this round, and to which side - see seriesStore's RoundRecord. Named, not just counted, so the player can actually see what happened (this used to be a bare count, which made a real mechanic feel invisible - see the commit that added this). */
+  tradeTransferred: { unitId: string; to: PlayerColour }[];
   /** Already-rolled rules for the upcoming round. */
   nextRoundRuleSet: RuleSet;
   onContinue: () => void;
@@ -32,7 +34,7 @@ export function RoundSummaryScreen({
   redPoolRemaining,
   blueWins,
   redWins,
-  tradeTransferredCount,
+  tradeTransferred,
   nextRoundRuleSet,
   onContinue,
 }: RoundSummaryScreenProps) {
@@ -44,11 +46,23 @@ export function RoundSummaryScreen({
         Round {roundNumber}: {winner === 'blue' ? 'Blue' : 'Red'} Wins
       </h1>
 
-      {tradeTransferredCount > 0 && (
-        <p className={styles.tradeNote}>
-          {tradeTransferredCount} card{tradeTransferredCount === 1 ? '' : 's'} changed hands via
-          the Trade Rule.
-        </p>
+      {tradeTransferred.length > 0 && (
+        <div className={styles.tradeSection}>
+          <p className={styles.tradeNote}>
+            {tradeTransferred.length} card{tradeTransferred.length === 1 ? '' : 's'} changed hands
+            via the Trade Rule:
+          </p>
+          <ul className={styles.tradeList}>
+            {tradeTransferred.map((t, i) => {
+              const from: PlayerColour = t.to === 'blue' ? 'red' : 'blue';
+              return (
+                <li key={`${t.unitId}-${i}`}>
+                  {getUnitById(t.unitId)?.name ?? 'Unknown Unit'} moves from {from} to {t.to}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       <div className={styles.tallyRow}>

@@ -11,7 +11,7 @@ const baseProps = {
   redPoolRemaining: 8,
   blueWins: 1,
   redWins: 0,
-  tradeTransferredCount: 0,
+  tradeTransferred: [] as { unitId: string; to: 'blue' | 'red' }[],
   nextRoundRuleSet: DEFAULT_RULE_SET,
   onContinue: vi.fn(),
 };
@@ -32,16 +32,49 @@ describe('RoundSummaryScreen', () => {
   });
 
   it('does not mention trade transfers when none happened', () => {
-    render(<RoundSummaryScreen {...baseProps} tradeTransferredCount={0} />);
+    render(<RoundSummaryScreen {...baseProps} tradeTransferred={[]} />);
     expect(screen.queryByText(/changed hands/)).not.toBeInTheDocument();
   });
 
   it('mentions the number of cards transferred via trade, with correct pluralization', () => {
-    render(<RoundSummaryScreen {...baseProps} tradeTransferredCount={1} />);
-    expect(screen.getByText('1 card changed hands via the Trade Rule.')).toBeInTheDocument();
+    render(
+      <RoundSummaryScreen {...baseProps} tradeTransferred={[{ unitId: 'necrons-lychguard', to: 'blue' }]} />,
+    );
+    expect(screen.getByText(/^1 card changed hands/)).toBeInTheDocument();
 
-    render(<RoundSummaryScreen {...baseProps} tradeTransferredCount={3} />);
-    expect(screen.getByText('3 cards changed hands via the Trade Rule.')).toBeInTheDocument();
+    render(
+      <RoundSummaryScreen
+        {...baseProps}
+        tradeTransferred={[
+          { unitId: 'necrons-lychguard', to: 'blue' },
+          { unitId: 'necrons-immortals', to: 'blue' },
+          { unitId: 'necrons-overlord', to: 'blue' },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/^3 cards changed hands/)).toBeInTheDocument();
+  });
+
+  it('names each transferred unit and which side it moved to, not just a bare count', () => {
+    render(
+      <RoundSummaryScreen
+        {...baseProps}
+        tradeTransferred={[
+          { unitId: 'necrons-lychguard', to: 'blue' },
+          { unitId: 'necrons-immortals', to: 'red' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Lychguard moves from red to blue')).toBeInTheDocument();
+    expect(screen.getByText('Immortals moves from blue to red')).toBeInTheDocument();
+  });
+
+  it('falls back to "Unknown Unit" for an unresolvable unit id rather than crashing', () => {
+    render(
+      <RoundSummaryScreen {...baseProps} tradeTransferred={[{ unitId: 'not-a-real-id', to: 'blue' }]} />,
+    );
+    expect(screen.getByText('Unknown Unit moves from red to blue')).toBeInTheDocument();
   });
 
   it("surfaces the next round's rules clearly before continuing", () => {

@@ -96,7 +96,7 @@ describe('applyRoundResult', () => {
 
     const { roundHistory } = useSeriesStore.getState();
     expect(roundHistory).toEqual([
-      { roundNumber: 1, winner: 'red', tradeTransferredCount: 1 },
+      { roundNumber: 1, winner: 'red', tradeTransferred: [{ unitId: 'x', to: 'red' }] },
     ]);
   });
 
