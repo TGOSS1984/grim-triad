@@ -477,4 +477,87 @@ describe('App (campaign mode flow integration)', () => {
     expect(useCampaignStore.getState().wins).toBe(0);
     expect(useCampaignStore.getState().collection).toEqual([]);
   });
+
+  it("a win under the 'one' trade rule adds exactly one gained unit to the persistent collection", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        phase: 'finished',
+        winner: 'blue',
+        ruleSet: { ...game!.ruleSet, tradeRule: 'one' },
+      },
+    });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    // Started with exactly 15 - a win under 'one' gains exactly 1 card,
+    // never loses any, so the collection should now be 16.
+    expect(useCampaignStore.getState().collection).toHaveLength(16);
+  });
+
+  it("a loss under the 'one' trade rule removes exactly one unit from the persistent collection", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        phase: 'finished',
+        winner: 'red',
+        ruleSet: { ...game!.ruleSet, tradeRule: 'one' },
+      },
+    });
+    await screen.findByRole('heading', { name: 'Red Wins!' }, { timeout: 3000 });
+
+    // Started with 15 - a loss under 'one' loses exactly 1 card.
+    expect(useCampaignStore.getState().collection).toHaveLength(14);
+  });
+
+  it("a win under the 'direct' trade rule does not change the persistent collection at all", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        phase: 'finished',
+        winner: 'blue',
+        ruleSet: { ...game!.ruleSet, tradeRule: 'direct' },
+      },
+    });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    // 'direct' means each side just keeps what they already control - no
+    // transfer happens at all, regardless of who won.
+    expect(useCampaignStore.getState().collection).toHaveLength(15);
+  });
+
+  it('a draw records into the campaign record without touching the collection', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'draw' } });
+    await screen.findByRole('heading', { name: 'Draw' }, { timeout: 3000 });
+
+    expect(useCampaignStore.getState().draws).toBe(1);
+    expect(useCampaignStore.getState().collection).toHaveLength(15);
+  });
 });

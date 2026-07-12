@@ -132,13 +132,32 @@ export default function App() {
     const timer = setTimeout(() => {
       if (mode === 'campaign') {
         if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
-        const outcome: 'win' | 'loss' | 'draw' =
-          game.winner === 'draw' ? 'draw' : game.winner === HUMAN_PLAYER ? 'win' : 'loss';
-        // Gained/lost card transfers are intentionally empty here - wins
-        // and losses are already recorded, but actually moving cards via
-        // the Trade Rule is a separate piece (see campaignBalance.ts's
-        // header and the commit that wires resolveTradeRule in here).
-        useCampaignStore.getState().recordMatchResult(outcome, [], []);
+
+        if (game.winner === 'draw') {
+          useCampaignStore.getState().recordMatchResult('draw', [], []);
+          setStep('result');
+          return;
+        }
+
+        const outcome: 'win' | 'loss' = game.winner === HUMAN_PLAYER ? 'win' : 'loss';
+        // Only the human's (blue's) collection persists in v1 - the AI's
+        // roster is regenerated fresh every campaign match (see
+        // handleCoinFlipResult), so there's no persistent red pool to
+        // update on the other side of a trade the way seriesStore updates
+        // both sides. Filtering by t.to/t.from === HUMAN_PLAYER (rather
+        // than assuming "winner always gains, loser always loses") stays
+        // correct regardless of which Trade Rule variant is active -
+        // every transferred entry has an explicit from/to, and exactly
+        // one of the two checks below can ever match a given entry.
+        const tradeResult = resolveTradeRule(game);
+        const gained = tradeResult.transferred
+          .filter((t) => t.to === HUMAN_PLAYER)
+          .map((t) => t.card.unitId);
+        const lost = tradeResult.transferred
+          .filter((t) => t.from === HUMAN_PLAYER)
+          .map((t) => t.card.unitId);
+
+        useCampaignStore.getState().recordMatchResult(outcome, gained, lost);
         setStep('result');
         return;
       }
