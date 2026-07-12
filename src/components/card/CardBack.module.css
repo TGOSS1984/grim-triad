@@ -1,5 +1,14 @@
 .cardBack {
   position: relative;
+  /* Explicit z-index (not just position:relative) is required to establish
+     a local stacking context for this card - without it, .logo's z-index
+     below isn't scoped to just this card-back, and leaks into the shared
+     stacking context of whatever overlapping siblings surround it (e.g.
+     Hand's fanned card stack). That let an EARLIER card-back's logo paint
+     over a LATER card-back's own image, even though the later card should
+     visually cover the earlier one - see Card.module.css's .card for the
+     identical fix already applied there, for the identical reason. */
+  z-index: 0;
   width: var(--card-width, 140px);
   aspect-ratio: 1024 / 1536;
   display: flex;
