@@ -61,16 +61,28 @@ function toDisplayFields(
  * already on the board (the hand can be empty near the end of a match, so
  * relying on the hand alone would lose the logo right when there's the
  * least else on screen to identify the side).
+ *
+ * Prefers each card's OWN `rosterFactionSlug` (the roster it was actually
+ * drafted under - see engine/types.ts's Card) over re-deriving a slug
+ * from the underlying unit's static faction data. These differ for
+ * shared/generic units: a generic Space Marines unit fielded as part of a
+ * Blood Angels roster should show the Blood Angels logo (the roster the
+ * player actually built), not a generic Space Marines icon - see
+ * data/activeFactions.ts's getUnitsForRoster for why that union exists.
+ * Falls back to the old per-unit derivation for any card that predates
+ * this field (rosterFactionSlug is optional).
  */
 function resolveHandFactionSlug(game: GameState, colour: PlayerColour): string | undefined {
   const handCard = game.players[colour].hand[0];
   if (handCard) {
+    if (handCard.rosterFactionSlug) return handCard.rosterFactionSlug;
     const unit = getUnitById(handCard.unitId);
     if (unit) return getFactionSlugForUnit(unit);
   }
   for (const row of game.board) {
     for (const cell of row) {
       if (cell.card?.owner === colour) {
+        if (cell.card.rosterFactionSlug) return cell.card.rosterFactionSlug;
         const unit = getUnitById(cell.card.unitId);
         if (unit) return getFactionSlugForUnit(unit);
       }

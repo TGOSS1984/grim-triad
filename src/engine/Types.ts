@@ -46,6 +46,19 @@ export interface Card {
   stats: CardStats;
   element?: Element;
   owner: PlayerColour;
+  /**
+   * The faction/chapter slug this card was actually drafted/recruited
+   * under (e.g. "blood-angels"), as chosen by whichever player built this
+   * roster - NOT necessarily the same as the underlying unit's own static
+   * faction. This distinction only matters for shared/generic units (e.g.
+   * a generic Space Marines unit fielded as part of a Blood Angels
+   * roster): the unit's own data still says "Space Marines", but this
+   * field says "blood-angels" so the card visually belongs to the
+   * roster the player actually built. See matchSetup.ts's unitIdsToHand
+   * and data/activeFactions.ts's getFactionSlugForRosterName. Optional
+   * since not every caller needs card-back branding (e.g. engine tests).
+   */
+  rosterFactionSlug?: string;
 }
 
 /** A position on the 3x3 board, row/col each 0-2. */

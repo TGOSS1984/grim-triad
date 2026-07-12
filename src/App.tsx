@@ -40,10 +40,13 @@ import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
 import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
+import { getFactionSlugForRosterName, inferRosterNameFromUnitIds } from './data/activeFactions';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
 import { DEFAULT_RULE_SET } from './engine/gameReducer';
 import { computeMoveAnimationDurationMs } from './state/animationTiming';
+import { DIFFICULTY_PROFILES, DEFAULT_DIFFICULTY } from './ai/difficulty';
+import type { Difficulty } from './ai/difficulty';
 import styles from './App.module.css';
 
 type Step =
@@ -72,6 +75,9 @@ export default function App() {
   const [armyBuilderError, setArmyBuilderError] = useState<string | null>(null);
   /** Single-match mode's player-chosen rules, OR series mode's current round's rolled rules. */
   const [ruleSet, setRuleSet] = useState<RuleSet>(DEFAULT_RULE_SET);
+  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
+  /** The AI's roster faction slug for card-back branding (see Card.rosterFactionSlug) - resolved once when the AI's pool/roster is built, reused for every hand dealt from it (every round, in series mode). */
+  const [aiRosterFactionSlug, setAiRosterFactionSlug] = useState<string | undefined>();
 
   const game = useGameStore((s) => s.game);
   const startGame = useGameStore((s) => s.startGame);
@@ -135,15 +141,17 @@ export default function App() {
     setStep('modeSelect');
   }
 
-  function handleSelectSingleMatch() {
+  function handleSelectSingleMatch(chosenDifficulty: Difficulty) {
     setMode('single');
     setSeriesPoolSize(null);
+    setDifficulty(chosenDifficulty);
     setStep('armyBuilder');
   }
 
-  function handleSelectSeries(poolSize: number) {
+  function handleSelectSeries(poolSize: number, chosenDifficulty: Difficulty) {
     setMode('series');
     setSeriesPoolSize(poolSize);
+    setDifficulty(chosenDifficulty);
     setStep('armyBuilder');
   }
 
@@ -156,8 +164,16 @@ export default function App() {
         // buildRandomAIRoster can return more than requested (it greedily
         // fills the points cap) - slice to the exact pool size so both
         // sides have symmetric attrition potential.
-        const aiPool = buildRandomAIRoster(pointsCap, seriesPoolSize).slice(0, seriesPoolSize);
+        const aiPool = buildRandomAIRoster(
+          pointsCap,
+          seriesPoolSize,
+          DIFFICULTY_PROFILES[difficulty].rosterStrategy,
+        ).slice(0, seriesPoolSize);
         useSeriesStore.getState().initSeries(unitIds, aiPool);
+        const inferredAiRosterName = inferRosterNameFromUnitIds(aiPool);
+        setAiRosterFactionSlug(
+          inferredAiRosterName ? getFactionSlugForRosterName(inferredAiRosterName) : undefined,
+        );
 
         setArmyBuilderError(null);
         setRuleSet(randomRuleSet());
@@ -193,14 +209,19 @@ export default function App() {
   }
 
   function handleCoinFlipResult(startingPlayer: PlayerColour) {
+    const humanRosterName = useArmyBuilderStore.getState().rosterName;
+    const humanRosterFactionSlug = humanRosterName
+      ? getFactionSlugForRosterName(humanRosterName)
+      : undefined;
+
     if (mode === 'series') {
       const { blueHand: blueUnitIds, redHand: redUnitIds } =
         useSeriesStore.getState().drawRoundHands();
       // Both hands are already exactly 5 specific unit ids drawn from the
       // series pool - unitIdsToHand with handSize equal to the array
       // length just converts to real Cards without any further sub-draw.
-      const blueHand = unitIdsToHand(blueUnitIds, 'blue', blueUnitIds.length);
-      const redHand = unitIdsToHand(redUnitIds, 'red', redUnitIds.length);
+      const blueHand = unitIdsToHand(blueUnitIds, 'blue', blueUnitIds.length, humanRosterFactionSlug);
+      const redHand = unitIdsToHand(redUnitIds, 'red', redUnitIds.length, aiRosterFactionSlug);
 
       startGame({
         bluePlayer: { colour: 'blue', hand: blueHand },
@@ -208,12 +229,21 @@ export default function App() {
         startingPlayer,
         ruleSet,
         aiPlayer: 'red',
+        aiOptions: DIFFICULTY_PROFILES[difficulty].aiOptions,
       });
     } else {
       const pointsCap = useArmyBuilderStore.getState().pointsCap ?? 500;
-      const aiRoster = buildRandomAIRoster(pointsCap);
-      const blueHand = unitIdsToHand(humanArmyUnitIds, 'blue');
-      const redHand = unitIdsToHand(aiRoster, 'red');
+      const aiRoster = buildRandomAIRoster(
+        pointsCap,
+        5,
+        DIFFICULTY_PROFILES[difficulty].rosterStrategy,
+      );
+      const inferredAiRosterName = inferRosterNameFromUnitIds(aiRoster);
+      const resolvedAiFactionSlug = inferredAiRosterName
+        ? getFactionSlugForRosterName(inferredAiRosterName)
+        : undefined;
+      const blueHand = unitIdsToHand(humanArmyUnitIds, 'blue', 5, humanRosterFactionSlug);
+      const redHand = unitIdsToHand(aiRoster, 'red', 5, resolvedAiFactionSlug);
 
       startGame({
         bluePlayer: { colour: 'blue', hand: blueHand },
@@ -221,6 +251,7 @@ export default function App() {
         startingPlayer,
         ruleSet,
         aiPlayer: 'red',
+        aiOptions: DIFFICULTY_PROFILES[difficulty].aiOptions,
       });
     }
     setStep('game');
@@ -234,6 +265,8 @@ export default function App() {
     setArmyBuilderError(null);
     setMode('single');
     setSeriesPoolSize(null);
+    setDifficulty(DEFAULT_DIFFICULTY);
+    setAiRosterFactionSlug(undefined);
     setStep('home');
   }
 

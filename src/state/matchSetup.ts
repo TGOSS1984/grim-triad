@@ -113,8 +113,24 @@ export function buildRandomAIRoster(
  * roster only needs >= handSize units - see armyBuilderStore's own
  * MIN_ARMY_SIZE - the actual match hand is a random draw from it, per the
  * Random rule's own spirit even outside that specific rule toggle).
+ *
+ * `rosterFactionSlug`: stamped onto every returned Card as
+ * `rosterFactionSlug` (see engine/types.ts's Card) - the roster/chapter
+ * this hand was actually drafted under, used for card-back branding
+ * (CardBack shows this instead of re-deriving a slug from each unit's own
+ * static faction, which would show the wrong chapter for a shared/generic
+ * unit fielded under a specific chapter roster - see
+ * data/activeFactions.ts's getFactionSlugForRosterName). Optional and
+ * appended AFTER handSize (not inserted before it) so this stays a
+ * backward-compatible addition - every existing positional call site
+ * (`unitIdsToHand(ids, owner, 5)`) is unaffected.
  */
-export function unitIdsToHand(unitIds: string[], owner: PlayerColour, handSize = 5): Card[] {
+export function unitIdsToHand(
+  unitIds: string[],
+  owner: PlayerColour,
+  handSize = 5,
+  rosterFactionSlug?: string,
+): Card[] {
   const chosen = shuffle(unitIds).slice(0, Math.min(handSize, unitIds.length));
   return chosen.map((unitId) => {
     const unit = getUnitById(unitId);
@@ -126,6 +142,7 @@ export function unitIdsToHand(unitIds: string[], owner: PlayerColour, handSize =
       unitId,
       owner,
       stats: unit.stats,
+      rosterFactionSlug,
     };
   });
 }

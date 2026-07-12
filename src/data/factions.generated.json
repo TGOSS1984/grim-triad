@@ -60,6 +60,12 @@
     "unitCount": 42
   },
   {
+    "slug": "crimson-fists",
+    "name": "Crimson Fists",
+    "active": false,
+    "unitCount": 1
+  },
+  {
     "slug": "dark-angels",
     "name": "Dark Angels",
     "active": false,
@@ -114,6 +120,12 @@
     "unitCount": 13
   },
   {
+    "slug": "imperial-fists",
+    "name": "Imperial Fists",
+    "active": false,
+    "unitCount": 2
+  },
+  {
     "slug": "imperial-knights",
     "name": "Imperial Knights",
     "active": false,
@@ -138,10 +150,22 @@
     "unitCount": 48
   },
   {
+    "slug": "raven-guard",
+    "name": "Raven Guard",
+    "active": false,
+    "unitCount": 1
+  },
+  {
+    "slug": "salamanders",
+    "name": "Salamanders",
+    "active": false,
+    "unitCount": 1
+  },
+  {
     "slug": "space-marines",
     "name": "Space Marines",
     "active": false,
-    "unitCount": 80
+    "unitCount": 70
   },
   {
     "slug": "space-wolves",
@@ -166,6 +190,18 @@
     "name": "Tyranids",
     "active": true,
     "unitCount": 46
+  },
+  {
+    "slug": "ultramarines",
+    "name": "Ultramarines",
+    "active": false,
+    "unitCount": 4
+  },
+  {
+    "slug": "white-scars",
+    "name": "White Scars",
+    "active": false,
+    "unitCount": 1
   },
   {
     "slug": "world-eaters",
