@@ -9,7 +9,7 @@
  */
 import type { PlayerColour, RuleSet } from '../engine/types';
 import { describeRuleSet } from '../utils/describeRuleSet';
-import { getUnitById } from '../data/activeFactions';
+import { TradeTransferList } from '../components/common/TradeTransferList';
 import styles from './RoundSummaryScreen.module.css';
 
 export interface RoundSummaryScreenProps {
@@ -52,16 +52,13 @@ export function RoundSummaryScreen({
             {tradeTransferred.length} card{tradeTransferred.length === 1 ? '' : 's'} changed hands
             via the Trade Rule:
           </p>
-          <ul className={styles.tradeList}>
-            {tradeTransferred.map((t, i) => {
-              const from: PlayerColour = t.to === 'blue' ? 'red' : 'blue';
-              return (
-                <li key={`${t.unitId}-${i}`}>
-                  {getUnitById(t.unitId)?.name ?? 'Unknown Unit'} moves from {from} to {t.to}
-                </li>
-              );
-            })}
-          </ul>
+          <TradeTransferList
+            transfers={tradeTransferred.map((t) => ({
+              unitId: t.unitId,
+              from: t.to === 'blue' ? 'red' : 'blue',
+              to: t.to,
+            }))}
+          />
         </div>
       )}
 

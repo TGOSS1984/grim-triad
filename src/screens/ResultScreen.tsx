@@ -13,7 +13,7 @@
  */
 import { useGameStore } from '../state/gameStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
-import { getUnitById } from '../data/activeFactions';
+import { TradeTransferList } from '../components/common/TradeTransferList';
 import type { Board, PlayerColour } from '../engine/types';
 import styles from './ResultScreen.module.css';
 
@@ -68,18 +68,13 @@ export function ResultScreen({ onNewGame }: ResultScreenProps) {
           <h2 className={styles.subtitle}>
             Trade Rule: {TRADE_RULE_LABELS[game.ruleSet.tradeRule]}
           </h2>
-          {tradeResult.transferred.length > 0 ? (
-            <ul className={styles.tradeList}>
-              {tradeResult.transferred.map((t) => (
-                <li key={t.card.instanceId}>
-                  {getUnitById(t.card.unitId)?.name ?? 'Unknown Unit'} moves from {t.from} to{' '}
-                  {t.to}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={styles.noTrade}>No cards changed hands.</p>
-          )}
+          <TradeTransferList
+            transfers={tradeResult.transferred.map((t) => ({
+              unitId: t.card.unitId,
+              from: t.from,
+              to: t.to,
+            }))}
+          />
         </div>
       )}
 
