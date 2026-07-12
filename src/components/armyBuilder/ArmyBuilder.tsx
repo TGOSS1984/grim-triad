@@ -30,6 +30,15 @@ export interface ArmyBuilderProps {
    */
   requiredArmySize?: number;
   /**
+   * When set, the points cap is applied automatically (via setPointsCap,
+   * same as if the player had clicked it) and the "Choose Points Limit"
+   * step is skipped entirely - straight from faction to unit picker. Used
+   * by campaign mode, whose starting-roster points cap is a fixed rule
+   * (see campaignBalance.ts's CAMPAIGN_STARTING_POINTS_CAP), not a player
+   * choice like single-match/series mode's cap picker.
+   */
+  forcedPointsCap?: PointsCap;
+  /**
    * Shown as a banner above the faction picker when set - used for
    * surfacing a graceful, actionable message (e.g. "couldn't build an
    * opponent army for this pool size/points combination, try a smaller
@@ -39,7 +48,12 @@ export interface ArmyBuilderProps {
   errorMessage?: string;
 }
 
-export function ArmyBuilder({ onReady, requiredArmySize, errorMessage }: ArmyBuilderProps) {
+export function ArmyBuilder({
+  onReady,
+  requiredArmySize,
+  forcedPointsCap,
+  errorMessage,
+}: ArmyBuilderProps) {
   const rosterName = useArmyBuilderStore((s) => s.rosterName);
   const pointsCap = useArmyBuilderStore((s) => s.pointsCap);
   const selectedUnitIds = useArmyBuilderStore((s) => s.selectedUnitIds);
@@ -62,6 +76,13 @@ export function ArmyBuilder({ onReady, requiredArmySize, errorMessage }: ArmyBui
     setMaxArmySize(requiredArmySize ?? null);
   }, [requiredArmySize, setMaxArmySize]);
 
+  // Same principle for a forced points cap (campaign mode) - apply it
+  // once, immediately, rather than waiting for the player to click a cap
+  // button that (for this mode) doesn't even render.
+  useEffect(() => {
+    if (forcedPointsCap !== undefined) setPointsCap(forcedPointsCap);
+  }, [forcedPointsCap, setPointsCap]);
+
   const canContinue = requiredArmySize
     ? selectedUnitIds.length === requiredArmySize
     : selectedUnitIds.length >= minArmySize;
@@ -83,7 +104,7 @@ export function ArmyBuilder({ onReady, requiredArmySize, errorMessage }: ArmyBui
         <FactionSelect selectedRosterName={rosterName} onSelectRoster={selectRoster} />
       </section>
 
-      {rosterName && (
+      {rosterName && forcedPointsCap === undefined && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Choose Points Limit</h2>
           <div className={styles.capRow}>

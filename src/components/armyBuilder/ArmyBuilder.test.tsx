@@ -124,6 +124,38 @@ describe('ArmyBuilder', () => {
   });
 });
 
+describe('ArmyBuilder with forcedPointsCap (campaign mode)', () => {
+  it('does not show the manual points-cap picker when a cap is forced', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={1000} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.queryByText('Choose Points Limit')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1000 pts' })).not.toBeInTheDocument();
+  });
+
+  it('goes straight to the unit picker once a faction is chosen, with the forced cap already applied', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={1000} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.getByText('Build Your Army')).toBeInTheDocument();
+    expect(screen.getByText('0 / 1000 pts')).toBeInTheDocument();
+  });
+
+  it('still enforces the forced cap when adding units', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={1000} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(addUnitByName(CAPTAIN));
+
+    expect(screen.getByText('80 / 1000 pts')).toBeInTheDocument();
+  });
+});
+
 describe('ArmyBuilder with requiredArmySize (series mode)', () => {
   it('Continue stays disabled below AND requires exactly the required size, not just "at least"', async () => {
     const user = userEvent.setup();

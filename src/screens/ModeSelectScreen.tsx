@@ -13,6 +13,8 @@ import styles from './ModeSelectScreen.module.css';
 export interface ModeSelectScreenProps {
   onSelectSingleMatch: (difficulty: Difficulty) => void;
   onSelectSeries: (poolSize: number, difficulty: Difficulty) => void;
+  /** Campaign has no extra options at select-time (unlike Series' pool size) - its starting roster size/points cap/power cap are fixed rules, see campaignBalance.ts. */
+  onSelectCampaign: (difficulty: Difficulty) => void;
 }
 
 const PRESET_POOL_SIZES = [10, 15, 20, 25];
@@ -20,7 +22,11 @@ const MIN_POOL_SIZE = 10;
 const DEFAULT_POOL_SIZE = 15;
 const DIFFICULTIES: Difficulty[] = ['easy', 'normal', 'hard'];
 
-export function ModeSelectScreen({ onSelectSingleMatch, onSelectSeries }: ModeSelectScreenProps) {
+export function ModeSelectScreen({
+  onSelectSingleMatch,
+  onSelectSeries,
+  onSelectCampaign,
+}: ModeSelectScreenProps) {
   const [showSeriesOptions, setShowSeriesOptions] = useState(false);
   const [poolSize, setPoolSize] = useState(DEFAULT_POOL_SIZE);
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
@@ -75,6 +81,19 @@ export function ModeSelectScreen({ onSelectSingleMatch, onSelectSeries }: ModeSe
           <p className={styles.modeCardDescription}>
             Bring a bigger army pool, play consecutive rounds with no card
             repeats, and see how far you can go.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          className={styles.modeCard}
+          onClick={() => onSelectCampaign(difficulty)}
+        >
+          <h2 className={styles.modeCardTitle}>Campaign</h2>
+          <p className={styles.modeCardDescription}>
+            Build a starting roster, then keep playing across sessions -
+            wins and losses are permanent, and cards you capture stay
+            captured.
           </p>
         </button>
       </div>

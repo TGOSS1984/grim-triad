@@ -5,6 +5,7 @@ import App from './App';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
+import { useCampaignStore } from './state/campaignStore';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first - used to build a valid 5-card single-match army, and as
@@ -30,6 +31,8 @@ beforeEach(() => {
   useGameStore.getState().reset();
   useArmyBuilderStore.getState().reset();
   useSeriesStore.getState().reset();
+  useCampaignStore.getState().resetCampaign();
+  localStorage.clear();
 });
 
 afterEach(() => {
@@ -73,6 +76,36 @@ async function buildSeriesArmy(user: ReturnType<typeof userEvent.setup>, poolSiz
   await user.click(screen.getByRole('button', { name: '2000 pts' }));
   const names = [...BA_UNITS_TO_ADD, ...BA_UNITS_EXTRA].slice(0, poolSize);
   await addUnitsByName(user, names);
+  await user.click(screen.getByRole('button', { name: 'Continue' }));
+}
+
+/** Home -> New Game -> Mode Select (Campaign) -> Campaign Home (no active run) -> Army Builder (15-card starting roster, forced 1000pt cap) -> a live game after the coin flip. */
+async function buildCampaignArmy(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'New Game' }));
+  await user.click(screen.getByRole('button', { name: /^Campaign/ }));
+  await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+
+  await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+  // 15 real, cheap Blood Angels/generic units - well under the 1000pt
+  // cap (895pts total) and with zero units over the 150pt power
+  // threshold, so this always passes validateCampaignStartingRoster.
+  await addUnitsByName(user, [
+    'Bladeguard Ancient',
+    'Lieutenant In Reiver Armour',
+    'Ancient',
+    'Apothecary',
+    'Lieutenant in Phobos Armour',
+    'Techmarine',
+    'Chaplain',
+    'Invader ATV',
+    'Librarian',
+    'Lieutenant',
+    'Ancient In Terminator Armour',
+    'Death Company Captain',
+    'Apothecary Biologis',
+    'Captain in Phobos Armour',
+    'Judiciar',
+  ]);
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
@@ -311,5 +344,137 @@ describe('App (series mode flow integration)', () => {
     expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(10);
     // Must NOT have advanced past Army Builder.
     expect(screen.queryByText('Round 1 Rules')).not.toBeInTheDocument();
+  });
+});
+
+describe('App (campaign mode flow integration)', () => {
+  it('navigates Mode Select -> Campaign Home (not straight to Army Builder) when Campaign is chosen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+
+    await user.click(screen.getByRole('button', { name: /^Campaign/ }));
+
+    expect(screen.getByRole('heading', { name: 'Campaign' })).toBeInTheDocument();
+    expect(screen.getByText(/Build a starting roster/)).toBeInTheDocument();
+  });
+
+  it('skips the manual points-cap picker in Army Builder (campaign uses a forced 1000pt cap)', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: /^Campaign/ }));
+    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.queryByText('Choose Points Limit')).not.toBeInTheDocument();
+    expect(screen.getByText('0 / 1000 pts')).toBeInTheDocument();
+  });
+
+  it('requires exactly the campaign starting pool size (15), not just "at least 5"', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: /^Campaign/ }));
+    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.getByRole('button', { name: /Select exactly 15 units/ })).toBeDisabled();
+  });
+
+  it('starts the persistent campaign and reaches a live game after building a valid starting roster', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    expect(useCampaignStore.getState().isActive).toBe(true);
+    expect(useCampaignStore.getState().collection).toHaveLength(15);
+  });
+
+  it("records a win into the persistent campaign store and returns to the campaign hub (not Home) afterward", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    expect(useCampaignStore.getState().wins).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+
+    // Back at the campaign hub (with updated stats), NOT the main Home
+    // screen - a campaign match's "New Game" means "next match", not
+    // "leave campaign mode".
+    expect(screen.getByRole('heading', { name: 'Campaign' })).toBeInTheDocument();
+    expect(screen.getByText('Wins')).toBeInTheDocument();
+  });
+
+  it('records a loss correctly too', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'red' } });
+
+    await screen.findByRole('heading', { name: 'Red Wins!' }, { timeout: 3000 });
+    expect(useCampaignStore.getState().losses).toBe(1);
+    expect(useCampaignStore.getState().wins).toBe(0);
+  });
+
+  it('Continuing an active campaign run skips Army Builder entirely and draws the next hand from the existing collection', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+
+    // Now at the campaign hub with an active run - Continue should skip
+    // straight past Army Builder to the coin flip.
+    await user.click(screen.getByRole('button', { name: 'Continue Campaign' }));
+
+    expect(screen.queryByText('Choose Your Faction')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Collection is unchanged (this commit doesn't move cards yet, just
+    // records wins/losses) - still the same 15 units, still fielding a
+    // real 5-card hand from them.
+    expect(useCampaignStore.getState().collection).toHaveLength(15);
+  });
+
+  it('a second run start (after confirming) resets the collection/record from the campaign hub', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    expect(useCampaignStore.getState().wins).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
+
+    // Back in Army Builder for a fresh roster, and the old record is gone.
+    expect(screen.getByText('Choose Your Faction')).toBeInTheDocument();
+    expect(useCampaignStore.getState().wins).toBe(0);
+    expect(useCampaignStore.getState().collection).toEqual([]);
   });
 });

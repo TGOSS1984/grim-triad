@@ -36,9 +36,16 @@ import { GameScreen } from './screens/GameScreen';
 import { RoundSummaryScreen } from './screens/RoundSummaryScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { SeriesResultScreen } from './screens/SeriesResultScreen';
+import { CampaignHomeScreen } from './screens/CampaignHomeScreen';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
+import { useCampaignStore } from './state/campaignStore';
+import {
+  CAMPAIGN_STARTING_POOL_SIZE,
+  CAMPAIGN_STARTING_POINTS_CAP,
+  validateCampaignStartingRoster,
+} from './state/campaignBalance';
 import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
 import { getFactionSlugForRosterName, inferRosterNameFromUnitIds } from './data/activeFactions';
 import { resolveTradeRule } from './engine/rules/tradeRules';
@@ -59,9 +66,10 @@ type Step =
   | 'game'
   | 'roundSummary'
   | 'result'
-  | 'seriesResult';
+  | 'seriesResult'
+  | 'campaignHome';
 
-type Mode = 'single' | 'series';
+type Mode = 'single' | 'series' | 'campaign';
 
 /** The human always plays blue; the AI always plays red - see GameScreen/matchSetup for why this is a reasonable v1 simplification. */
 const HUMAN_PLAYER: PlayerColour = 'blue';
@@ -78,6 +86,22 @@ export default function App() {
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
   /** The AI's roster faction slug for card-back branding (see Card.rosterFactionSlug) - resolved once when the AI's pool/roster is built, reused for every hand dealt from it (every round, in series mode). */
   const [aiRosterFactionSlug, setAiRosterFactionSlug] = useState<string | undefined>();
+  /**
+   * The human's campaign roster faction slug, resolved once when a
+   * campaign run starts (from armyBuilderStore.rosterName at that exact
+   * moment) and reused for every match drawn from campaignStore's
+   * persistent collection thereafter. Unlike single-match/series mode
+   * (which can re-derive this fresh from armyBuilderStore each time,
+   * since ArmyBuilder was JUST used), campaign's "Continue" flow skips
+   * ArmyBuilder entirely on every match after the first - armyBuilderStore
+   * would be stale by then, so this has to be captured explicitly instead.
+   * NOTE: once Trade Rule transfers start mixing units from the
+   * opponent's differently-rostered pool into the collection (see
+   * campaignBalance.ts/commit 7), a single uniform slug for the whole
+   * hand stops being fully accurate for GAINED cards specifically - a
+   * known, deliberate v1 simplification, not an oversight.
+   */
+  const [campaignRosterFactionSlug, setCampaignRosterFactionSlug] = useState<string | undefined>();
 
   const game = useGameStore((s) => s.game);
   const startGame = useGameStore((s) => s.startGame);
@@ -106,6 +130,19 @@ export default function App() {
     const delayMs = computeMoveAnimationDurationMs(capturedCount);
 
     const timer = setTimeout(() => {
+      if (mode === 'campaign') {
+        if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
+        const outcome: 'win' | 'loss' | 'draw' =
+          game.winner === 'draw' ? 'draw' : game.winner === HUMAN_PLAYER ? 'win' : 'loss';
+        // Gained/lost card transfers are intentionally empty here - wins
+        // and losses are already recorded, but actually moving cards via
+        // the Trade Rule is a separate piece (see campaignBalance.ts's
+        // header and the commit that wires resolveTradeRule in here).
+        useCampaignStore.getState().recordMatchResult(outcome, [], []);
+        setStep('result');
+        return;
+      }
+
       if (mode !== 'series') {
         setStep('result');
         return;
@@ -155,8 +192,51 @@ export default function App() {
     setStep('armyBuilder');
   }
 
+  function handleSelectCampaign(chosenDifficulty: Difficulty) {
+    setMode('campaign');
+    setDifficulty(chosenDifficulty);
+    setStep('campaignHome');
+  }
+
+  /** Continuing an active campaign run skips ArmyBuilder entirely - the roster already exists (campaignStore's persistent collection), so this goes straight to the coin flip for the next match. Rolls a fresh random ruleset each time, same spirit as series mode's per-round rules. */
+  function handleCampaignContinue() {
+    setRuleSet(randomRuleSet());
+    setStep('coinFlip');
+  }
+
+  /** Starting a fresh campaign run (CampaignHomeScreen has already confirmed this with the player if one was active) discards any prior collection/record and goes to ArmyBuilder for a new starting roster. */
+  function handleCampaignStartNewRun() {
+    useCampaignStore.getState().resetCampaign();
+    setArmyBuilderError(null);
+    setStep('armyBuilder');
+  }
+
   function handleArmyReady(unitIds: string[]) {
     setHumanArmyUnitIds(unitIds);
+
+    if (mode === 'campaign') {
+      const validation = validateCampaignStartingRoster(unitIds);
+      if (!validation.valid) {
+        // Shouldn't normally be reachable - ArmyBuilder's own size/points
+        // gating already matches these same numbers via requiredArmySize/
+        // forcedPointsCap - but the power-unit cap has no live UI gate
+        // yet (see ArmyBuilder's own header), so this is the real
+        // enforcement point for that specific rule. Same graceful,
+        // actionable-message pattern as series mode's AI-roster failure
+        // below, rather than silently allowing an invalid roster through.
+        setArmyBuilderError(validation.reasons.join(' '));
+        return;
+      }
+
+      const rosterName = useArmyBuilderStore.getState().rosterName;
+      setCampaignRosterFactionSlug(rosterName ? getFactionSlugForRosterName(rosterName) : undefined);
+      useCampaignStore.getState().startCampaign(unitIds);
+
+      setArmyBuilderError(null);
+      setRuleSet(randomRuleSet());
+      setStep('coinFlip');
+      return;
+    }
 
     if (mode === 'series' && seriesPoolSize) {
       const pointsCap = useArmyBuilderStore.getState().pointsCap ?? 500;
@@ -214,7 +294,29 @@ export default function App() {
       ? getFactionSlugForRosterName(humanRosterName)
       : undefined;
 
-    if (mode === 'series') {
+    if (mode === 'campaign') {
+      const collection = useCampaignStore.getState().collection;
+      const aiRoster = buildRandomAIRoster(
+        CAMPAIGN_STARTING_POINTS_CAP,
+        5,
+        DIFFICULTY_PROFILES[difficulty].rosterStrategy,
+      );
+      const inferredAiRosterName = inferRosterNameFromUnitIds(aiRoster);
+      const resolvedAiFactionSlug = inferredAiRosterName
+        ? getFactionSlugForRosterName(inferredAiRosterName)
+        : undefined;
+      const blueHand = unitIdsToHand(collection, 'blue', 5, campaignRosterFactionSlug);
+      const redHand = unitIdsToHand(aiRoster, 'red', 5, resolvedAiFactionSlug);
+
+      startGame({
+        bluePlayer: { colour: 'blue', hand: blueHand },
+        redPlayer: { colour: 'red', hand: redHand },
+        startingPlayer,
+        ruleSet,
+        aiPlayer: 'red',
+        aiOptions: DIFFICULTY_PROFILES[difficulty].aiOptions,
+      });
+    } else if (mode === 'series') {
       const { blueHand: blueUnitIds, redHand: redUnitIds } =
         useSeriesStore.getState().drawRoundHands();
       // Both hands are already exactly 5 specific unit ids drawn from the
@@ -267,7 +369,14 @@ export default function App() {
     setSeriesPoolSize(null);
     setDifficulty(DEFAULT_DIFFICULTY);
     setAiRosterFactionSlug(undefined);
+    setCampaignRosterFactionSlug(undefined);
     setStep('home');
+  }
+
+  /** A campaign match's "New Game" doesn't mean "leave campaign mode" - it means "back to the campaign hub, ready for the next match". Only the live match resets; campaignStore's collection/record are untouched. */
+  function handleCampaignMatchDone() {
+    resetGame();
+    setStep('campaignHome');
   }
 
   switch (step) {
@@ -279,6 +388,7 @@ export default function App() {
         <ModeSelectScreen
           onSelectSingleMatch={handleSelectSingleMatch}
           onSelectSeries={handleSelectSeries}
+          onSelectCampaign={handleSelectCampaign}
         />
       );
 
@@ -286,7 +396,14 @@ export default function App() {
       return (
         <ArmyBuilderScreen
           onContinue={handleArmyReady}
-          requiredArmySize={mode === 'series' ? (seriesPoolSize ?? undefined) : undefined}
+          requiredArmySize={
+            mode === 'campaign'
+              ? CAMPAIGN_STARTING_POOL_SIZE
+              : mode === 'series'
+                ? (seriesPoolSize ?? undefined)
+                : undefined
+          }
+          forcedPointsCap={mode === 'campaign' ? CAMPAIGN_STARTING_POINTS_CAP : undefined}
           errorMessage={armyBuilderError ?? undefined}
         />
       );
@@ -331,7 +448,15 @@ export default function App() {
     }
 
     case 'result':
-      return <ResultScreen onNewGame={handleReturnToHome} />;
+      return <ResultScreen onNewGame={mode === 'campaign' ? handleCampaignMatchDone : handleReturnToHome} />;
+
+    case 'campaignHome':
+      return (
+        <CampaignHomeScreen
+          onContinue={handleCampaignContinue}
+          onStartNewRun={handleCampaignStartNewRun}
+        />
+      );
 
     case 'seriesResult':
       return (
