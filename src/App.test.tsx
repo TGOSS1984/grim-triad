@@ -79,14 +79,14 @@ async function buildSeriesArmy(user: ReturnType<typeof userEvent.setup>, poolSiz
   await user.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
-/** Home -> New Game -> Mode Select (Campaign) -> Campaign Home (no active run) -> Army Builder (15-card starting roster, forced 1000pt cap) -> a live game after the coin flip. */
+/** Home -> New Game -> Mode Select (Campaign) -> Campaign Home (no active run) -> Army Builder (15-card starting roster, forced 1500pt cap) -> a live game after the coin flip. */
 async function buildCampaignArmy(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'New Game' }));
   await user.click(screen.getByRole('button', { name: /^Campaign/ }));
   await user.click(screen.getByRole('button', { name: 'Start New Run' }));
 
   await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
-  // 15 real, cheap Blood Angels/generic units - well under the 1000pt
+  // 15 real, cheap Blood Angels/generic units - well under the 1500pt
   // cap (895pts total) and with zero units over the 150pt power
   // threshold, so this always passes validateCampaignStartingRoster.
   await addUnitsByName(user, [
@@ -359,7 +359,7 @@ describe('App (campaign mode flow integration)', () => {
     expect(screen.getByText(/Build a starting roster/)).toBeInTheDocument();
   });
 
-  it('skips the manual points-cap picker in Army Builder (campaign uses a forced 1000pt cap)', async () => {
+  it('skips the manual points-cap picker in Army Builder (campaign uses a forced 1500pt cap)', async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'New Game' }));
@@ -369,7 +369,7 @@ describe('App (campaign mode flow integration)', () => {
     await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
 
     expect(screen.queryByText('Choose Points Limit')).not.toBeInTheDocument();
-    expect(screen.getByText('0 / 1000 pts')).toBeInTheDocument();
+    expect(screen.getByText('0 / 1500 pts')).toBeInTheDocument();
   });
 
   it('requires exactly the campaign starting pool size (15), not just "at least 5"', async () => {

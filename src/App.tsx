@@ -77,6 +77,15 @@ const HUMAN_PLAYER: PlayerColour = 'blue';
 
 export default function App() {
   const [step, setStep] = useState<Step>('home');
+
+  // Every step is a fresh screen, not a page a user might want to return
+  // to at a remembered scroll position (no history/back navigation
+  // exists here) - so any scroll position carried over from the
+  // previous screen (e.g. a long roster list scrolled down in
+  // ArmyBuilder) should never persist onto the next one.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
   const [mode, setMode] = useState<Mode>('single');
   const [seriesPoolSize, setSeriesPoolSize] = useState<number | null>(null);
   const [humanArmyUnitIds, setHumanArmyUnitIds] = useState<string[]>([]);

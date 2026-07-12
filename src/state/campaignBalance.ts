@@ -14,30 +14,36 @@
  *    size, so an early loss or two doesn't wipe out the whole starting
  *    roster - matches this project's existing "series pool" sizing
  *    pattern (a multiple of 5).
- *  - CAMPAIGN_STARTING_POINTS_CAP (1000): one of the app's EXISTING
- *    points-cap options (see ArmyBuilder.tsx's POINTS_CAPS: 500/1000/
- *    2000), not a new one. This matters because 500 turned out to be
- *    infeasible for a 15-unit roster: the cheapest possible 15 units in
- *    any of the v1 active rosters (Blood Angels, Necrons, Tyranids,
- *    Aeldari) already cost 815-895pts on their own, before the player
- *    has picked anything but the bare minimum. 1000 leaves real
- *    breathing room above that floor without being the wide-open ceiling
- *    2000 would be.
+ *  - CAMPAIGN_STARTING_POINTS_CAP (1500, revised up from an initial
+ *    1000): the cheapest possible 15 units in any v1 active roster
+ *    (Blood Angels, Necrons, Tyranids, Aeldari) already cost 815-895pts
+ *    before picking anything but the bare minimum, so 1000 technically
+ *    worked but left little room to actually USE the power-unit
+ *    allowance below without gutting the rest of the roster - spending
+ *    on 3 power units near the threshold (~151pts each) left only
+ *    ~46pts/unit average for the other 12 at a 1000 cap, versus
+ *    ~87pts/unit (close to the real median unit cost) at 1500. 1500
+ *    is close to the minimum cap where "use your power picks" and
+ *    "field a roster with real breadth" stop being in tension with
+ *    each other, not a generous ceiling.
  *  - Power cap, not a ban: rather than excluding any specific card
  *    outright, this caps how MANY units above
  *    CAMPAIGN_POWER_THRESHOLD_POINTS the starting roster can include
- *    (CAMPAIGN_MAX_POWER_UNITS). 150pts sits roughly at the
- *    top 15-25% most expensive units per active faction (median unit
- *    cost across all four is 85-100pts) - "powerful", not just "above
+ *    (CAMPAIGN_MAX_POWER_UNITS, 5). 150pts sits roughly at the top
+ *    15-25% most expensive units per active faction (median unit cost
+ *    across all four is 85-100pts) - "powerful", not just "above
  *    average". This still leaves every unit selectable, it just stops a
- *    starting roster from being ALL big-ticket cards.
+ *    starting roster from being ALL big-ticket cards - kept as a
+ *    deliberate lever even after the cap increase, rather than raised
+ *    proportionally, so roster diversity stays a real constraint and
+ *    not just a formality once more budget is available.
  */
 import { getUnitById } from '../data/activeFactions';
 
 export const CAMPAIGN_STARTING_POOL_SIZE = 15;
-export const CAMPAIGN_STARTING_POINTS_CAP = 1000;
+export const CAMPAIGN_STARTING_POINTS_CAP = 1500;
 export const CAMPAIGN_POWER_THRESHOLD_POINTS = 150;
-export const CAMPAIGN_MAX_POWER_UNITS = 3;
+export const CAMPAIGN_MAX_POWER_UNITS = 5;
 
 /** True if a unit counts as "powerful" for the starting-roster power cap - i.e. costs more than CAMPAIGN_POWER_THRESHOLD_POINTS. */
 export function isPowerUnit(unitId: string): boolean {
