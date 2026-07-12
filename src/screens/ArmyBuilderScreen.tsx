@@ -4,6 +4,8 @@
  * army-building validation logic (minimum army size etc).
  */
 import { ArmyBuilder } from '../components/armyBuilder/ArmyBuilder';
+import { BackgroundLayer } from '../components/layout/BackgroundLayer';
+import { ROSTER_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
 import styles from './ArmyBuilderScreen.module.css';
 
 export interface ArmyBuilderScreenProps {
@@ -17,6 +19,7 @@ export interface ArmyBuilderScreenProps {
 export function ArmyBuilderScreen({ onContinue, requiredArmySize, errorMessage }: ArmyBuilderScreenProps) {
   return (
     <div className={styles.screen}>
+      <BackgroundLayer imagePath={ROSTER_BACKGROUND_PATH} />
       <ArmyBuilder onReady={onContinue} requiredArmySize={requiredArmySize} errorMessage={errorMessage} />
     </div>
   );

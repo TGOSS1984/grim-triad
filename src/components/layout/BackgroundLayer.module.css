@@ -3,6 +3,8 @@
   inset: 0;
   z-index: -1;
   background-color: var(--color-bg-void);
+  /* Default (no photo): the app's existing, fully-opaque tint gradient -
+     unchanged from before this file supported background photos at all. */
   background-image: radial-gradient(
     ellipse at center,
     var(--color-surface) 0%,
@@ -10,4 +12,22 @@
   );
   background-size: cover;
   background-position: center;
+}
+
+/* When a photo IS present (see BackgroundLayer.tsx's --bg-photo custom
+   property), it paints as a SECOND, lower layer - the SAME gradient
+   shape still paints on top of it, just using semi-transparent colours
+   here instead of the opaque ones above, so the photo is visible but
+   faded/tinted through the app's own colour identity rather than shown
+   raw. First layer in a comma-separated background-image list paints
+   topmost, so the gradient here really does sit over the photo. */
+.hasImage {
+  background-image: radial-gradient(
+      ellipse at center,
+      rgba(40, 59, 70, 0.82) 0%,
+      rgba(28, 33, 36, 0.92) 70%
+    ),
+    var(--bg-photo);
+  background-size: cover, cover;
+  background-position: center, center;
 }

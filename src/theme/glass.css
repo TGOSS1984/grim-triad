@@ -1,0 +1,43 @@
+/**
+ * Global glassmorphism utility. Plain global CSS (not a CSS Module) so it
+ * can be applied as a raw class name from any component's JSX alongside
+ * that component's own module classes, without every consumer needing to
+ * `composes: ... from '...'` this file individually - see main.tsx for
+ * where this gets loaded app-wide, same pattern as theme/tokens.css and
+ * theme/fonts.css.
+ *
+ * Built entirely from tokens.css's --glass-* custom properties, so this
+ * file has zero raw colour values of its own - the whole point is that
+ * "glass" is a translucency/blur TREATMENT layered on the app's existing
+ * colour identity, not a new palette. If the underlying tokens change,
+ * every glass panel updates together automatically.
+ *
+ * .glass-panel: the standard treatment - use for most content panels
+ * (sections, headers, cards) that sit over BackgroundLayer.
+ * .glass-panel-strong: a less translucent variant for panels holding
+ * dense text/controls where readability matters more than seeing the
+ * background through it (e.g. a screen with a LOT of foreground content).
+ *
+ * backdrop-filter has no effect when nothing distinct sits behind an
+ * element (e.g. BackgroundLayer's default gradient-only fallback, with no
+ * photo yet) - these classes degrade gracefully to "a translucent panel
+ * with a soft border" in that case, and the blur simply activates once a
+ * real background image is present. Nothing else needs to change.
+ */
+.glass-panel {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-panel-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow);
+}

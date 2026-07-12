@@ -7,6 +7,7 @@ import '@fontsource/rajdhani/600.css';
 import '@fontsource/rajdhani/700.css';
 import './theme/tokens.css';
 import './theme/fonts.css';
+import './theme/glass.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

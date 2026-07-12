@@ -22,6 +22,8 @@ import type { BoardCardData } from '../components/board/BoardCell';
 import { Hand } from '../components/hand/Hand';
 import type { HandCardData } from '../components/hand/Hand';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
+import { pickRandomBackground } from '../components/layout/backgroundUtils';
+import { BATTLE_BACKGROUND_POOL } from '../components/layout/backgroundPaths';
 import { ResponsiveGameLayout } from '../components/layout/ResponsiveGameLayout';
 import { useResponsiveCardWidth } from '../components/layout/useResponsiveCardWidth';
 import styles from './GameScreen.module.css';
@@ -29,6 +31,7 @@ import styles from './GameScreen.module.css';
 export interface GameScreenProps {
   /** Which colour the local human is playing as. */
   humanPlayer: PlayerColour;
+  /** Explicit override for the background image. Omit to get a random pick from BATTLE_BACKGROUND_POOL, made once per match (see the useState lazy initializer below). */
   backgroundImagePath?: string;
   /** Explicit override for card width (px). Omit to use useResponsiveCardWidth's fluid, viewport-driven default. */
   cardWidth?: number;
@@ -76,13 +79,20 @@ function resolveHandFactionSlug(game: GameState, colour: PlayerColour): string |
   return undefined;
 }
 
-export function GameScreen({ humanPlayer, backgroundImagePath, cardWidth: cardWidthOverride, onQuit }: GameScreenProps) {
+export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverride, cardWidth: cardWidthOverride, onQuit }: GameScreenProps) {
   const game = useGameStore((s) => s.game);
   const playCard = useGameStore((s) => s.playCard);
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>();
   const [confirmingQuit, setConfirmingQuit] = useState(false);
   const responsiveCardWidth = useResponsiveCardWidth();
   const cardWidth = cardWidthOverride ?? responsiveCardWidth;
+  // Lazy initializer: rolled exactly once when this GameScreen instance
+  // first mounts (i.e. once per match), not on every render - a plain
+  // pickRandomBackground(...) call in the render body would re-roll a new
+  // background on every single re-render (every move!), not once per
+  // match as intended.
+  const [randomBackground] = useState(() => pickRandomBackground(BATTLE_BACKGROUND_POOL));
+  const backgroundImagePath = backgroundOverride ?? randomBackground;
 
   if (!game) {
     return (

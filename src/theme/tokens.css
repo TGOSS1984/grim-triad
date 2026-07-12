@@ -69,4 +69,19 @@
   --shadow-glow-gold: 0 0 12px rgba(175, 131, 59, 0.5);
   --shadow-glow-blue: 0 0 12px rgba(59, 91, 115, 0.6);
   --shadow-glow-red: 0 0 12px rgba(122, 35, 32, 0.6);
+
+  /* Glassmorphism tokens - a frosted-glass panel treatment for content
+     that sits over BackgroundLayer (see components/layout/BackgroundLayer
+     and theme/glass.css). Values generalize the translucent-panel look
+     Board's own boardWrapper already used informally (rgba(28,33,36,0.72)
+     + a light blur) into shared tokens, rather than leaving that
+     definition to drift as more surfaces adopt the same treatment.
+     Deliberately still built from the SAME palette (charcoal, gold
+     border) - "glass" here means translucency + blur, not a new colour
+     identity layered on top of the existing one. */
+  --glass-bg: rgba(28, 33, 36, 0.72);
+  --glass-bg-strong: rgba(28, 33, 36, 0.85);
+  --glass-border: rgba(175, 131, 59, 0.35);
+  --glass-blur: blur(14px) saturate(140%);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }

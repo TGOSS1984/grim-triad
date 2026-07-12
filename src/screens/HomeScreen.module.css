@@ -1,18 +1,26 @@
 .home {
+  position: relative;
   min-height: 100vh;
   width: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xl);
-  background: radial-gradient(
-    ellipse at center,
-    var(--color-surface) 0%,
-    var(--color-bg-void) 70%
-  );
   padding: var(--space-xl);
   text-align: center;
+}
+
+/* BackgroundLayer (position: fixed, z-index: -1) now owns the screen's
+   background entirely - see HomeScreen.tsx. This panel is the glass
+   surface the title/CTA actually sit on top of; .glass-panel (global,
+   theme/glass.css) supplies the translucency/blur/border/shadow, this
+   class only adds the layout-specific padding/gap. */
+.panel {
+  composes: glass-panel from global;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
+  padding: var(--space-xl) calc(var(--space-xl) * 1.5);
 }
 
 .titleBlock {
