@@ -26,6 +26,7 @@ import { pickRandomBackground } from '../components/layout/backgroundUtils';
 import { BATTLE_BACKGROUND_POOL } from '../components/layout/backgroundPaths';
 import { ResponsiveGameLayout } from '../components/layout/ResponsiveGameLayout';
 import { useResponsiveCardWidth } from '../components/layout/useResponsiveCardWidth';
+import { describeRuleSet } from '../utils/describeRuleSet';
 import styles from './GameScreen.module.css';
 
 export interface GameScreenProps {
@@ -189,6 +190,19 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
             : isHumanTurn
               ? 'Your turn'
               : "Opponent's turn"}
+        </div>
+        <div className={styles.rulesBadge} aria-label="Active match rules">
+          {describeRuleSet(game.ruleSet).map((label) => (
+            <span
+              key={label}
+              className={[
+                styles.ruleChip,
+                label.startsWith('Trade Rule:') ? styles.ruleChipTrade : '',
+              ].join(' ')}
+            >
+              {label}
+            </span>
+          ))}
         </div>
         {onQuit && (
           <div className={styles.quitArea}>

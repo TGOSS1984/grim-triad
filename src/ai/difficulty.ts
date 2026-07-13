@@ -48,7 +48,17 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   },
   hard: {
     label: 'Hard',
-    description: 'The strongest units the points cap allows, played with no mistakes.',
+    // Deliberately honest about an asymmetry, not just a difficulty
+    // flex: campaignBalance.ts's power-unit cap (max N units over a
+    // points threshold) only applies to the PLAYER's starting roster -
+    // Hard's 'greedy' roster strategy has no equivalent constraint, so it
+    // can spend its whole budget on the priciest units it can find with
+    // no diversity requirement at all. That's a real, player-invisible
+    // difference in how the two rosters get built at the same points
+    // cap, not just "the AI tries harder" - worth saying outright rather
+    // than letting it be a surprise.
+    description:
+      'The strongest units the points cap allows, played with no mistakes. Unlike your own roster, the AI has no cap on how many powerful units it can stack.',
     aiOptions: { lookaheadWeight: 2.5, mistakeChance: 0 },
     rosterStrategy: 'greedy',
   },

@@ -276,3 +276,46 @@ describe('GameScreen', () => {
     expect(within(redHand).queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();
   });
 });
+
+describe('GameScreen rules badge', () => {
+  it('always shows the Trade Rule, even with every other optional rule off', () => {
+    startTestGame({ tradeRule: 'diff' });
+    render(<GameScreen humanPlayer="blue" />);
+
+    expect(screen.getByLabelText('Active match rules')).toHaveTextContent('Trade Rule: Diff');
+  });
+
+  it('shows every active optional rule as its own chip', () => {
+    startTestGame({ same: true, plus: true, elemental: true, tradeRule: 'all' });
+    render(<GameScreen humanPlayer="blue" />);
+
+    const badge = screen.getByLabelText('Active match rules');
+    expect(within(badge).getByText('Same')).toBeInTheDocument();
+    expect(within(badge).getByText('Plus')).toBeInTheDocument();
+    expect(within(badge).getByText('Elemental')).toBeInTheDocument();
+    expect(within(badge).getByText('Trade Rule: All')).toBeInTheDocument();
+  });
+
+  it('does not show a chip for an inactive optional rule', () => {
+    startTestGame({ same: false, plus: false, elemental: false, chain: false });
+    render(<GameScreen humanPlayer="blue" />);
+
+    const badge = screen.getByLabelText('Active match rules');
+    expect(within(badge).queryByText('Same')).not.toBeInTheDocument();
+    expect(within(badge).queryByText('Plus')).not.toBeInTheDocument();
+    expect(within(badge).queryByText('Elemental')).not.toBeInTheDocument();
+    expect(within(badge).queryByText('Chain')).not.toBeInTheDocument();
+  });
+
+  it('stays visible regardless of whose turn it is (not just at match start)', async () => {
+    const user = userEvent.setup();
+    startTestGame({ same: true });
+    render(<GameScreen humanPlayer="blue" />);
+
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    const cell = screen.getAllByRole('button', { name: /Empty cell/ })[0];
+    await user.click(cell);
+
+    expect(screen.getByLabelText('Active match rules')).toHaveTextContent('Same');
+  });
+});

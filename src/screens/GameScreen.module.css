@@ -33,6 +33,36 @@
   backdrop-filter: var(--glass-blur);
 }
 
+.rulesBadge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  max-width: 360px;
+}
+
+.ruleChip {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  background: rgba(28, 33, 36, 0.75);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-sm);
+  white-space: nowrap;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* The Trade Rule chip is always present (every match has one active) and
+   is often the rule with the most lasting consequence (series/campaign
+   mode both move cards permanently based on it) - a subtle gold accent
+   sets it apart from the purely-optional rule toggles around it. */
+.ruleChipTrade {
+  color: var(--color-accent-gold);
+  border-color: var(--color-accent-gold);
+}
+
 .quitArea {
   display: flex;
   align-items: center;
