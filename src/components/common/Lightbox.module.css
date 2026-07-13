@@ -8,6 +8,7 @@
   justify-content: center;
   z-index: 1000;
   padding: var(--space-xl);
+  overflow-y: auto;
 }
 
 .frame {

@@ -38,7 +38,7 @@ const ROW_CARD_WIDTH = 44;
 /** Width (px) of the floating hover-zoom preview card. */
 const HOVER_PREVIEW_CARD_WIDTH = 170;
 /** Width (px) of the card shown full-size in the Lightbox. */
-const LIGHTBOX_CARD_WIDTH = 320;
+const LIGHTBOX_CARD_WIDTH = 480;
 /** How far past the row card's edge the hover preview floats, in px. */
 const HOVER_PREVIEW_GAP = 12;
 

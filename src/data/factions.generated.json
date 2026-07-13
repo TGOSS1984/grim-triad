@@ -80,7 +80,7 @@
   {
     "slug": "dark-angels",
     "name": "Dark Angels",
-    "active": false,
+    "active": true,
     "unitCount": 15
   },
   {
