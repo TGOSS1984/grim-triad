@@ -119,6 +119,34 @@ export default function App() {
   const resetArmyBuilder = useArmyBuilderStore((s) => s.reset);
   const seriesState = useSeriesStore();
 
+  // Warns before a page reload/close while a match is actually in
+  // progress - App-level state (the whole step machine, the live
+  // GameState) has no persistence layer, so a refresh mid-match
+  // currently loses it silently with zero warning (this is what
+  // prompted the ask: an accidental Ctrl+Shift+R felt jarring). A full
+  // session-resume feature would properly SURVIVE a reload; this is the
+  // smaller, cheaper fix - just make sure the browser's own native
+  // "leave site?" prompt fires first, so an accidental reload has a
+  // chance to be caught before it costs anything. Scoped to step ===
+  // 'game' specifically (not e.g. ArmyBuilder) - that's genuinely
+  // irreversible progress (moves already played), whereas losing an
+  // in-progress unit selection is a much smaller/more recoverable loss.
+  useEffect(() => {
+    if (step !== 'game') return;
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      // Modern browsers show their own generic message regardless of
+      // this value, but setting returnValue is still required for the
+      // prompt to fire at all in some engines (a legacy quirk of the
+      // beforeunload spec, not optional boilerplate).
+      event.returnValue = '';
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [step]);
+
   // GameScreen only renders/drives the live match - it doesn't navigate.
   // Watching for phase 'finished' here is what actually moves the app on
   // once a match concludes, branching for series mode's round loop.

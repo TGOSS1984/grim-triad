@@ -167,6 +167,51 @@ describe('App (single-match flow integration)', () => {
     expect(screen.getByRole('button', { name: /Blood Angels Captain/ })).toBeInTheDocument();
   });
 
+  it('warns before leaving the page while a live match is in progress', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('does NOT warn before leaving the page on other screens (e.g. still in Army Builder)', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    // Still on Rule Select, not yet in a live game.
+
+    const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('stops warning once the match ends and the app has moved past the game step', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it('the live game state actually reflects the chosen ruleSet (Open makes the AI hand visible)', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const user = userEvent.setup();
