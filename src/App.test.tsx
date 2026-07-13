@@ -212,6 +212,37 @@ describe('App (single-match flow integration)', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it('Sudden Death Rematch actually returns to a live, playable game - real bug fix, not a stuck blank screen', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game: liveGame } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...liveGame!,
+        phase: 'finished',
+        winner: 'draw',
+        ruleSet: { ...liveGame!.ruleSet, suddenDeath: true },
+      },
+    });
+    await screen.findByRole('heading', { name: 'Draw' }, { timeout: 3000 });
+
+    await user.click(screen.getByRole('button', { name: 'Sudden Death Rematch' }));
+
+    // The actual bug: this used to leave the app stuck showing "No
+    // finished match to show." with the rematch mutating the store
+    // invisibly behind it, no board rendered to play it on. The real fix
+    // is that GameScreen is genuinely back and interactive.
+    expect(screen.queryByText('No finished match to show.')).not.toBeInTheDocument();
+    expect(useGameStore.getState().game?.phase).not.toBe('finished');
+    expect(screen.getAllByRole('button', { name: /Empty cell/ }).length).toBeGreaterThan(0);
+  });
+
   it('the live game state actually reflects the chosen ruleSet (Open makes the AI hand visible)', async () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
     const user = userEvent.setup();

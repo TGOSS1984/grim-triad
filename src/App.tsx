@@ -436,6 +436,20 @@ export default function App() {
     setStep('campaignHome');
   }
 
+  /**
+   * Real bug this fixes (see ResultScreen.tsx's own doc on onSuddenDeath):
+   * a Sudden Death rematch used to be triggered by ResultScreen calling
+   * gameStore.triggerSuddenDeathRematch() directly, mutating `game` while
+   * `step` stayed stuck at 'result' - GameScreen never re-mounted, so the
+   * human had no board to actually play the rematch on. Pairing the store
+   * mutation with setStep('game') here fixes it at the source: the
+   * navigation state lives in App.tsx, so the fix belongs here too.
+   */
+  function handleSuddenDeathRematch() {
+    void useGameStore.getState().triggerSuddenDeathRematch();
+    setStep('game');
+  }
+
   switch (step) {
     case 'home':
       return <HomeScreen onNewGame={handleHomeNewGame} />;
@@ -508,7 +522,7 @@ export default function App() {
       return mode === 'campaign' ? (
         <CampaignResultScreen onContinue={handleCampaignMatchDone} />
       ) : (
-        <ResultScreen onNewGame={handleReturnToHome} />
+        <ResultScreen onNewGame={handleReturnToHome} onSuddenDeath={handleSuddenDeathRematch} />
       );
 
     case 'campaignHome':

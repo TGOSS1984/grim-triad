@@ -6,10 +6,13 @@
  * Trade Rule display: resolveTradeRule (engine/rules/tradeRules.ts) is
  * called informationally here to show what the configured trade rule
  * WOULD transfer between the two sides' card pools. Actually persisting
- * that outcome into a durable player collection is out of v1's scope -
- * there is no persistent collection/meta-game layer built yet (see
- * ROADMAP.md's original open question on this). This screen shows the
- * narrative result of the match, not a saved account balance.
+ * that outcome into a durable player collection is out of v1's scope for
+ * single-match mode specifically - see campaignStore.ts for where that
+ * DOES happen now.
+ *
+ * Sudden Death is deliberately NOT triggered directly from here anymore -
+ * see onSuddenDeath's own doc for why that used to be a real navigation
+ * bug.
  */
 import { useGameStore } from '../state/gameStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
@@ -19,6 +22,18 @@ import styles from './ResultScreen.module.css';
 
 export interface ResultScreenProps {
   onNewGame: () => void;
+  /**
+   * Called instead of this screen mutating gameStore directly. Real bug
+   * this fixes: this screen is only ever shown once App.tsx's `step` has
+   * already moved to 'result' - if this screen called
+   * gameStore.triggerSuddenDeathRematch() itself (as it originally did),
+   * the rematch would start mutating `game` while `step` stayed stuck at
+   * 'result', so GameScreen never re-mounted and the human had no board
+   * to actually play the rematch on. App.tsx's handler pairs the store
+   * mutation with setStep('game') so the fix lives where the navigation
+   * state actually is.
+   */
+  onSuddenDeath: () => void;
 }
 
 function countCardsOnBoard(board: Board, colour: PlayerColour): number {
@@ -32,9 +47,8 @@ const TRADE_RULE_LABELS: Record<string, string> = {
   all: 'All',
 };
 
-export function ResultScreen({ onNewGame }: ResultScreenProps) {
+export function ResultScreen({ onNewGame, onSuddenDeath }: ResultScreenProps) {
   const game = useGameStore((s) => s.game);
-  const triggerSuddenDeathRematch = useGameStore((s) => s.triggerSuddenDeathRematch);
 
   if (!game || game.phase !== 'finished') {
     return (
@@ -83,7 +97,7 @@ export function ResultScreen({ onNewGame }: ResultScreenProps) {
           <button
             type="button"
             className={styles.suddenDeathButton}
-            onClick={triggerSuddenDeathRematch}
+            onClick={onSuddenDeath}
           >
             Sudden Death Rematch
           </button>
