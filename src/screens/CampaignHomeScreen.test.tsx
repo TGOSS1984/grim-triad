@@ -7,7 +7,7 @@ import { ACHIEVEMENTS } from '../state/achievements';
 
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
-  useCampaignStore.setState({ unlockedAchievementIds: [] });
+  useCampaignStore.setState({ unlockedAchievementIds: [], bestWinStreak: 0 });
   localStorage.clear();
 });
 
@@ -144,5 +144,59 @@ describe('CampaignHomeScreen achievements', () => {
     await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
 
     expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
+  });
+});
+
+describe('CampaignHomeScreen streaks', () => {
+  it('shows the current win streak count and label', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+
+    const streakTile = screen.getByText('Win Streak').closest('div');
+    expect(streakTile).toHaveTextContent('2');
+  });
+
+  it('shows the current loss streak with the correct label', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+
+    const streakTile = screen.getByText('Loss Streak').closest('div');
+    expect(streakTile).toHaveTextContent('3');
+  });
+
+  it('shows a dash when there is no active streak (fresh run or just drew)', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('always shows the permanent Best Win Streak, even with no active run', () => {
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+    expect(screen.getByText('Best Win Streak: 0')).toBeInTheDocument();
+  });
+
+  it('Best Win Streak survives starting a new run', async () => {
+    const user = userEvent.setup();
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+    expect(screen.getByText('Best Win Streak: 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
+
+    expect(screen.getByText('Best Win Streak: 3')).toBeInTheDocument();
   });
 });

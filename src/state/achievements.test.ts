@@ -7,7 +7,7 @@ import {
 import { getUnitsForRoster } from '../data/activeFactions';
 
 function ctx(overrides: Partial<AchievementContext> = {}): AchievementContext {
-  return { collection: [], wins: 0, losses: 0, draws: 0, ...overrides };
+  return { collection: [], wins: 0, losses: 0, draws: 0, bestWinStreak: 0, ...overrides };
 }
 
 describe('ACHIEVEMENTS', () => {
@@ -96,6 +96,14 @@ describe('grim-determination', () => {
     const grim = ACHIEVEMENTS.find((a) => a.id === 'grim-determination')!;
     expect(grim.isUnlocked(ctx({ losses: 9 }))).toBe(false);
     expect(grim.isUnlocked(ctx({ losses: 10 }))).toBe(true);
+  });
+});
+
+describe('on-a-roll', () => {
+  it('requires a best win streak of 5', () => {
+    const roll = ACHIEVEMENTS.find((a) => a.id === 'on-a-roll')!;
+    expect(roll.isUnlocked(ctx({ bestWinStreak: 4 }))).toBe(false);
+    expect(roll.isUnlocked(ctx({ bestWinStreak: 5 }))).toBe(true);
   });
 });
 

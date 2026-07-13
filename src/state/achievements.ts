@@ -28,6 +28,8 @@ export interface AchievementContext {
   wins: number;
   losses: number;
   draws: number;
+  /** Longest consecutive-win streak ever reached (see campaignStore's own bestWinStreak, which is permanent the same way achievements are). */
+  bestWinStreak: number;
 }
 
 export interface Achievement {
@@ -98,6 +100,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'Grim Determination',
     description: 'Suffer 10 losses and keep fighting anyway.',
     isUnlocked: (ctx) => ctx.losses >= 10,
+  },
+  {
+    id: 'on-a-roll',
+    name: 'On a Roll',
+    description: 'Win 5 campaign matches in a row.',
+    isUnlocked: (ctx) => ctx.bestWinStreak >= 5,
   },
 ];
 

@@ -5,16 +5,16 @@ const STORAGE_KEY = 'grim-triad-campaign';
 
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
-  // resetCampaign() deliberately does NOT clear unlockedAchievementIds in
-  // production (achievements are meant to survive across runs) - tests
-  // need a clean slate regardless, so this bypasses that via a direct
-  // setState rather than the public action.
-  useCampaignStore.setState({ unlockedAchievementIds: [] });
+  // resetCampaign() deliberately does NOT clear unlockedAchievementIds or
+  // bestWinStreak in production (both are meant to survive across runs) -
+  // tests need a clean slate regardless, so this bypasses that via a
+  // direct setState rather than the public action.
+  useCampaignStore.setState({ unlockedAchievementIds: [], bestWinStreak: 0 });
   localStorage.clear();
 });
 
 describe('campaignStore', () => {
-  it('starts inactive with an empty collection, zeroed record, and no achievements', () => {
+  it('starts inactive with an empty collection, zeroed record, no achievements, and no streak', () => {
     const state = useCampaignStore.getState();
     expect(state.isActive).toBe(false);
     expect(state.collection).toEqual([]);
@@ -22,6 +22,9 @@ describe('campaignStore', () => {
     expect(state.losses).toBe(0);
     expect(state.draws).toBe(0);
     expect(state.unlockedAchievementIds).toEqual([]);
+    expect(state.currentStreakType).toBe('none');
+    expect(state.currentStreakCount).toBe(0);
+    expect(state.bestWinStreak).toBe(0);
   });
 
   it('startCampaign seeds the collection and marks the run active', () => {
@@ -93,7 +96,7 @@ describe('campaignStore', () => {
     expect(useCampaignStore.getState().collection).toEqual(['necrons-overlord', 'necrons-immortals']);
   });
 
-  it('resetCampaign clears the collection and record back to the initial state', () => {
+  it('resetCampaign clears the collection, record, and current streak back to the initial state', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
 
@@ -105,6 +108,8 @@ describe('campaignStore', () => {
     expect(state.wins).toBe(0);
     expect(state.losses).toBe(0);
     expect(state.draws).toBe(0);
+    expect(state.currentStreakType).toBe('none');
+    expect(state.currentStreakCount).toBe(0);
   });
 
   it('auto-persists to localStorage on every state change, with no explicit save action', () => {
@@ -179,5 +184,102 @@ describe('campaignStore achievements', () => {
     useCampaignStore.getState().startCampaign(fifteen);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('collector-recruit');
+  });
+});
+
+describe('campaignStore streaks', () => {
+  it('extends the current streak on consecutive wins', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().currentStreakType).toBe('win');
+    expect(useCampaignStore.getState().currentStreakCount).toBe(1);
+
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().currentStreakCount).toBe(2);
+
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().currentStreakCount).toBe(3);
+  });
+
+  it('extends the current streak on consecutive losses too, independently from wins', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+
+    expect(useCampaignStore.getState().currentStreakType).toBe('loss');
+    expect(useCampaignStore.getState().currentStreakCount).toBe(2);
+  });
+
+  it('a draw breaks any streak back to none/0', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    useCampaignStore.getState().recordMatchResult('draw', [], []);
+
+    expect(useCampaignStore.getState().currentStreakType).toBe('none');
+    expect(useCampaignStore.getState().currentStreakCount).toBe(0);
+  });
+
+  it('switching from a win streak to a loss starts a fresh streak of 1, not a continuation', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+
+    expect(useCampaignStore.getState().currentStreakType).toBe('loss');
+    expect(useCampaignStore.getState().currentStreakCount).toBe(1);
+  });
+
+  it('bestWinStreak tracks the highest win streak ever reached, not just the most recent one', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().bestWinStreak).toBe(3);
+
+    // Break the streak and start a smaller one - best should NOT drop.
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    expect(useCampaignStore.getState().currentStreakCount).toBe(1);
+    expect(useCampaignStore.getState().bestWinStreak).toBe(3);
+  });
+
+  it('a loss streak never counts toward bestWinStreak', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+
+    expect(useCampaignStore.getState().bestWinStreak).toBe(0);
+  });
+
+  it('resetCampaign clears the CURRENT streak but bestWinStreak survives - permanent, like achievements', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().bestWinStreak).toBe(2);
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().currentStreakType).toBe('none');
+    expect(useCampaignStore.getState().currentStreakCount).toBe(0);
+    expect(useCampaignStore.getState().bestWinStreak).toBe(2);
+  });
+
+  it('unlocks the On a Roll achievement at a 5-win streak', () => {
+    useCampaignStore.getState().startCampaign(['a']);
+    for (let i = 0; i < 4; i++) {
+      useCampaignStore.getState().recordMatchResult('win', [], []);
+    }
+    expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('on-a-roll');
+
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('on-a-roll');
   });
 });

@@ -42,6 +42,13 @@
   margin: 0;
 }
 
+.bestStreak {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
 .achievementGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

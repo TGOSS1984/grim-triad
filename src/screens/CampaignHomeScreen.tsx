@@ -27,7 +27,17 @@ export interface CampaignHomeScreenProps {
 }
 
 export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeScreenProps) {
-  const { isActive, collection, wins, losses, draws, unlockedAchievementIds } = useCampaignStore();
+  const {
+    isActive,
+    collection,
+    wins,
+    losses,
+    draws,
+    unlockedAchievementIds,
+    currentStreakType,
+    currentStreakCount,
+    bestWinStreak,
+  } = useCampaignStore();
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
   const canContinue = collection.length >= MIN_HAND_SIZE;
@@ -43,6 +53,7 @@ export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeSc
           <h2 className={styles.sectionTitle}>
             Achievements ({unlockedAchievementIds.length}/{ACHIEVEMENTS.length})
           </h2>
+          <p className={styles.bestStreak}>Best Win Streak: {bestWinStreak}</p>
           <div className={styles.achievementGrid}>
             {ACHIEVEMENTS.map((achievement) => {
               const unlocked = unlockedSet.has(achievement.id);
@@ -80,6 +91,12 @@ export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeSc
               <div className={styles.stat}>
                 <span className={styles.statValue}>{draws}</span>
                 <span className={styles.statLabel}>Draws</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{currentStreakType === 'none' ? '—' : currentStreakCount}</span>
+                <span className={styles.statLabel}>
+                  {currentStreakType === 'loss' ? 'Loss Streak' : 'Win Streak'}
+                </span>
               </div>
             </div>
 
