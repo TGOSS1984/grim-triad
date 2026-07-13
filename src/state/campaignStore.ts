@@ -24,9 +24,19 @@
  * may happen to include a unit id you already own. Removing a "lost"
  * unit therefore removes exactly ONE matching entry, not every copy of
  * that id - see removeOneEach below.
+ *
+ * Achievements are PERMANENT, unlike everything else in this store:
+ * `unlockedAchievementIds` is deliberately never touched by
+ * resetCampaign - an achievement earned in one run should still be
+ * unlocked after starting a new one. Every state-changing action here
+ * re-checks the full achievement list (see achievements.ts) against the
+ * state AFTER that action and unions any newly-true ids into the
+ * permanent set - once added, an id is never removed, even if e.g. the
+ * collection later shrinks back below a collector threshold.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getCurrentlyUnlockedAchievementIds } from './achievements';
 
 const CAMPAIGN_STORAGE_KEY = 'grim-triad-campaign';
 
@@ -38,6 +48,8 @@ export interface CampaignState {
   wins: number;
   losses: number;
   draws: number;
+  /** Every achievement id ever unlocked, across ALL runs - see file header for why this survives resetCampaign when nothing else does. */
+  unlockedAchievementIds: string[];
 
   /** Starts a new campaign run with a starting collection (the player's initial army). Overwrites any existing run - callers should confirm with the player before calling this if a run is already active. */
   startCampaign: (startingCollection: string[]) => void;
@@ -49,7 +61,7 @@ export interface CampaignState {
    * trade rule or a draw.
    */
   recordMatchResult: (outcome: 'win' | 'loss' | 'draw', gained: string[], lost: string[]) => void;
-  /** Ends the current campaign run entirely, clearing all persisted progress. */
+  /** Ends the current campaign run entirely, clearing all persisted progress EXCEPT unlockedAchievementIds (see file header). */
   resetCampaign: () => void;
 }
 
@@ -63,6 +75,15 @@ function removeOneEach(pool: string[], toRemove: string[]): string[] {
   return remaining;
 }
 
+/** Unions any newly-satisfied achievement ids into the permanent set - never removes an id, even if the condition that earned it is no longer true. */
+function unionUnlockedAchievements(
+  existing: string[],
+  snapshot: { collection: string[]; wins: number; losses: number; draws: number },
+): string[] {
+  const newlyUnlocked = getCurrentlyUnlockedAchievementIds(snapshot);
+  return Array.from(new Set([...existing, ...newlyUnlocked]));
+}
+
 export const useCampaignStore = create<CampaignState>()(
   persist(
     (set, get) => ({
@@ -71,30 +92,52 @@ export const useCampaignStore = create<CampaignState>()(
       wins: 0,
       losses: 0,
       draws: 0,
+      unlockedAchievementIds: [],
 
       startCampaign: (startingCollection) => {
+        const collection = [...startingCollection];
+        const wins = 0;
+        const losses = 0;
+        const draws = 0;
         set({
           isActive: true,
-          collection: [...startingCollection],
-          wins: 0,
-          losses: 0,
-          draws: 0,
+          collection,
+          wins,
+          losses,
+          draws,
+          unlockedAchievementIds: unionUnlockedAchievements(get().unlockedAchievementIds, {
+            collection,
+            wins,
+            losses,
+            draws,
+          }),
         });
       },
 
       recordMatchResult: (outcome, gained, lost) => {
-        const { collection, wins, losses, draws } = get();
+        const { collection, wins, losses, draws, unlockedAchievementIds } = get();
         const nextCollection = [...removeOneEach(collection, lost), ...gained];
+        const nextWins = wins + (outcome === 'win' ? 1 : 0);
+        const nextLosses = losses + (outcome === 'loss' ? 1 : 0);
+        const nextDraws = draws + (outcome === 'draw' ? 1 : 0);
 
         set({
           collection: nextCollection,
-          wins: wins + (outcome === 'win' ? 1 : 0),
-          losses: losses + (outcome === 'loss' ? 1 : 0),
-          draws: draws + (outcome === 'draw' ? 1 : 0),
+          wins: nextWins,
+          losses: nextLosses,
+          draws: nextDraws,
+          unlockedAchievementIds: unionUnlockedAchievements(unlockedAchievementIds, {
+            collection: nextCollection,
+            wins: nextWins,
+            losses: nextLosses,
+            draws: nextDraws,
+          }),
         });
       },
 
       resetCampaign: () => {
+        // unlockedAchievementIds is deliberately omitted here - see file
+        // header. Everything else genuinely resets.
         set({ isActive: false, collection: [], wins: 0, losses: 0, draws: 0 });
       },
     }),

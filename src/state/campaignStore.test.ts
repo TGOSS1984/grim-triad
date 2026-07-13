@@ -5,17 +5,23 @@ const STORAGE_KEY = 'grim-triad-campaign';
 
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
+  // resetCampaign() deliberately does NOT clear unlockedAchievementIds in
+  // production (achievements are meant to survive across runs) - tests
+  // need a clean slate regardless, so this bypasses that via a direct
+  // setState rather than the public action.
+  useCampaignStore.setState({ unlockedAchievementIds: [] });
   localStorage.clear();
 });
 
 describe('campaignStore', () => {
-  it('starts inactive with an empty collection and zeroed record', () => {
+  it('starts inactive with an empty collection, zeroed record, and no achievements', () => {
     const state = useCampaignStore.getState();
     expect(state.isActive).toBe(false);
     expect(state.collection).toEqual([]);
     expect(state.wins).toBe(0);
     expect(state.losses).toBe(0);
     expect(state.draws).toBe(0);
+    expect(state.unlockedAchievementIds).toEqual([]);
   });
 
   it('startCampaign seeds the collection and marks the run active', () => {
@@ -87,7 +93,7 @@ describe('campaignStore', () => {
     expect(useCampaignStore.getState().collection).toEqual(['necrons-overlord', 'necrons-immortals']);
   });
 
-  it('resetCampaign clears everything back to the initial state', () => {
+  it('resetCampaign clears the collection and record back to the initial state', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
 
@@ -112,5 +118,66 @@ describe('campaignStore', () => {
     expect(parsed.state.collection).toEqual(['necrons-lychguard', 'necrons-overlord']);
     expect(parsed.state.wins).toBe(1);
     expect(parsed.state.isActive).toBe(true);
+  });
+});
+
+describe('campaignStore achievements', () => {
+  it('unlocks First Blood after the first recorded win', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('first-blood');
+
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
+  });
+
+  it('unlocks Grim Determination after 10 losses, not before', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    for (let i = 0; i < 9; i++) {
+      useCampaignStore.getState().recordMatchResult('loss', [], []);
+    }
+    expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('grim-determination');
+
+    useCampaignStore.getState().recordMatchResult('loss', [], []);
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('grim-determination');
+  });
+
+  it('does NOT unlock an achievement it does not yet qualify for', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    // 1 win unlocks First Blood but not Blooded Veteran (needs 10).
+    expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('blooded-veteran');
+  });
+
+  it('an achievement stays unlocked even if the collection later shrinks back below the threshold', () => {
+    const twentyFive = Array.from({ length: 25 }, (_, i) => `unit-${i}`);
+    useCampaignStore.getState().startCampaign(twentyFive);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('collector-recruit');
+
+    // Lose 20 of the 25 units - well below the 25-unique threshold now.
+    useCampaignStore.getState().recordMatchResult('loss', [], twentyFive.slice(0, 20));
+    expect(useCampaignStore.getState().collection).toHaveLength(5);
+
+    // Still unlocked - achievements are permanent once earned.
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('collector-recruit');
+  });
+
+  it('resetCampaign does NOT clear unlockedAchievementIds - achievements survive across runs', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
+  });
+
+  it('a fresh run of the standard 15-unit starting size does not spuriously unlock the 25-unit collector achievement', () => {
+    const fifteen = Array.from({ length: 15 }, (_, i) => `unit-${i}`);
+    useCampaignStore.getState().startCampaign(fifteen);
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('collector-recruit');
   });
 });

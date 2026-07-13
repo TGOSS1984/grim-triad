@@ -11,6 +11,7 @@
  */
 import { useState } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
+import { ACHIEVEMENTS } from '../state/achievements';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { HOME_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
 import styles from './CampaignHomeScreen.module.css';
@@ -26,16 +27,40 @@ export interface CampaignHomeScreenProps {
 }
 
 export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeScreenProps) {
-  const { isActive, collection, wins, losses, draws } = useCampaignStore();
+  const { isActive, collection, wins, losses, draws, unlockedAchievementIds } = useCampaignStore();
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
   const canContinue = collection.length >= MIN_HAND_SIZE;
+  const unlockedSet = new Set(unlockedAchievementIds);
 
   return (
     <div className={styles.screen}>
       <BackgroundLayer imagePath={HOME_BACKGROUND_PATH} />
       <div className={styles.panel}>
         <h1 className={styles.title}>Campaign</h1>
+
+        <div className={styles.achievementsSection}>
+          <h2 className={styles.sectionTitle}>
+            Achievements ({unlockedAchievementIds.length}/{ACHIEVEMENTS.length})
+          </h2>
+          <div className={styles.achievementGrid}>
+            {ACHIEVEMENTS.map((achievement) => {
+              const unlocked = unlockedSet.has(achievement.id);
+              return (
+                <div
+                  key={achievement.id}
+                  className={[
+                    styles.achievementBadge,
+                    unlocked ? styles.achievementUnlocked : styles.achievementLocked,
+                  ].join(' ')}
+                >
+                  <span className={styles.achievementName}>{achievement.name}</span>
+                  <span className={styles.achievementDescription}>{achievement.description}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {isActive ? (
           <>

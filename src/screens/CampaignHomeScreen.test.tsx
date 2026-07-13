@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CampaignHomeScreen } from './CampaignHomeScreen';
 import { useCampaignStore } from '../state/campaignStore';
+import { ACHIEVEMENTS } from '../state/achievements';
 
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
+  useCampaignStore.setState({ unlockedAchievementIds: [] });
   localStorage.clear();
 });
 
@@ -100,5 +102,47 @@ describe('CampaignHomeScreen with an active run', () => {
 
     expect(onStartNewRun).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Start New Run' })).toBeInTheDocument();
+  });
+});
+
+describe('CampaignHomeScreen achievements', () => {
+  it('shows the achievement trophy case even with no active run - achievements are permanent', () => {
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+    expect(screen.getByText(`Achievements (0/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
+    expect(screen.getByText('First Blood')).toBeInTheDocument();
+  });
+
+  it('shows the correct unlocked count once achievements have been earned', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+
+    expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
+  });
+
+  it('gives an unlocked achievement a distinct visual class from a locked one', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+
+    const firstBlood = screen.getByText('First Blood').closest('div');
+    const grandChampion = screen.getByText('Grand Champion').closest('div');
+    expect(firstBlood?.className).toMatch(/achievementUnlocked/);
+    expect(grandChampion?.className).toMatch(/achievementLocked/);
+  });
+
+  it('still shows previously-earned achievements after starting a new run (permanence)', async () => {
+    const user = userEvent.setup();
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], []);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
+
+    render(<CampaignHomeScreen onContinue={vi.fn()} onStartNewRun={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
+
+    expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
   });
 });
