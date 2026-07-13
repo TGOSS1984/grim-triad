@@ -17,6 +17,8 @@ export interface ArmyBuilderScreenProps {
   forcedPointsCap?: PointsCap;
   /** See ArmyBuilder's own doc - a graceful, actionable message shown above the picker instead of letting a real setup failure crash the app. */
   errorMessage?: string;
+  /** See ArmyBuilder's own doc - live-disables Add for units that would break campaign mode's power-unit cap. */
+  enforcePowerCap?: boolean;
 }
 
 export function ArmyBuilderScreen({
@@ -24,6 +26,7 @@ export function ArmyBuilderScreen({
   requiredArmySize,
   forcedPointsCap,
   errorMessage,
+  enforcePowerCap,
 }: ArmyBuilderScreenProps) {
   return (
     <div className={styles.screen}>
@@ -33,6 +36,7 @@ export function ArmyBuilderScreen({
         requiredArmySize={requiredArmySize}
         forcedPointsCap={forcedPointsCap}
         errorMessage={errorMessage}
+        enforcePowerCap={enforcePowerCap}
       />
     </div>
   );

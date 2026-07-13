@@ -18,6 +18,17 @@ export interface UnitPickerProps {
   remainingPoints: number | null;
   /** True once the army has reached its exact required size (series mode) - disables Add for everything not already selected. */
   atCapacity?: boolean;
+  /**
+   * Optional per-unit extra disable check, evaluated in ADDITION to
+   * remainingPoints/atCapacity - used by campaign mode's power-unit cap
+   * (see campaignBalance.ts's canAddToCampaignRoster), which disables
+   * Add for a SPECIFIC unit (one that would push the roster over its
+   * power-unit limit) rather than the whole picker uniformly the way
+   * atCapacity does. Kept as a generic per-unit predicate rather than a
+   * campaign-specific prop, since this component has no reason to know
+   * campaign rules exist at all.
+   */
+  isDisabledExtra?: (unitId: string) => boolean;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
 }
@@ -133,6 +144,7 @@ export function UnitPicker({
   selectedIds,
   remainingPoints,
   atCapacity = false,
+  isDisabledExtra,
   onAdd,
   onRemove,
 }: UnitPickerProps) {
@@ -144,7 +156,8 @@ export function UnitPicker({
       {sorted.map((unit) => {
         const isSelected = selectedSet.has(unit.id);
         const affordable = remainingPoints !== null && unit.points <= remainingPoints;
-        const canAdd = !isSelected && affordable && !atCapacity;
+        const blockedByExtraRule = isDisabledExtra?.(unit.id) ?? false;
+        const canAdd = !isSelected && affordable && !atCapacity && !blockedByExtraRule;
 
         return (
           <li key={unit.id} className={styles.row}>

@@ -10,6 +10,14 @@ const DEATH_COMPANY = 'Death Company Marines'; // 85pts
 const SANGUINARY_PRIEST = 'Sanguinary Priest'; // 90pts
 const ASTORATH = 'Astorath'; // 105pts
 const LEMARTES = 'Lemartes'; // 110pts
+// Power units (>150pts, the campaign power-unit threshold) - from the
+// shared generic Space Marine pool, cheapest-first.
+const POWER_UNIT_1 = 'Stormhawk Interceptor'; // 155pts
+const POWER_UNIT_2 = 'Brutalis Dreadnought'; // 160pts
+const POWER_UNIT_3 = 'Gladiator Lancer'; // 160pts
+const POWER_UNIT_4 = 'Gladiator Reaper'; // 160pts
+const POWER_UNIT_5 = 'Gladiator Valiant'; // 160pts
+const POWER_UNIT_6 = 'Stormtalon Gunship'; // 165pts
 
 beforeEach(() => {
   useArmyBuilderStore.getState().reset();
@@ -230,5 +238,83 @@ describe('ArmyBuilder errorMessage', () => {
       'blood-angels-blood-angels-captain',
     ]);
     expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+});
+
+describe('ArmyBuilder with enforcePowerCap (campaign mode)', () => {
+  it('does not show the power-unit tally when enforcePowerCap is false (default)', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.queryByText(/Power units/)).not.toBeInTheDocument();
+  });
+
+  it('shows a live power-unit tally starting at 0', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} enforcePowerCap />);
+
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.getByText('Power units (over 150pts): 0/5')).toBeInTheDocument();
+  });
+
+  it('the tally increments as power units (>150pts) are added, but not for regular units', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} enforcePowerCap />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    await user.click(addUnitByName(CAPTAIN)); // 80pts - not a power unit
+    expect(screen.getByText('Power units (over 150pts): 0/5')).toBeInTheDocument();
+
+    await user.click(addUnitByName(POWER_UNIT_1)); // 155pts - a power unit
+    expect(screen.getByText('Power units (over 150pts): 1/5')).toBeInTheDocument();
+  });
+
+  it('disables Add for a 6th power unit once the 5-power-unit cap is reached, even though it is otherwise affordable', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} enforcePowerCap />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    for (const name of [POWER_UNIT_1, POWER_UNIT_2, POWER_UNIT_3, POWER_UNIT_4, POWER_UNIT_5]) {
+      await user.click(addUnitByName(name));
+    }
+    expect(screen.getByText('Power units (over 150pts): 5/5')).toBeInTheDocument();
+
+    expect(getRowActionButton(POWER_UNIT_6)).toBeDisabled();
+  });
+
+  it('still allows adding a REGULAR (non-power) unit even once the power-unit cap is maxed out', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} enforcePowerCap />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    for (const name of [POWER_UNIT_1, POWER_UNIT_2, POWER_UNIT_3, POWER_UNIT_4, POWER_UNIT_5]) {
+      await user.click(addUnitByName(name));
+    }
+
+    // A regular, affordable, non-power unit should still be addable -
+    // the cap only blocks MORE power units, not the whole roster.
+    expect(getRowActionButton(CAPTAIN)).toBeEnabled();
+    await user.click(addUnitByName(CAPTAIN));
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toContain(
+      'blood-angels-blood-angels-captain',
+    );
+  });
+
+  it('removing a power unit frees up a slot under the cap again', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} enforcePowerCap />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    for (const name of [POWER_UNIT_1, POWER_UNIT_2, POWER_UNIT_3, POWER_UNIT_4, POWER_UNIT_5]) {
+      await user.click(addUnitByName(name));
+    }
+    expect(getRowActionButton(POWER_UNIT_6)).toBeDisabled();
+
+    await user.click(getRowActionButton(POWER_UNIT_1)); // now Remove
+    expect(screen.getByText('Power units (over 150pts): 4/5')).toBeInTheDocument();
+    expect(getRowActionButton(POWER_UNIT_6)).toBeEnabled();
   });
 });

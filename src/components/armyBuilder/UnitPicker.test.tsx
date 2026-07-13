@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UnitPicker } from './UnitPicker';
 import type { Unit } from '../../data/schema';
@@ -201,5 +201,67 @@ describe('UnitPicker', () => {
     render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
 
     expect(screen.getByTitle('Warp affinity')).toBeInTheDocument();
+  });
+
+  it('disables Add for a unit specifically blocked by isDisabledExtra, even though it is otherwise affordable and not at capacity', () => {
+    const units = [makeUnit({ id: 'a', points: 1 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isDisabledExtra={(id) => id === 'a'}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+  });
+
+  it('isDisabledExtra only blocks the SPECIFIC unit it applies to, not every row uniformly', () => {
+    const units = [
+      makeUnit({ id: 'a', name: 'Blocked Unit', points: 1 }),
+      makeUnit({ id: 'b', name: 'Allowed Unit', points: 1 }),
+    ];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isDisabledExtra={(id) => id === 'a'}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const rows = screen.getAllByRole('listitem');
+    const blockedRow = rows.find((r) => r.textContent?.includes('Blocked Unit'))!;
+    const allowedRow = rows.find((r) => r.textContent?.includes('Allowed Unit'))!;
+    expect(within(blockedRow).getByRole('button', { name: 'Add' })).toBeDisabled();
+    expect(within(allowedRow).getByRole('button', { name: 'Add' })).toBeEnabled();
+  });
+
+  it('still allows Remove on an already-selected unit even when isDisabledExtra would block adding it', () => {
+    const units = [makeUnit({ id: 'a' })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={['a']}
+        remainingPoints={500}
+        isDisabledExtra={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
+  it('with no isDisabledExtra given, Add is unaffected (defaults to never blocking)', () => {
+    const units = [makeUnit({ id: 'a', points: 1 })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
   });
 });

@@ -39,6 +39,13 @@
   letter-spacing: normal;
 }
 
+.powerUnitTally {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
 .capRow {
   display: flex;
   gap: var(--space-md);

@@ -8,6 +8,7 @@
 import { useEffect } from 'react';
 import { useArmyBuilderStore } from '../../state/armyBuilderStore';
 import type { PointsCap } from '../../state/armyBuilderStore';
+import { canAddToCampaignRoster, countPowerUnits, CAMPAIGN_MAX_POWER_UNITS } from '../../state/campaignBalance';
 import { FactionSelect } from './FactionSelect';
 import { PointsTally } from './PointsTally';
 import { UnitPicker } from './UnitPicker';
@@ -46,6 +47,17 @@ export interface ArmyBuilderProps {
    * failure crash the app. See App.tsx's handleArmyReady.
    */
   errorMessage?: string;
+  /**
+   * When true, live-disables Add for any unit that would push the
+   * roster over campaign mode's power-unit cap (see campaignBalance.ts) -
+   * this used to only be enforced when the player clicked Continue
+   * (validateCampaignStartingRoster in App.tsx), which meant clicking
+   * Add on a unit that was allowed by points/size but NOT by the power
+   * cap silently succeeded, only to be rejected later with no
+   * indication of which unit was the problem. Omit for single-match/
+   * series mode, which have no such rule.
+   */
+  enforcePowerCap?: boolean;
 }
 
 export function ArmyBuilder({
@@ -53,6 +65,7 @@ export function ArmyBuilder({
   requiredArmySize,
   forcedPointsCap,
   errorMessage,
+  enforcePowerCap = false,
 }: ArmyBuilderProps) {
   const rosterName = useArmyBuilderStore((s) => s.rosterName);
   const pointsCap = useArmyBuilderStore((s) => s.pointsCap);
@@ -90,6 +103,18 @@ export function ArmyBuilder({
   const continueLabel = requiredArmySize
     ? `Select exactly ${requiredArmySize} units (${selectedUnitIds.length}/${requiredArmySize})`
     : `Select at least ${minArmySize} units (${selectedUnitIds.length}/${minArmySize})`;
+
+  // Live per-unit gate for campaign mode's power-unit cap - see this
+  // prop's own doc for why this needs to be a live check now rather
+  // than only failing at Continue time. canAddToCampaignRoster's default
+  // pool size/points cap/power cap already match the real campaign
+  // constants (the same ones this screen was configured with via
+  // requiredArmySize/forcedPointsCap when enforcePowerCap is true), so
+  // no explicit overrides are needed here.
+  const isDisabledByPowerCap = enforcePowerCap
+    ? (unitId: string) => !canAddToCampaignRoster(selectedUnitIds, unitId).allowed
+    : undefined;
+  const currentPowerUnitCount = enforcePowerCap ? countPowerUnits(selectedUnitIds) : 0;
 
   return (
     <div className={styles.builder}>
@@ -135,11 +160,17 @@ export function ArmyBuilder({
             )}
           </h2>
           <PointsTally totalPoints={totalPoints} pointsCap={pointsCap} />
+          {enforcePowerCap && (
+            <p className={styles.powerUnitTally}>
+              Power units (over 150pts): {currentPowerUnitCount}/{CAMPAIGN_MAX_POWER_UNITS}
+            </p>
+          )}
           <UnitPicker
             units={availableUnits}
             selectedIds={selectedUnitIds}
             remainingPoints={remainingPoints}
             atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
+            isDisabledExtra={isDisabledByPowerCap}
             onAdd={addUnit}
             onRemove={removeUnit}
           />

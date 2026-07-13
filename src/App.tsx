@@ -274,13 +274,14 @@ export default function App() {
     if (mode === 'campaign') {
       const validation = validateCampaignStartingRoster(unitIds);
       if (!validation.valid) {
-        // Shouldn't normally be reachable - ArmyBuilder's own size/points
-        // gating already matches these same numbers via requiredArmySize/
-        // forcedPointsCap - but the power-unit cap has no live UI gate
-        // yet (see ArmyBuilder's own header), so this is the real
-        // enforcement point for that specific rule. Same graceful,
-        // actionable-message pattern as series mode's AI-roster failure
-        // below, rather than silently allowing an invalid roster through.
+        // Shouldn't normally be reachable anymore - ArmyBuilder now
+        // live-gates all three rules (size/points/power-unit cap, the
+        // last one via enforcePowerCap), so a player using the UI
+        // normally can't reach Continue with an invalid roster. Kept as
+        // a defensive backstop (same graceful, actionable-message
+        // pattern as series mode's AI-roster failure below) rather than
+        // trusting the UI gate alone - if these two ever drift out of
+        // sync, this is what catches it instead of a broken match start.
         setArmyBuilderError(validation.reasons.join(' '));
         return;
       }
@@ -476,6 +477,7 @@ export default function App() {
           }
           forcedPointsCap={mode === 'campaign' ? CAMPAIGN_STARTING_POINTS_CAP : undefined}
           errorMessage={armyBuilderError ?? undefined}
+          enforcePowerCap={mode === 'campaign'}
         />
       );
 
