@@ -9,7 +9,7 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-md);
-  min-width: 220px;
+  min-width: min(220px, 100%);
   padding: var(--space-md) var(--space-lg);
   background: var(--color-surface);
   border: 2px solid var(--color-border-muted);

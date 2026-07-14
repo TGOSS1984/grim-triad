@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom';
 import type { Unit } from '../../data/schema';
 import { Card } from '../card/Card';
 import { Lightbox } from '../common/Lightbox';
+import { useResponsiveLightboxCardWidth } from './useResponsiveLightboxCardWidth';
 import styles from './UnitPicker.module.css';
 
 export interface UnitPickerProps {
@@ -37,8 +38,6 @@ export interface UnitPickerProps {
 const ROW_CARD_WIDTH = 44;
 /** Width (px) of the floating hover-zoom preview card. */
 const HOVER_PREVIEW_CARD_WIDTH = 170;
-/** Width (px) of the card shown full-size in the Lightbox. */
-const LIGHTBOX_CARD_WIDTH = 480;
 /** How far past the row card's edge the hover preview floats, in px. */
 const HOVER_PREVIEW_GAP = 12;
 
@@ -69,6 +68,7 @@ function UnitRowCard({ unit }: { unit: Unit }) {
   const [hovering, setHovering] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const lightboxCardWidth = useResponsiveLightboxCardWidth();
 
   const rect = buttonRef.current?.getBoundingClientRect();
   // Prefer opening to the right of the card; flip to the left if there
@@ -130,7 +130,7 @@ function UnitRowCard({ unit }: { unit: Unit }) {
             stats={unit.stats}
             portraitPath={unit.portraitPath}
             owner="blue"
-            width={LIGHTBOX_CARD_WIDTH}
+            width={lightboxCardWidth}
             element={unit.element}
           />
         </Lightbox>

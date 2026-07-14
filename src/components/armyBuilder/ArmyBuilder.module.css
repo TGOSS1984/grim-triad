@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
+  width: 100%;
   max-width: 720px;
+  min-width: 0;
 }
 
 .errorBanner {
@@ -21,6 +23,7 @@
   flex-direction: column;
   gap: var(--space-md);
   padding: var(--space-lg);
+  min-width: 0;
 }
 
 .sectionTitle {
@@ -46,8 +49,38 @@
   margin: 0;
 }
 
+.viewToggle {
+  display: flex;
+  gap: var(--space-xs);
+  align-self: flex-start;
+}
+
+.viewToggleButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-muted);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.viewToggleButton:hover {
+  border-color: var(--color-accent-gold);
+}
+
+.viewToggleActive {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+  background: rgba(175, 131, 59, 0.12);
+}
+
 .capRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-md);
 }
 

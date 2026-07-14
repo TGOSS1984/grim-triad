@@ -1,0 +1,131 @@
+.carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  outline: none;
+}
+
+.carousel:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 4px;
+  border-radius: var(--radius-md);
+}
+
+.summaryBar {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  width: 100%;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-width: 0;
+}
+
+.navButton {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  font-size: 1.5rem;
+  line-height: 1;
+  border-radius: 50%;
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.navButton:hover,
+.navButton:focus-visible {
+  border-color: var(--color-accent-gold);
+  box-shadow: var(--shadow-glow-gold);
+}
+
+.cardArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.unitInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.unitMeta {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.unitPoints {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+}
+
+.positionIndicator {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.addButton,
+.removeButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-xl);
+  cursor: pointer;
+  border: 2px solid var(--color-accent-gold);
+  background: transparent;
+  color: var(--color-accent-gold);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.addButton:hover:not(:disabled) {
+  background: var(--color-accent-gold);
+  color: var(--color-bg-void);
+}
+
+.addButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--color-border-muted);
+  color: var(--color-text-muted);
+}
+
+.removeButton {
+  border-color: var(--color-player-red);
+  color: var(--color-player-red);
+}
+
+.removeButton:hover {
+  background: var(--color-player-red);
+  color: var(--color-text-primary);
+}
+
+.empty {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  text-align: center;
+}

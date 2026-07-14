@@ -1,0 +1,42 @@
+/**
+ * Global CSS reset - loaded FIRST (before tokens/fonts/glass in main.tsx)
+ * so everything else can rely on box-sizing: border-box being in effect
+ * universally.
+ *
+ * Root cause this fixes: without box-sizing: border-box, an element with
+ * `width: 100%` (or any percentage/flex width) PLUS `padding` renders at
+ * `100% + padding*2` under the default box-sizing: content-box - padding
+ * gets added ON TOP of the specified width instead of being carved out of
+ * it. This app has padding on nearly every panel/row/section (see
+ * ArmyBuilder.module.css, UnitPicker.module.css, etc.), so without this
+ * reset, essentially every one of those elements was silently rendering
+ * wider than its container. On a spacious desktop viewport that overflow
+ * either has slack to absorb or is imperceptible; on a narrow mobile
+ * viewport (375px) it's a large enough fraction of the total width to
+ * force real horizontal scroll, clipping content at both edges - exactly
+ * the "text cut off on the left AND right" symptom reported on the Army
+ * Builder screen. This was a systemic gap, not a single component's bug.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  /* Safety net, not the primary fix: even with box-sizing correct
+     everywhere, a stray fixed-width element or an unbreakable long word
+     could still force overflow on a narrow enough viewport. This just
+     stops that from becoming a visible horizontal scrollbar/shifted
+     layout - it doesn't hide a real bug, box-sizing above is what
+     actually fixes the cause. */
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -318,3 +318,47 @@ describe('ArmyBuilder with enforcePowerCap (campaign mode)', () => {
     expect(getRowActionButton(POWER_UNIT_6)).toBeEnabled();
   });
 });
+
+describe('ArmyBuilder List/Carousel view toggle', () => {
+  it('defaults to List View', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    expect(screen.getByRole('button', { name: 'List View', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Available units' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Unit carousel' })).not.toBeInTheDocument();
+  });
+
+  it('switches to Carousel View and back, preserving the existing selection either way', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(addUnitByName(CAPTAIN));
+
+    await user.click(screen.getByRole('button', { name: 'Carousel View' }));
+
+    expect(screen.getByRole('group', { name: 'Unit carousel' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Available units' })).not.toBeInTheDocument();
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([
+      'blood-angels-blood-angels-captain',
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'List View' }));
+    expect(screen.getByRole('list', { name: 'Available units' })).toBeInTheDocument();
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([
+      'blood-angels-blood-angels-captain',
+    ]);
+  });
+
+  it('adding a unit via the Carousel view actually updates the store, same as the List view', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: 'Carousel View' }));
+
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(useArmyBuilderStore.getState().selectedUnitIds.length).toBe(1);
+  });
+});

@@ -5,13 +5,14 @@
  * FactionSelect/PointsTally/UnitPicker themselves stay pure/presentational
  * and independently testable.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useArmyBuilderStore } from '../../state/armyBuilderStore';
 import type { PointsCap } from '../../state/armyBuilderStore';
 import { canAddToCampaignRoster, countPowerUnits, CAMPAIGN_MAX_POWER_UNITS } from '../../state/campaignBalance';
 import { FactionSelect } from './FactionSelect';
 import { PointsTally } from './PointsTally';
 import { UnitPicker } from './UnitPicker';
+import { UnitCarousel } from './UnitCarousel';
 import styles from './ArmyBuilder.module.css';
 
 const POINTS_CAPS: PointsCap[] = [500, 1000, 2000];
@@ -80,6 +81,16 @@ export function ArmyBuilder({
   const availableUnits = useArmyBuilderStore((s) => s.availableUnits());
 
   const minArmySize = requiredArmySize ?? DEFAULT_MIN_ARMY_SIZE;
+
+  /**
+   * List is the default and always was the only option - Carousel is an
+   * ADDITIONAL accessible alternative for players who find the dense
+   * scrolling list harder to scan (large touch targets, one unit at a
+   * time, works with swipe/arrow-key/button navigation), not a
+   * replacement. Local UI state, not persisted - each visit to the army
+   * builder starts on the list view.
+   */
+  const [viewMode, setViewMode] = useState<'list' | 'carousel'>('list');
 
   // Sync the exact-size cap into the store whenever this screen is used
   // for series mode - the store is the real enforcement point (addUnit
@@ -165,15 +176,49 @@ export function ArmyBuilder({
               Power units (over 150pts): {currentPowerUnitCount}/{CAMPAIGN_MAX_POWER_UNITS}
             </p>
           )}
-          <UnitPicker
-            units={availableUnits}
-            selectedIds={selectedUnitIds}
-            remainingPoints={remainingPoints}
-            atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
-            isDisabledExtra={isDisabledByPowerCap}
-            onAdd={addUnit}
-            onRemove={removeUnit}
-          />
+
+          <div className={styles.viewToggle} role="group" aria-label="Unit picker view">
+            <button
+              type="button"
+              className={[styles.viewToggleButton, viewMode === 'list' ? styles.viewToggleActive : ''].join(' ')}
+              aria-pressed={viewMode === 'list'}
+              onClick={() => setViewMode('list')}
+            >
+              List View
+            </button>
+            <button
+              type="button"
+              className={[styles.viewToggleButton, viewMode === 'carousel' ? styles.viewToggleActive : ''].join(
+                ' ',
+              )}
+              aria-pressed={viewMode === 'carousel'}
+              onClick={() => setViewMode('carousel')}
+            >
+              Carousel View
+            </button>
+          </div>
+
+          {viewMode === 'list' ? (
+            <UnitPicker
+              units={availableUnits}
+              selectedIds={selectedUnitIds}
+              remainingPoints={remainingPoints}
+              atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
+              isDisabledExtra={isDisabledByPowerCap}
+              onAdd={addUnit}
+              onRemove={removeUnit}
+            />
+          ) : (
+            <UnitCarousel
+              units={availableUnits}
+              selectedIds={selectedUnitIds}
+              remainingPoints={remainingPoints}
+              atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
+              isDisabledExtra={isDisabledByPowerCap}
+              onAdd={addUnit}
+              onRemove={removeUnit}
+            />
+          )}
         </section>
       )}
 
