@@ -41,21 +41,40 @@
   color: var(--color-player-red);
 }
 
+.actions {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.playAgainButton,
 .newGameButton {
   font-family: var(--font-display);
   font-size: 1rem;
   padding: var(--space-md) var(--space-xl);
   border-radius: var(--radius-md);
-  border: 2px solid var(--color-accent-gold);
   background: var(--color-surface-alt);
   color: var(--color-text-primary);
   cursor: pointer;
   letter-spacing: 0.05em;
-  transition: box-shadow 200ms ease;
-  margin-top: var(--space-md);
+  transition: box-shadow 200ms ease, border-color 150ms ease;
+}
+
+.newGameButton {
+  border: 2px solid var(--color-border-muted);
+  background: var(--color-surface);
 }
 
 .newGameButton:hover,
 .newGameButton:focus-visible {
+  border-color: var(--color-accent-gold);
+}
+
+.playAgainButton {
+  border: 2px solid var(--color-accent-gold);
+}
+
+.playAgainButton:hover,
+.playAgainButton:focus-visible {
   box-shadow: var(--shadow-glow-gold);
 }

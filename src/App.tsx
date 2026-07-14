@@ -451,6 +451,27 @@ export default function App() {
     setStep('game');
   }
 
+  /**
+   * Rematch with the SAME army, skipping ArmyBuilder entirely - single-
+   * match and series result screens only (Campaign already has its own
+   * "Continue" flow via CampaignHomeScreen, which is a different shape of
+   * problem - a persistent collection, not a one-off army pick).
+   *
+   * Deliberately just re-invokes handleArmyReady with the already-stored
+   * humanArmyUnitIds rather than duplicating its branching logic: that
+   * function is already exactly "what happens once an army is chosen",
+   * and nothing about being a REPLAYED army changes that - it still needs
+   * the same mode-specific setup (single-match goes to rule selection,
+   * series builds a fresh AI pool and starts a new series). armyBuilderStore's
+   * rosterName/pointsCap are still intact too (resetArmyBuilder is only
+   * called from handleReturnToHome, never here), so the AI roster and
+   * card-back faction slug resolve exactly as they did the first time.
+   */
+  function handlePlayAgain() {
+    resetGame();
+    handleArmyReady(humanArmyUnitIds);
+  }
+
   switch (step) {
     case 'home':
       return <HomeScreen onNewGame={handleHomeNewGame} />;
@@ -524,7 +545,11 @@ export default function App() {
       return mode === 'campaign' ? (
         <CampaignResultScreen onContinue={handleCampaignMatchDone} />
       ) : (
-        <ResultScreen onNewGame={handleReturnToHome} onSuddenDeath={handleSuddenDeathRematch} />
+        <ResultScreen
+          onPlayAgain={handlePlayAgain}
+          onReturnToMenu={handleReturnToHome}
+          onSuddenDeath={handleSuddenDeathRematch}
+        />
       );
 
     case 'campaignHome':
@@ -542,7 +567,8 @@ export default function App() {
           blueWins={seriesState.blueWins}
           redWins={seriesState.redWins}
           roundsPlayed={seriesState.roundHistory.length}
-          onNewGame={handleReturnToHome}
+          onPlayAgain={handlePlayAgain}
+          onReturnToMenu={handleReturnToHome}
         />
       );
   }

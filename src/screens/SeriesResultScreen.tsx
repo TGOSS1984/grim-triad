@@ -11,7 +11,10 @@ export interface SeriesResultScreenProps {
   blueWins: number;
   redWins: number;
   roundsPlayed: number;
-  onNewGame: () => void;
+  /** Starts a fresh series reusing the same starting pool (skips ArmyBuilder) - see App.tsx's handlePlayAgain. */
+  onPlayAgain: () => void;
+  /** Leaves series mode entirely, back to the main menu. */
+  onReturnToMenu: () => void;
 }
 
 export function SeriesResultScreen({
@@ -19,7 +22,8 @@ export function SeriesResultScreen({
   blueWins,
   redWins,
   roundsPlayed,
-  onNewGame,
+  onPlayAgain,
+  onReturnToMenu,
 }: SeriesResultScreenProps) {
   const title =
     seriesWinner === 'draw'
@@ -39,9 +43,14 @@ export function SeriesResultScreen({
         <span className={styles.tallyRed}>Red: {redWins}</span>
       </div>
 
-      <button type="button" className={styles.newGameButton} onClick={onNewGame}>
-        New Game
-      </button>
+      <div className={styles.actions}>
+        <button type="button" className={styles.playAgainButton} onClick={onPlayAgain}>
+          Play Again
+        </button>
+        <button type="button" className={styles.newGameButton} onClick={onReturnToMenu}>
+          Return to Menu
+        </button>
+      </div>
     </div>
   );
 }

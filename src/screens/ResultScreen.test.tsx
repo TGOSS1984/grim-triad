@@ -43,31 +43,31 @@ beforeEach(() => {
 
 describe('ResultScreen', () => {
   it('shows a fallback message when there is no game', () => {
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByText('No finished match to show.')).toBeInTheDocument();
   });
 
   it('shows a fallback message when the game exists but is not finished', () => {
     useGameStore.setState({ game: { ...finishedGame(), phase: 'playing' } });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByText('No finished match to show.')).toBeInTheDocument();
   });
 
   it('announces the winner', () => {
     useGameStore.setState({ game: finishedGame({ winner: 'blue' }) });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Blue Wins!' })).toBeInTheDocument();
   });
 
   it('announces a draw', () => {
     useGameStore.setState({ game: finishedGame({ winner: 'draw' }) });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Draw' })).toBeInTheDocument();
   });
 
   it('shows the correct final card counts per side', () => {
     useGameStore.setState({ game: finishedGame() });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByText('Blue: 2')).toBeInTheDocument();
     expect(screen.getByText('Red: 1')).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ ruleSet: { ...DEFAULT_RULE_SET, tradeRule: 'one' } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
 
     expect(screen.getByText('Trade Rule: One')).toBeInTheDocument();
     expect(screen.getByText(/Lychguard moves from red to blue/)).toBeInTheDocument();
@@ -86,14 +86,14 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ ruleSet: { ...DEFAULT_RULE_SET, tradeRule: 'direct' } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
 
     expect(screen.getByText('No cards changed hands.')).toBeInTheDocument();
   });
 
   it('does not show a Trade Rule section for a draw', () => {
     useGameStore.setState({ game: finishedGame({ winner: 'draw' }) });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.queryByText(/Trade Rule:/)).not.toBeInTheDocument();
   });
 
@@ -101,7 +101,7 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'draw', ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: true } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Sudden Death Rematch' })).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'draw', ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: false } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Sudden Death Rematch' })).not.toBeInTheDocument();
   });
 
@@ -117,7 +117,7 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'blue', ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: true } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
     expect(screen.queryByRole('button', { name: 'Sudden Death Rematch' })).not.toBeInTheDocument();
   });
 
@@ -127,7 +127,7 @@ describe('ResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'draw', ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: true } }),
     });
-    render(<ResultScreen onNewGame={vi.fn()} onSuddenDeath={onSuddenDeath} />);
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={vi.fn()} onSuddenDeath={onSuddenDeath} />);
 
     await user.click(screen.getByRole('button', { name: 'Sudden Death Rematch' }));
 
@@ -139,14 +139,25 @@ describe('ResultScreen', () => {
     // 'result', so a rematch had no board to actually play on).
   });
 
-  it('calls onNewGame when New Game is clicked', async () => {
+  it('calls onPlayAgain when Play Again is clicked', async () => {
     const user = userEvent.setup();
-    const onNewGame = vi.fn();
+    const onPlayAgain = vi.fn();
     useGameStore.setState({ game: finishedGame() });
-    render(<ResultScreen onNewGame={onNewGame} onSuddenDeath={vi.fn()} />);
+    render(<ResultScreen onPlayAgain={onPlayAgain} onReturnToMenu={vi.fn()} onSuddenDeath={vi.fn()} />);
 
-    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: 'Play Again' }));
 
-    expect(onNewGame).toHaveBeenCalledOnce();
+    expect(onPlayAgain).toHaveBeenCalledOnce();
+  });
+
+  it('calls onReturnToMenu when Return to Menu is clicked', async () => {
+    const user = userEvent.setup();
+    const onReturnToMenu = vi.fn();
+    useGameStore.setState({ game: finishedGame() });
+    render(<ResultScreen onPlayAgain={vi.fn()} onReturnToMenu={onReturnToMenu} onSuddenDeath={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Return to Menu' }));
+
+    expect(onReturnToMenu).toHaveBeenCalledOnce();
   });
 });

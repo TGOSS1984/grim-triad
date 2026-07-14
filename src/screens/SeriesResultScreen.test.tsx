@@ -11,7 +11,8 @@ describe('SeriesResultScreen', () => {
         blueWins={3}
         redWins={1}
         roundsPlayed={4}
-        onNewGame={vi.fn()}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={vi.fn()}
       />,
     );
     expect(screen.getByRole('heading', { name: 'Blue Wins the Series' })).toBeInTheDocument();
@@ -24,7 +25,8 @@ describe('SeriesResultScreen', () => {
         blueWins={2}
         redWins={2}
         roundsPlayed={4}
-        onNewGame={vi.fn()}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={vi.fn()}
       />,
     );
     expect(screen.getByRole('heading', { name: 'Series Draw' })).toBeInTheDocument();
@@ -37,7 +39,8 @@ describe('SeriesResultScreen', () => {
         blueWins={0}
         redWins={1}
         roundsPlayed={1}
-        onNewGame={vi.fn()}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={vi.fn()}
       />,
     );
     expect(screen.getByText('1 round played')).toBeInTheDocument();
@@ -48,7 +51,8 @@ describe('SeriesResultScreen', () => {
         blueWins={1}
         redWins={3}
         roundsPlayed={4}
-        onNewGame={vi.fn()}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={vi.fn()}
       />,
     );
     expect(screen.getByText('4 rounds played')).toBeInTheDocument();
@@ -61,28 +65,49 @@ describe('SeriesResultScreen', () => {
         blueWins={3}
         redWins={2}
         roundsPlayed={5}
-        onNewGame={vi.fn()}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={vi.fn()}
       />,
     );
     expect(screen.getByText('Blue: 3')).toBeInTheDocument();
     expect(screen.getByText('Red: 2')).toBeInTheDocument();
   });
 
-  it('calls onNewGame when New Game is clicked', async () => {
+  it('calls onPlayAgain when Play Again is clicked', async () => {
     const user = userEvent.setup();
-    const onNewGame = vi.fn();
+    const onPlayAgain = vi.fn();
     render(
       <SeriesResultScreen
         seriesWinner="blue"
         blueWins={3}
         redWins={1}
         roundsPlayed={4}
-        onNewGame={onNewGame}
+        onPlayAgain={onPlayAgain}
+        onReturnToMenu={vi.fn()}
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: 'Play Again' }));
 
-    expect(onNewGame).toHaveBeenCalledOnce();
+    expect(onPlayAgain).toHaveBeenCalledOnce();
+  });
+
+  it('calls onReturnToMenu when Return to Menu is clicked', async () => {
+    const user = userEvent.setup();
+    const onReturnToMenu = vi.fn();
+    render(
+      <SeriesResultScreen
+        seriesWinner="blue"
+        blueWins={3}
+        redWins={1}
+        roundsPlayed={4}
+        onPlayAgain={vi.fn()}
+        onReturnToMenu={onReturnToMenu}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Return to Menu' }));
+
+    expect(onReturnToMenu).toHaveBeenCalledOnce();
   });
 });

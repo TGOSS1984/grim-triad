@@ -274,6 +274,56 @@ describe('App (single-match flow integration)', () => {
     expect(useGameStore.getState().game).toBeNull();
     expect(useArmyBuilderStore.getState().rosterName).toBeNull();
   });
+
+  it('Play Again skips Army Builder entirely and starts a fresh match with the SAME army', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    const originalArmy = [...useArmyBuilderStore.getState().selectedUnitIds];
+    await user.click(screen.getByRole('button', { name: 'Play Again' }));
+
+    // Straight to Rule Select, not back through Army Builder.
+    expect(screen.getByRole('heading', { name: 'Match Rules' })).toBeInTheDocument();
+    expect(screen.queryByText('Choose Your Faction')).not.toBeInTheDocument();
+    // The roster itself is untouched - same units as before.
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual(originalArmy);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // The new match's hand shows the same real chosen unit as before.
+    expect(screen.getByRole('button', { name: /Blood Angels Captain/ })).toBeInTheDocument();
+  });
+
+  it('Return to Menu still fully resets back to Home (unchanged behavior from before Play Again existed)', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    await user.click(screen.getByRole('button', { name: 'Return to Menu' }));
+
+    expect(screen.getByRole('heading', { name: 'Grim Triad' })).toBeInTheDocument();
+    expect(useGameStore.getState().game).toBeNull();
+    expect(useArmyBuilderStore.getState().rosterName).toBeNull();
+  });
 });
 
 describe('App (series mode flow integration)', () => {
@@ -389,6 +439,38 @@ describe('App (series mode flow integration)', () => {
 
     await screen.findByRole('heading', { name: /Wins the Series/ }, { timeout: 3000 });
     expect(useSeriesStore.getState().seriesWinner).toBe('blue');
+  });
+
+  it('Play Again on a finished series starts a fresh series with the SAME starting pool, skipping Army Builder', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSeriesArmy(user, 10);
+    await user.click(screen.getByRole('button', { name: 'Start Round 1' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: /Round 1: Blue Wins/ }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'Continue to Round 2' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+    const { game: round2Game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...round2Game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: /Wins the Series/ }, { timeout: 3000 });
+
+    const originalArmy = [...useArmyBuilderStore.getState().selectedUnitIds];
+    await user.click(screen.getByRole('button', { name: 'Play Again' }));
+
+    // Straight into a fresh series intro, not back through Army Builder -
+    // and initSeries reset the pool back to its original full 10 cards
+    // (round 1's 5-card draw is gone, exactly as a brand new series should
+    // start).
+    expect(screen.getByRole('heading', { name: 'Series Begins' })).toBeInTheDocument();
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual(originalArmy);
+    expect(useSeriesStore.getState().bluePool).toHaveLength(10);
+    expect(useSeriesStore.getState().roundNumber).toBe(1);
   });
 
   it("shows a graceful, actionable error (not a crash) if the AI's opponent army can't be generated, and preserves the player's own selection so they can retry", async () => {

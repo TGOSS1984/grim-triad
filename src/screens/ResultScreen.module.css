@@ -56,6 +56,7 @@
 }
 
 .suddenDeathButton,
+.playAgainButton,
 .newGameButton {
   font-family: var(--font-display);
   font-size: 1rem;
@@ -66,25 +67,28 @@
   transition: box-shadow 200ms ease;
 }
 
-.suddenDeathButton {
+.suddenDeathButton,
+.newGameButton {
   border: 2px solid var(--color-border-muted);
   background: var(--color-surface);
   color: var(--color-text-primary);
 }
 
 .suddenDeathButton:hover,
-.suddenDeathButton:focus-visible {
+.suddenDeathButton:focus-visible,
+.newGameButton:hover,
+.newGameButton:focus-visible {
   border-color: var(--color-accent-gold);
 }
 
-.newGameButton {
+.playAgainButton {
   border: 2px solid var(--color-accent-gold);
   background: var(--color-surface-alt);
   color: var(--color-text-primary);
 }
 
-.newGameButton:hover,
-.newGameButton:focus-visible {
+.playAgainButton:hover,
+.playAgainButton:focus-visible {
   box-shadow: var(--shadow-glow-gold);
 }
 

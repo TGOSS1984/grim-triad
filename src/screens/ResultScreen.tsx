@@ -21,7 +21,10 @@ import type { Board, PlayerColour } from '../engine/types';
 import styles from './ResultScreen.module.css';
 
 export interface ResultScreenProps {
-  onNewGame: () => void;
+  /** Reuses the same army (skips ArmyBuilder entirely) and starts a fresh match - see App.tsx's handlePlayAgain for why this is safe to just re-invoke the normal army-submission handler. */
+  onPlayAgain: () => void;
+  /** Leaves this mode entirely, back to the main menu - was previously the only option (labeled "New Game", which read ambiguously once Play Again existed alongside it). */
+  onReturnToMenu: () => void;
   /**
    * Called instead of this screen mutating gameStore directly. Real bug
    * this fixes: this screen is only ever shown once App.tsx's `step` has
@@ -47,7 +50,7 @@ const TRADE_RULE_LABELS: Record<string, string> = {
   all: 'All',
 };
 
-export function ResultScreen({ onNewGame, onSuddenDeath }: ResultScreenProps) {
+export function ResultScreen({ onPlayAgain, onReturnToMenu, onSuddenDeath }: ResultScreenProps) {
   const game = useGameStore((s) => s.game);
 
   if (!game || game.phase !== 'finished') {
@@ -102,8 +105,11 @@ export function ResultScreen({ onNewGame, onSuddenDeath }: ResultScreenProps) {
             Sudden Death Rematch
           </button>
         )}
-        <button type="button" className={styles.newGameButton} onClick={onNewGame}>
-          New Game
+        <button type="button" className={styles.playAgainButton} onClick={onPlayAgain}>
+          Play Again
+        </button>
+        <button type="button" className={styles.newGameButton} onClick={onReturnToMenu}>
+          Return to Menu
         </button>
       </div>
     </div>
