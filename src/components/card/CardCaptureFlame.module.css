@@ -29,6 +29,27 @@
   filter: drop-shadow(0 0 3px #ffb347) drop-shadow(0 0 7px #ff4d1c);
 }
 
+/* Cascade's dashed "zap" texture ring - see CardCaptureFlame.tsx for why
+   this is a separate static circle rather than a strokeDasharray prop on
+   the animated fuseBurn circle above (Framer Motion's pathLength
+   animation would silently override it). Faded in quickly rather than
+   using pathLength itself, since this ring doesn't need to progressively
+   "burn" - it's a constant jagged texture alongside the real burn. */
+.fuseDashOverlay {
+  stroke: #b967ff;
+  opacity: 0.6;
+  animation: fuseDashFadeIn 120ms ease-out;
+}
+
+@keyframes fuseDashFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.6;
+  }
+}
+
 .flash {
   position: absolute;
   inset: 15%;
@@ -66,6 +87,40 @@
     #fff2c2 0%,
     #ffb347 40%,
     #ff4d1c 80%,
+    transparent 100%
+  );
+}
+
+/* Same rule's expand-phase particle: a concentric expanding ring outline
+   (not a filled dot) - reads as a resonance/sonar pulse rather than a
+   flying spark, matching "matching values syncing up" rather than
+   combustion. Several of these render staggered (see
+   CardCaptureFlame.tsx) for a multi-ripple effect. */
+.pulseRing {
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  border: 2px solid #7fe0ff;
+  box-shadow: 0 0 6px #1c9bff;
+}
+
+/* Plus rule's expand-phase particle: larger and fewer than base's embers,
+   gold-toned, animated via a keyframe array in CardCaptureFlame.tsx (out
+   -> briefly in -> back out) rather than a single outward burst - the
+   "several values converging on one sum" motion. */
+.spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #fff9e0 0%,
+    #ffd35c 45%,
+    #c98a1c 85%,
     transparent 100%
   );
 }

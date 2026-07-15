@@ -27,6 +27,7 @@ describe('resolveSameCaptures', () => {
     const result = resolveSameCaptures(board, placed, { row: 1, col: 0 });
 
     expect(result.captured).toEqual([]);
+    expect(result.captureKinds).toEqual([]);
   });
 
   it('captures when two sides match an opponent card, even if placed value is lower', () => {
@@ -53,6 +54,7 @@ describe('resolveSameCaptures', () => {
         { row: 1, col: 2 },
       ]),
     );
+    expect(result.captureKinds).toEqual(['same', 'same']);
   });
 
   it('does not trigger if matched sides are all the placing player own cards', () => {
@@ -105,6 +107,11 @@ describe('resolveSameCaptures', () => {
         { row: 2, col: 2 },
       ]),
     );
+    // The two direct Same matches come first, the cascade-captured card
+    // last - cascadeCaptures always appends discovery-order cascade
+    // entries after the initial matches, regardless of which specific
+    // positions land in which slot.
+    expect(result.captureKinds).toEqual(['same', 'same', 'cascade']);
   });
 
   it('counts a wall match when wallValue is provided (Same Wall support)', () => {

@@ -63,7 +63,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'framer-motion';
-import type { CardStats, PlayerColour } from '../../engine/types';
+import type { CardStats, CaptureKind, PlayerColour } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { CAPTURE_FLIP_DURATION_MS } from '../../state/animationTiming';
 import { ElementIcon } from '../common/ElementIcon';
@@ -96,6 +96,8 @@ export interface CardProps {
   layoutId?: string;
   /** Delay (ms) before this card's capture flip animation starts - staggers multi-card combo captures. */
   flipDelayMs?: number;
+  /** Which rule captured this card in the most recent move, if any - gives each rule its own visual "tell" during the flip (see CardCaptureFlame.tsx). Undefined (or omitted) means the plain default flame - either this card wasn't just captured, or captureKind info isn't available in this context. */
+  captureKind?: CaptureKind;
   /** This card's Elemental affinity - only pass when the Elemental rule is active this match (see file header). */
   element?: ElementId;
 }
@@ -137,6 +139,7 @@ export function Card({
   className,
   layoutId,
   flipDelayMs = 0,
+  captureKind,
   element,
 }: CardProps) {
   const [stage, setStage] = useState<PortraitStage>('primary');
@@ -275,6 +278,7 @@ export function Card({
           phase={flipPhase}
           newOwner={displayOwner}
           halfDurationSeconds={FLIP_HALF_DURATION}
+          captureKind={captureKind ?? 'base'}
         />
       )}
     </>

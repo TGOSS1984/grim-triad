@@ -15,7 +15,7 @@ import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
-import type { Card as EngineCard, GameState, PlayerColour, Position } from '../engine/types';
+import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
 import type { ElementId } from '../data/elements';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
@@ -128,6 +128,19 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
     flipDelayByPosition.set(`${pos.row},${pos.col}`, index * CAPTURE_FLIP_STAGGER_MS);
   });
 
+  /**
+   * Same per-position mapping, this time for WHICH rule captured each
+   * card (see engine/types.ts's CaptureKind) - lets Card.tsx give each
+   * rule its own visual "tell" during the flip instead of every capture
+   * looking identical. captureKinds is parallel to positions (same
+   * index), same as flipDelayByPosition's index usage above.
+   */
+  const captureKindByPosition = new Map<string, CaptureKind>();
+  game.lastCapture?.positions.forEach((pos, index) => {
+    const kind = game.lastCapture?.captureKinds[index];
+    if (kind) captureKindByPosition.set(`${pos.row},${pos.col}`, kind);
+  });
+
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (!cell.card) return null;
@@ -135,6 +148,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
         instanceId: cell.card.instanceId,
         owner: cell.card.owner,
         flipDelayMs: flipDelayByPosition.get(`${rowIndex},${colIndex}`),
+        captureKind: captureKindByPosition.get(`${rowIndex},${colIndex}`),
         ...toDisplayFields(cell.card, game.ruleSet.elemental),
       };
     }),

@@ -17,7 +17,7 @@
  * the "2+ matched sides" threshold but can never themselves be captured
  * (there's no card there).
  */
-import type { Board, Card, CaptureResult, Position, StatsResolver } from '../types';
+import type { Board, Card, CaptureKind, CaptureResult, Position, StatsResolver } from '../types';
 import { getCell, neighborsOf, opposite } from '../board';
 import { cascadeCaptures } from './chainCascade';
 
@@ -72,13 +72,22 @@ export function resolveSameCaptures(
   }
 
   if (matchedSideCount < 2 || matchedNeighborPositions.length === 0) {
-    return { captured: [], comboTriggered: false };
+    return { captured: [], comboTriggered: false, captureKinds: [] };
   }
 
   const allCaptured = cascadeCaptures(board, matchedNeighborPositions, placedCard.owner, getStats);
 
+  // cascadeCaptures returns the initial (directly-matched) positions first,
+  // followed by any further cascade-discovered ones - matchedNeighborPositions.length
+  // is exactly the boundary between "matched this Same check" and "fell as
+  // a secondary reaction to it" (see CaptureKind's own doc).
+  const captureKinds: CaptureKind[] = allCaptured.map((_, i) =>
+    i < matchedNeighborPositions.length ? 'same' : 'cascade',
+  );
+
   return {
     captured: allCaptured,
     comboTriggered: allCaptured.length > matchedNeighborPositions.length,
+    captureKinds,
   };
 }

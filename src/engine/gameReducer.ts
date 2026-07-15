@@ -167,7 +167,7 @@ export function applyMove(state: GameState, move: Move): GameState {
   assertLegalMove(state, move);
 
   let board = placeCard(state.board, move.card, move);
-  const { captured, comboTriggered } = resolveCaptures(
+  const { captured, comboTriggered, captureKinds } = resolveCaptures(
     board,
     move.card,
     move.position,
@@ -196,6 +196,6 @@ export function applyMove(state: GameState, move: Move): GameState {
     phase: boardFull ? 'finished' : state.phase,
     winner: boardFull ? determineWinner(board) : null,
     history: [...state.history, move],
-    lastCapture: { positions: captured, comboTriggered },
+    lastCapture: { positions: captured, comboTriggered, captureKinds },
   };
 }

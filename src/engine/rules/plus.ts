@@ -9,7 +9,7 @@
  * card re-checks its own other neighbors using the standard base
  * (higher-value-wins) rule, cascading until no further captures occur.
  */
-import type { Board, Card, CaptureResult, Position, Side, StatsResolver } from '../types';
+import type { Board, Card, CaptureKind, CaptureResult, Position, Side, StatsResolver } from '../types';
 import { ALL_SIDES, getCell, neighborsOf, opposite } from '../board';
 import { resolveBaseCaptures } from '../capture';
 
@@ -56,7 +56,7 @@ export function resolvePlusCaptures(
   }
 
   if (matchedNeighborPositions.length === 0) {
-    return { captured: [], comboTriggered: false };
+    return { captured: [], comboTriggered: false, captureKinds: [] };
   }
 
   const working = cloneBoard(board);
@@ -93,6 +93,12 @@ export function resolvePlusCaptures(
   return {
     captured: allCaptured,
     comboTriggered: allCaptured.length > matchedNeighborPositions.length,
+    // Same boundary trick as same.ts: matchedNeighborPositions.length is
+    // exactly where "directly matched this Plus check" ends and "fell as
+    // a secondary cascade reaction" begins.
+    captureKinds: allCaptured.map((_, i): CaptureKind =>
+      i < matchedNeighborPositions.length ? 'plus' : 'cascade',
+    ),
   };
 }
 

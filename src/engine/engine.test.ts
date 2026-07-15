@@ -176,7 +176,7 @@ describe('applyMove', () => {
 
     const next = applyMove(state, move);
 
-    expect(next.lastCapture).toEqual({ positions: [], comboTriggered: false });
+    expect(next.lastCapture).toEqual({ positions: [], comboTriggered: false, captureKinds: [] });
   });
 
   it('records the captured position(s) in lastCapture when a move does capture', () => {
@@ -192,6 +192,7 @@ describe('applyMove', () => {
     expect(state.lastCapture).toEqual({
       positions: [{ row: 1, col: 0 }],
       comboTriggered: false,
+      captureKinds: ['base'],
     });
   });
 });

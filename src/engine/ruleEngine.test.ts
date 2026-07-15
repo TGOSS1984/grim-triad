@@ -241,6 +241,7 @@ describe('resolveCaptures (Chain rule)', () => {
 
     expect(result.captured).toEqual([{ row: 1, col: 2 }]);
     expect(result.comboTriggered).toBe(false);
+    expect(result.captureKinds).toEqual(['base']);
   });
 
   it('cascades a base capture into a further one when chain is on, and reports comboTriggered', () => {
@@ -265,6 +266,10 @@ describe('resolveCaptures (Chain rule)', () => {
     );
     expect(result.captured).toHaveLength(2);
     expect(result.comboTriggered).toBe(true);
+    // The base capture always comes first (cascadeCaptures appends its
+    // discoveries after the initial list it's given), so this is
+    // deterministic despite using arrayContaining above for `captured`.
+    expect(result.captureKinds).toEqual(['base', 'cascade']);
   });
 
   it('with chain on, does nothing extra when the initial placement captures nothing at all', () => {

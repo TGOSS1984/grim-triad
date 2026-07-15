@@ -228,6 +228,23 @@ describe('Card', () => {
       render(<Card {...baseProps} owner="blue" flipDelayMs={500} />);
       expect(document.querySelector('[class*="overlay"]')).not.toBeInTheDocument();
     });
+
+    it("passes captureKind through to the flame, so a 'same' capture shows pulse rings instead of the default embers", async () => {
+      const { rerender } = render(<Card {...baseProps} owner="blue" captureKind="same" />);
+      rerender(<Card {...baseProps} owner="red" captureKind="same" />);
+
+      await waitFor(() => {
+        expect(document.querySelector('[class*="overlay"]')).toBeInTheDocument();
+      });
+      // Wait through to the expand phase, where particles actually render.
+      await waitFor(() => {
+        expect(
+          document.querySelector('[class*="pulseRing"]') ?? document.querySelector('[class*="ember"]'),
+        ).toBeInTheDocument();
+      });
+      expect(document.querySelector('[class*="pulseRing"]')).toBeInTheDocument();
+      expect(document.querySelector('[class*="ember"]')).not.toBeInTheDocument();
+    });
   });
 
   it('shows an element badge with an accessible label when element is provided', () => {

@@ -27,6 +27,7 @@ describe('resolvePlusCaptures', () => {
     const result = resolvePlusCaptures(board, placed, { row: 1, col: 1 });
 
     expect(result.captured).toEqual([]);
+    expect(result.captureKinds).toEqual([]);
   });
 
   it('captures both cards when two sums match, even if placed value is lower', () => {
@@ -52,6 +53,7 @@ describe('resolvePlusCaptures', () => {
         { row: 1, col: 2 },
       ]),
     );
+    expect(result.captureKinds).toEqual(['plus', 'plus']);
   });
 
   it('does not trigger when the matching sum pair is entirely the placer own cards', () => {
@@ -99,6 +101,7 @@ describe('resolvePlusCaptures', () => {
     // further capture fires here; confirms combo does not force a tie.
     expect(result.captured).toHaveLength(2);
     expect(result.comboTriggered).toBe(false);
+    expect(result.captureKinds).toEqual(['plus', 'plus']);
   });
 
   it('does trigger a further combo capture when the chained comparison is a genuine win', () => {
@@ -130,5 +133,6 @@ describe('resolvePlusCaptures', () => {
         { row: 0, col: 2 },
       ]),
     );
+    expect(result.captureKinds).toEqual(['plus', 'plus', 'cascade']);
   });
 });

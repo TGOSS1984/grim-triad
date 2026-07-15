@@ -190,6 +190,19 @@ describe('GameScreen', () => {
       },
       { timeout: 3000 },
     );
+
+    // Both captures here are direct Same matches (no cascade fired in
+    // this fixture), so the pulse-ring visual (Same's distinct tell -
+    // see CardCaptureFlame.tsx) should appear somewhere on screen during
+    // the flip, end-to-end from game.lastCapture.captureKinds through to
+    // the rendered DOM - not just that a capture happened, but that the
+    // RIGHT rule's visual was selected for it.
+    await waitFor(
+      () => {
+        expect(document.querySelector('[class*="pulseRing"]')).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('does not show a Quit button when onQuit is not provided', () => {

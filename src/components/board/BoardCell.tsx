@@ -15,7 +15,7 @@
  * component doesn't know about game rules, legality, or engine types
  * directly; Board computes what's legal and passes the result down.
  */
-import type { CardStats, PlayerColour, Position } from '../../engine/types';
+import type { CardStats, CaptureKind, PlayerColour, Position } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { Card } from '../card/Card';
 import { ElementIcon } from '../common/ElementIcon';
@@ -30,6 +30,8 @@ export interface BoardCardData {
   owner: PlayerColour;
   /** Delay (ms) before this card's capture flip animation starts - see Card.tsx. */
   flipDelayMs?: number;
+  /** Which rule captured this card in the most recent move, if any - gives each rule its own visual "tell" during the flip (see Card.tsx/CardCaptureFlame.tsx). Undefined when this card wasn't part of the most recent capture. */
+  captureKind?: CaptureKind;
   /** This card's own Elemental affinity - distinct from the cell's terrain element below. Only set when the Elemental rule is active this match (see GameScreen). */
   element?: ElementId;
 }
@@ -78,6 +80,7 @@ export function BoardCell({
           owner={card.owner}
           width={cardWidth}
           flipDelayMs={card.flipDelayMs}
+          captureKind={card.captureKind}
           element={card.element}
         />
         {elementBadge}

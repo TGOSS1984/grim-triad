@@ -23,7 +23,7 @@
  * auditing the code: the old version literally never re-read a defender's
  * position at all.
  */
-import type { Board, Card, CaptureResult, Position, RuleSet, StatsResolver } from './types';
+import type { Board, Card, CaptureKind, CaptureResult, Position, RuleSet, StatsResolver } from './types';
 import { resolveBaseCaptures } from './capture';
 import { resolveSameCaptures } from './rules/same';
 import { getWallValueForRuleSet } from './rules/sameWall';
@@ -79,8 +79,20 @@ export function resolveCaptures(
 
   if (ruleSet.chain && baseCaptured.length > 0) {
     const cascaded = cascadeCaptures(board, baseCaptured, placedCard.owner, getStats);
-    return { captured: cascaded, comboTriggered: cascaded.length > baseCaptured.length };
+    return {
+      captured: cascaded,
+      comboTriggered: cascaded.length > baseCaptured.length,
+      // baseCaptured.length is the boundary between the plain flanking
+      // captures this move made directly and anything Chain swept up
+      // afterward - same boundary trick same.ts/plus.ts use for their
+      // own direct-match vs cascade split.
+      captureKinds: cascaded.map((_, i): CaptureKind => (i < baseCaptured.length ? 'base' : 'cascade')),
+    };
   }
 
-  return { captured: baseCaptured, comboTriggered: false };
+  return {
+    captured: baseCaptured,
+    comboTriggered: false,
+    captureKinds: baseCaptured.map((): CaptureKind => 'base'),
+  };
 }

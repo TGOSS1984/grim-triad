@@ -130,7 +130,7 @@ export interface GameState {
    * (see GameScreen) stagger flip animations for multi-card captures
    * instead of flipping every captured card at the exact same instant.
    */
-  lastCapture?: { positions: Position[]; comboTriggered: boolean };
+  lastCapture?: { positions: Position[]; comboTriggered: boolean; captureKinds: CaptureKind[] };
 }
 
 /** A player action: place a card from hand onto a board position. */
@@ -139,6 +139,25 @@ export interface Move {
   card: Card;
   position: Position;
 }
+
+/**
+ * Which mechanism captured a given card - lets the UI give each rule its
+ * own distinct visual "tell" (see CardCaptureFlame.tsx) instead of every
+ * capture looking identical regardless of which rule caused it:
+ *  - 'base': the plain higher-value flanking capture, the rule every
+ *    match has active. The default/familiar look.
+ *  - 'same': directly matched via the Same rule (2+ equal facing values).
+ *  - 'plus': directly matched via the Plus rule (2+ equal side sums).
+ *  - 'cascade': NOT a direct trigger of any rule above - this card fell
+ *    as a secondary reaction, either from Same/Plus's own built-in
+ *    cascade after their initial match, or from the standalone Chain
+ *    rule cascading a plain base capture. Same mechanic either way (see
+ *    rules/chainCascade.ts's cascadeCaptures, which same.ts, plus.ts, and
+ *    ruleEngine.ts's Chain path all call into) - the UI doesn't need to
+ *    know which rule STARTED the cascade, only that this particular card
+ *    was swept up by it rather than being the initiating capture.
+ */
+export type CaptureKind = 'base' | 'same' | 'plus' | 'cascade';
 
 /**
  * The result of resolving a single placement: which opponent cards (if any)
@@ -150,6 +169,8 @@ export interface CaptureResult {
   captured: Position[];
   /** True if this placement triggered a Same or Plus combo chain reaction. */
   comboTriggered: boolean;
+  /** Which mechanism captured each entry in `captured`, same order/length - see CaptureKind's own doc. */
+  captureKinds: CaptureKind[];
 }
 
 /**
