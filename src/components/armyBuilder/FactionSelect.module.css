@@ -1,6 +1,16 @@
+/**
+ * .list uses CSS Grid rather than flex-wrap: with the faction count
+ * growing toward ~40 (see FactionSelect.tsx's own doc - reads
+ * ACTIVE_FACTIONS directly, so this list grows as more rosters go live),
+ * a flex-wrap row of fixed-min-width buttons only happened to look like a
+ * multi-column grid at specific container widths, and on a typical
+ * mobile viewport (~375-410px content width) it degraded to one giant
+ * single column - a very long scroll for 40 factions. Grid gives an
+ * explicit, deliberate column count instead of an accidental one.
+ */
 .list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-md);
 }
 
@@ -9,7 +19,6 @@
   flex-direction: row;
   align-items: center;
   gap: var(--space-md);
-  min-width: min(220px, 100%);
   padding: var(--space-md) var(--space-lg);
   background: var(--color-surface);
   border: 2px solid var(--color-border-muted);
@@ -62,4 +71,52 @@
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--color-text-muted);
+}
+
+/* Mobile: force exactly 2 columns (auto-fit's 220px minimum above would
+   still collapse to 1 column at typical phone widths, ~375-410px content
+   area - 2x220px+gap doesn't fit), and shrink/restack each card - icon
+   above name/count, centered - rather than trying to squeeze the
+   original horizontal icon+text layout into a half-width card, which
+   looked cramped with real faction names ("Adeptus Custodes",
+   "Ultramarines"). This roughly halves the scroll length for a 40-entry
+   list, which was the actual ask.
+
+   MUST come after every base rule it overrides (.list, .factionButton,
+   .icon, .textBlock, .name, .count above) - CSS resolves same-specificity
+   rules by SOURCE ORDER regardless of whether one is inside a media
+   query, and the mobile row-layout bug in UnitPicker.module.css (fixed
+   just before this) was caused by exactly this ordering mistake - not
+   repeating it here. */
+@media (max-width: 480px) {
+  .list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .factionButton {
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-sm);
+    gap: var(--space-xs);
+  }
+
+  .icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .textBlock {
+    align-items: center;
+    text-align: center;
+    gap: 2px;
+  }
+
+  .name {
+    font-size: 0.85rem;
+  }
+
+  .count {
+    font-size: 0.65rem;
+  }
 }
