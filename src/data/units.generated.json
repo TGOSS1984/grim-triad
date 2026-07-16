@@ -2085,10 +2085,10 @@
       "Infantry"
     ],
     "points": 115,
-    "statBudget": 23,
+    "statBudget": 24,
     "stats": {
-      "top": 6,
-      "bottom": 5,
+      "top": 9,
+      "bottom": 3,
       "left": 6,
       "right": 6
     },
@@ -2107,12 +2107,12 @@
       "Infantry"
     ],
     "points": 85,
-    "statBudget": 21,
+    "statBudget": 22,
     "stats": {
       "top": 6,
-      "bottom": 5,
-      "left": 5,
-      "right": 5
+      "bottom": 7,
+      "left": 3,
+      "right": 6
     },
     "portraitPath": "assets/factions/dark-angels/units/belial.png",
     "element": "radiation"
