@@ -14,6 +14,7 @@
   width: 100%;
   max-width: 900px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
@@ -68,6 +69,18 @@
   align-items: center;
   gap: var(--space-sm);
   margin-left: auto;
+}
+
+/* Once the header wraps (see .header's own flex-wrap), margin-left: auto
+   only makes sense within a single line - if quitArea ends up alone on
+   its own wrapped line, "push to the right" just shoves it to one side
+   of an otherwise-empty row instead of centering with everything else.
+   Drop it below the header's own wrap breakpoint so quitArea centers
+   naturally like every other wrapped item instead. */
+@media (max-width: 700px) {
+  .quitArea {
+    margin-left: 0;
+  }
 }
 
 .quitButton,

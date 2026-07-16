@@ -19,7 +19,7 @@
 
 .toggleGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: var(--space-md);
   width: 100%;
   max-width: 800px;
@@ -63,6 +63,8 @@
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-md);
 }
 
