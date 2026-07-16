@@ -7,8 +7,9 @@ function makeCard(
   owner: 'blue' | 'red',
   stats: { top: number; bottom: number; left: number; right: number },
   instanceId = 'test-card',
+  keywords?: string[],
 ): Card {
-  return { instanceId, unitId: 'test-unit', owner, stats };
+  return { instanceId, unitId: 'test-unit', owner, stats, keywords };
 }
 
 function place(board: Board, card: Card, pos: Position): void {
@@ -131,5 +132,65 @@ describe('resolveSameCaptures', () => {
     // top matches wall (10), left matches wall (10), right matches red-right's left (1)
     // -> 3 matched sides, 1 actual opponent card captured.
     expect(result.captured).toEqual([{ row: 0, col: 1 }]);
+  });
+
+  it('excludeCard removes a matching neighbor from capture AND from the matched-sides count entirely', () => {
+    const board = createEmptyBoard();
+    // Same setup as the "captures when two sides match" test above, but
+    // red-right is tagged Epic Hero this time.
+    place(board, makeCard('red', { top: 1, bottom: 5, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-right', ['Epic Hero']),
+      { row: 1, col: 2 },
+    );
+    const placed = makeCard('blue', { top: 5, bottom: 1, left: 1, right: 5 }, 'blue-1');
+
+    const result = resolveSameCaptures(
+      board,
+      placed,
+      { row: 1, col: 1 },
+      { excludeCard: (card) => card.keywords?.includes('Epic Hero') ?? false },
+    );
+
+    // Only 1 real (non-excluded) match remains - below the 2+ threshold,
+    // so Same doesn't even trigger. The excluded Epic Hero neighbor isn't
+    // just spared capture, it doesn't count toward the threshold either.
+    expect(result.captured).toEqual([]);
+  });
+
+  it('excludeCard only affects the excluded card - a genuine Same still captures everything else normally', () => {
+    const board = createEmptyBoard();
+    place(board, makeCard('red', { top: 1, bottom: 5, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 1, right: 5 }, 'red-left', ['Epic Hero']),
+      { row: 1, col: 0 },
+    );
+    const placed = makeCard('blue', { top: 5, bottom: 1, left: 5, right: 5 }, 'blue-1');
+
+    const result = resolveSameCaptures(
+      board,
+      placed,
+      { row: 1, col: 1 },
+      { excludeCard: (card) => card.keywords?.includes('Epic Hero') ?? false },
+    );
+
+    // Top and right neighbors still match normally (2 sides, threshold
+    // met) and get captured - only the Epic Hero (left neighbor) is
+    // spared, even though its own value also matches.
+    expect(result.captured).toEqual(expect.arrayContaining([{ row: 0, col: 1 }, { row: 1, col: 2 }]));
+    expect(result.captured).not.toContainEqual({ row: 1, col: 0 });
+    expect(result.captured).toHaveLength(2);
   });
 });

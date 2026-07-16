@@ -47,6 +47,17 @@ export interface Card {
   element?: Element;
   owner: PlayerColour;
   /**
+   * The unit catalog's keyword tags for this card (e.g. "Psyker", "Epic
+   * Hero", "Infantry") - see data/schema.ts's Unit.keywords, threaded
+   * through at hand-build time (see state/matchSetup.ts's unitIdsToHand).
+   * Optional so existing Card fixtures across the codebase (many
+   * constructed directly in tests) don't all need updating - a card with
+   * no keywords is simply not eligible for any keyword-gated rule (see
+   * rules/keywords.ts), same graceful-degradation stance as `element`
+   * being optional.
+   */
+  keywords?: string[];
+  /**
    * The faction/chapter slug this card was actually drafted/recruited
    * under (e.g. "blood-angels"), as chosen by whichever player built this
    * roster - NOT necessarily the same as the underlying unit's own static
@@ -100,6 +111,19 @@ export interface RuleSet {
    * cascade the same way.
    */
   chain: boolean;
+  /**
+   * Heroic: cards with the "Epic Hero" keyword (see data/schema.ts's
+   * Unit.keywords - the game's named/unique characters) can't be captured
+   * by a Same or Plus value-match, or swept up by the cascade that
+   * follows one - only a genuine higher-value flanking capture (the base
+   * rule) can take them down, with or without Chain. They're not
+   * invincible, just immune to being "gotcha"-captured by a lucky number
+   * match rather than actually being outmatched. See
+   * rules/keywords.ts's isEpicHero, which ruleEngine.ts uses to exclude
+   * these cards from Same/Plus's own matching checks entirely (as if
+   * that neighbor position were simply absent for matching purposes).
+   */
+  heroic: boolean;
   tradeRule: 'one' | 'diff' | 'direct' | 'all';
 }
 

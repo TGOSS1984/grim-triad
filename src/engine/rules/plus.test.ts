@@ -7,8 +7,9 @@ function makeCard(
   owner: 'blue' | 'red',
   stats: { top: number; bottom: number; left: number; right: number },
   instanceId = 'test-card',
+  keywords?: string[],
 ): Card {
-  return { instanceId, unitId: 'test-unit', owner, stats };
+  return { instanceId, unitId: 'test-unit', owner, stats, keywords };
 }
 
 function place(board: Board, card: Card, pos: Position): void {
@@ -134,5 +135,68 @@ describe('resolvePlusCaptures', () => {
       ]),
     );
     expect(result.captureKinds).toEqual(['plus', 'plus', 'cascade']);
+  });
+
+  it('excludeCard removes a matching neighbor from capture AND from its sum group entirely', () => {
+    const board = createEmptyBoard();
+    // Same sum-10 setup as "captures both cards when two sums match", but
+    // red-right is tagged Epic Hero this time.
+    place(board, makeCard('red', { top: 1, bottom: 6, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 8, right: 1 }, 'red-right', ['Epic Hero']),
+      { row: 1, col: 2 },
+    );
+    const placed = makeCard('blue', { top: 4, bottom: 1, left: 1, right: 2 }, 'blue-1');
+
+    const result = resolvePlusCaptures(
+      board,
+      placed,
+      { row: 1, col: 1 },
+      undefined,
+      (card) => card.keywords?.includes('Epic Hero') ?? false,
+    );
+
+    // With red-right excluded entirely, only ONE sum-10 entry remains
+    // (red-top) - Plus needs 2+ sharing a sum, so nothing captures at
+    // all, not even red-top.
+    expect(result.captured).toEqual([]);
+  });
+
+  it('excludeCard only affects the excluded card - a genuine Plus still captures everything else normally', () => {
+    const board = createEmptyBoard();
+    place(board, makeCard('red', { top: 1, bottom: 6, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 8, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    // left neighbor: right=8, placed.left=2 -> also sum 10, but Epic Hero.
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 1, right: 8 }, 'red-left', ['Epic Hero']),
+      { row: 1, col: 0 },
+    );
+    const placed = makeCard('blue', { top: 4, bottom: 1, left: 2, right: 2 }, 'blue-1');
+
+    const result = resolvePlusCaptures(
+      board,
+      placed,
+      { row: 1, col: 1 },
+      undefined,
+      (card) => card.keywords?.includes('Epic Hero') ?? false,
+    );
+
+    // top+right still share sum 10 and get captured normally - only the
+    // Epic Hero (left neighbor) is spared, even though its own sum also
+    // matched.
+    expect(result.captured).toEqual(expect.arrayContaining([{ row: 0, col: 1 }, { row: 1, col: 2 }]));
+    expect(result.captured).not.toContainEqual({ row: 1, col: 0 });
+    expect(result.captured).toHaveLength(2);
   });
 });

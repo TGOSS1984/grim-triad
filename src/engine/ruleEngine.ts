@@ -29,6 +29,7 @@ import { resolveSameCaptures } from './rules/same';
 import { getWallValueForRuleSet } from './rules/sameWall';
 import { resolvePlusCaptures } from './rules/plus';
 import { getEffectiveStats } from './rules/elemental';
+import { isEpicHero } from './rules/keywords';
 import { cascadeCaptures } from './rules/chainCascade';
 
 /**
@@ -62,14 +63,16 @@ export function resolveCaptures(
 
   if (ruleSet.same) {
     const wallValue = getWallValueForRuleSet(ruleSet);
-    const sameResult = resolveSameCaptures(board, placedCard, pos, { wallValue }, getStats);
+    const excludeCard = ruleSet.heroic ? isEpicHero : undefined;
+    const sameResult = resolveSameCaptures(board, placedCard, pos, { wallValue, excludeCard }, getStats);
     if (sameResult.captured.length > 0) {
       return sameResult;
     }
   }
 
   if (ruleSet.plus) {
-    const plusResult = resolvePlusCaptures(board, placedCard, pos, getStats);
+    const excludeCard = ruleSet.heroic ? isEpicHero : undefined;
+    const plusResult = resolvePlusCaptures(board, placedCard, pos, getStats, excludeCard);
     if (plusResult.captured.length > 0) {
       return plusResult;
     }

@@ -41,6 +41,20 @@ describe('RuleSelectScreen', () => {
     expect(sameCheckbox).toBeChecked();
   });
 
+  it('shows the Heroic toggle and includes it when Continue is clicked', async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    render(<RuleSelectScreen onContinue={onContinue} />);
+
+    const heroicCheckbox = screen.getByRole('checkbox', { name: /^Heroic/ });
+    expect(heroicCheckbox).not.toBeChecked();
+
+    await user.click(heroicCheckbox);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onContinue).toHaveBeenCalledWith({ ...DEFAULT_RULE_SET, heroic: true });
+  });
+
   it('only one trade rule radio can be selected at a time', async () => {
     const user = userEvent.setup();
     render(<RuleSelectScreen onContinue={vi.fn()} />);
@@ -88,6 +102,7 @@ describe('RuleSelectScreen', () => {
       plus: true,
       elemental: true,
       chain: true,
+      heroic: true,
       tradeRule: 'diff',
     });
   });

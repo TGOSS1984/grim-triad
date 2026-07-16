@@ -29,6 +29,7 @@ export function describeRuleSet(ruleSet: RuleSet): string[] {
   if (ruleSet.plus) labels.push('Plus');
   if (ruleSet.elemental) labels.push('Elemental');
   if (ruleSet.chain) labels.push('Chain');
+  if (ruleSet.heroic) labels.push('Heroic');
   labels.push(TRADE_RULE_LABELS[ruleSet.tradeRule]);
   return labels;
 }

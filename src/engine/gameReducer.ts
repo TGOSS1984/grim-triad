@@ -27,6 +27,7 @@ export const DEFAULT_RULE_SET: RuleSet = {
   plus: false,
   elemental: false,
   chain: false,
+  heroic: false,
   tradeRule: 'one',
 };
 

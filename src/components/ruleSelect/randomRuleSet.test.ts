@@ -20,6 +20,7 @@ describe('randomRuleSet', () => {
       plus: true,
       elemental: true,
       chain: true,
+      heroic: true,
       tradeRule: 'diff',
     });
   });

@@ -23,6 +23,7 @@ export function randomRuleSet(): RuleSet {
     plus: randomBool(),
     elemental: randomBool(),
     chain: randomBool(),
+    heroic: randomBool(),
     tradeRule: tradeOptions[Math.floor(Math.random() * tradeOptions.length)],
   };
 }

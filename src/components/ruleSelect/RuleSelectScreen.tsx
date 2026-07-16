@@ -63,6 +63,12 @@ const TOGGLE_RULES: ToggleRuleInfo[] = [
     description:
       'A capture can trigger a chain reaction: each card it flips immediately checks its own other neighbors too.',
   },
+  {
+    key: 'heroic',
+    label: 'Heroic',
+    description:
+      "Epic Hero units can't be captured by Same or Plus - only a genuine higher-value capture can take them down.",
+  },
 ];
 
 interface TradeRuleInfo {

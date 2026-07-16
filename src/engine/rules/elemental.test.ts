@@ -3,13 +3,14 @@ import { createEmptyBoard } from '../board';
 import { assignElementalTerrain, getEffectiveStats } from './elemental';
 import type { Card } from '../types';
 
-function makeCard(element?: string): Card {
+function makeCard(element?: string, keywords?: string[]): Card {
   return {
     instanceId: 'test-card',
     unitId: 'test-unit',
     owner: 'blue',
     stats: { top: 5, bottom: 5, left: 5, right: 5 },
     element,
+    keywords,
   };
 }
 
@@ -83,6 +84,46 @@ describe('getEffectiveStats', () => {
     const board = createEmptyBoard();
     board[0][0].element = 'warp';
     const card = makeCard(undefined);
+
+    const stats = getEffectiveStats(board, card, { row: 0, col: 0 });
+
+    expect(stats).toEqual({ top: 4, bottom: 4, left: 4, right: 4 });
+  });
+
+  it('a Psyker still gets the +1 bonus for a genuine element match', () => {
+    const board = createEmptyBoard();
+    board[0][0].element = 'warp';
+    const card = makeCard('warp', ['Character', 'Psyker']);
+
+    const stats = getEffectiveStats(board, card, { row: 0, col: 0 });
+
+    expect(stats).toEqual({ top: 6, bottom: 6, left: 6, right: 6 });
+  });
+
+  it('a Psyker is immune to the -1 mismatch penalty - keeps unmodified stats instead', () => {
+    const board = createEmptyBoard();
+    board[0][0].element = 'warp';
+    const card = makeCard('fire', ['Character', 'Psyker']);
+
+    const stats = getEffectiveStats(board, card, { row: 0, col: 0 });
+
+    expect(stats).toEqual({ top: 5, bottom: 5, left: 5, right: 5 });
+  });
+
+  it('a Psyker with no element at all is also immune to the penalty (still counts as a mismatch, just an immune one)', () => {
+    const board = createEmptyBoard();
+    board[0][0].element = 'warp';
+    const card = makeCard(undefined, ['Psyker']);
+
+    const stats = getEffectiveStats(board, card, { row: 0, col: 0 });
+
+    expect(stats).toEqual({ top: 5, bottom: 5, left: 5, right: 5 });
+  });
+
+  it('a non-Psyker card with other keywords still takes the normal mismatch penalty', () => {
+    const board = createEmptyBoard();
+    board[0][0].element = 'warp';
+    const card = makeCard('fire', ['Character', 'Epic Hero']);
 
     const stats = getEffectiveStats(board, card, { row: 0, col: 0 });
 

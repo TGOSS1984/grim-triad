@@ -24,6 +24,14 @@ import { cascadeCaptures } from './chainCascade';
 export interface SameOptions {
   /** If set (Same Wall active), board edges are treated as this value for matching. */
   wallValue?: number;
+  /**
+   * When this returns true for a neighbor's card, that neighbor is
+   * excluded from matching entirely - as if that side had no neighbor at
+   * all. Used by the Heroic rule (see ruleEngine.ts, which passes
+   * isEpicHero here) so Epic Hero units can't be captured - or even
+   * contribute toward the 2+ matched sides threshold - via Same.
+   */
+  excludeCard?: (card: Card) => boolean;
 }
 
 const identityStats: StatsResolver = (card) => card.stats;
@@ -43,7 +51,7 @@ export function resolveSameCaptures(
     const neighborCell = getCell(board, neighborPos);
     const placedValue = placedStats[side];
 
-    if (neighborCell.card) {
+    if (neighborCell.card && !options.excludeCard?.(neighborCell.card)) {
       const neighborValue = getStats(neighborCell.card, neighborPos)[opposite(side)];
       if (placedValue === neighborValue) {
         matchedSideCount++;

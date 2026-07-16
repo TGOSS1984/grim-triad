@@ -9,8 +9,9 @@ function makeCard(
   stats: { top: number; bottom: number; left: number; right: number },
   instanceId = 'test-card',
   element?: string,
+  keywords?: string[],
 ): Card {
-  return { instanceId, unitId: 'test-unit', owner, stats, element };
+  return { instanceId, unitId: 'test-unit', owner, stats, element, keywords };
 }
 
 function place(board: Board, card: Card, pos: Position): void {
@@ -320,5 +321,77 @@ describe('resolveCaptures (Chain rule)', () => {
 
     expect(withChain.captured).toEqual(withoutChain.captured);
     expect(withChain.comboTriggered).toBe(withoutChain.comboTriggered);
+  });
+});
+
+describe('resolveCaptures with Heroic active', () => {
+  it('an Epic Hero neighbor is immune to a Same capture when Heroic is on', () => {
+    const board = createEmptyBoard();
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 5, left: 1, right: 1 }, 'red-top', undefined, ['Epic Hero']),
+      { row: 0, col: 1 },
+    );
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    const placed = makeCard('blue', { top: 5, bottom: 1, left: 1, right: 5 }, 'blue-1');
+
+    const withoutHeroic = resolveCaptures(board, placed, { row: 1, col: 1 }, { ...DEFAULT_RULE_SET, same: true });
+    const withHeroic = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      same: true,
+      heroic: true,
+    });
+
+    // Without Heroic, both sides match -> a genuine Same capture of both.
+    expect(withoutHeroic.captured).toHaveLength(2);
+    // With Heroic on, the Epic Hero (top) no longer counts toward the
+    // matched-sides threshold at all - only 1 real match remains, below
+    // the 2+ needed, so Same doesn't trigger and NEITHER card is
+    // captured this way (not even the non-hero one).
+    expect(withHeroic.captured).toEqual([]);
+  });
+
+  it('a non-Epic-Hero card is completely unaffected by Heroic', () => {
+    const board = createEmptyBoard();
+    place(board, makeCard('red', { top: 1, bottom: 5, left: 1, right: 1 }, 'red-top'), {
+      row: 0,
+      col: 1,
+    });
+    place(board, makeCard('red', { top: 1, bottom: 1, left: 5, right: 1 }, 'red-right'), {
+      row: 1,
+      col: 2,
+    });
+    const placed = makeCard('blue', { top: 5, bottom: 1, left: 1, right: 5 }, 'blue-1');
+
+    const result = resolveCaptures(board, placed, { row: 1, col: 1 }, {
+      ...DEFAULT_RULE_SET,
+      same: true,
+      heroic: true,
+    });
+
+    expect(result.captured).toHaveLength(2);
+  });
+
+  it('Heroic has no effect at all when Same/Plus are both off - an Epic Hero still falls to a plain higher-value base capture', () => {
+    const board = createEmptyBoard();
+    place(
+      board,
+      makeCard('red', { top: 1, bottom: 1, left: 3, right: 1 }, 'red-1', undefined, ['Epic Hero']),
+      { row: 1, col: 1 },
+    );
+    const placed = makeCard('blue', { top: 5, bottom: 5, left: 5, right: 5 }, 'blue-1');
+
+    const result = resolveCaptures(board, placed, { row: 1, col: 0 }, {
+      ...DEFAULT_RULE_SET,
+      heroic: true,
+    });
+
+    // Heroic only ever excludes Epic Heroes from Same/Plus's OWN
+    // matching - a genuine higher-value base capture (no matching trick
+    // involved at all) still works normally.
+    expect(result.captured).toEqual([{ row: 1, col: 1 }]);
   });
 });

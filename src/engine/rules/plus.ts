@@ -24,6 +24,7 @@ export function resolvePlusCaptures(
   placedCard: Card,
   pos: Position,
   getStats: StatsResolver = identityStats,
+  excludeCard?: (card: Card) => boolean,
 ): CaptureResult {
   const neighbors = neighborsOf(pos);
   const placedStats = getStats(placedCard, pos);
@@ -33,7 +34,7 @@ export function resolvePlusCaptures(
 
   for (const { side, neighborPos } of neighbors) {
     const neighborCell = getCell(board, neighborPos);
-    if (!neighborCell.card) continue;
+    if (!neighborCell.card || excludeCard?.(neighborCell.card)) continue;
 
     const sum = placedStats[side] + getStats(neighborCell.card, neighborPos)[opposite(side)];
     const group = sumGroups.get(sum) ?? [];

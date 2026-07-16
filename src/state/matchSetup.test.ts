@@ -150,6 +150,13 @@ describe('unitIdsToHand', () => {
     expect(hand[0].stats).toEqual(unit.stats);
   });
 
+  it("copies each unit's real keywords onto the card, for keyword-gated rules (Psyker/Epic Hero)", () => {
+    const unit = getUnitById('blood-angels-blood-angels-captain')!;
+    const hand = unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1);
+    expect(hand[0].keywords).toEqual(unit.keywords);
+    expect(hand[0].keywords).toContain('Character');
+  });
+
   it('assigns unique instanceIds even for the same unit id repeated', () => {
     const hand = unitIdsToHand(
       ['blood-angels-blood-angels-captain', 'blood-angels-blood-angels-captain'],

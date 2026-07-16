@@ -26,6 +26,11 @@ describe('describeRuleSet', () => {
     );
   });
 
+  it('includes the Heroic label when active', () => {
+    const labels = describeRuleSet({ ...DEFAULT_RULE_SET, heroic: true });
+    expect(labels).toContain('Heroic');
+  });
+
   it('always includes the Trade Rule label even with nothing else active', () => {
     const labels = describeRuleSet(DEFAULT_RULE_SET);
     expect(labels).toHaveLength(1);
