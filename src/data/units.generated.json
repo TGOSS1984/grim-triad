@@ -3862,10 +3862,10 @@
     "points": 140,
     "statBudget": 25,
     "stats": {
-      "top": 7,
+      "top": 9,
       "bottom": 6,
-      "left": 7,
-      "right": 5
+      "left": 9,
+      "right": 1
     },
     "portraitPath": "assets/factions/adeptus-custodes/units/trajann-valoris.png",
     "element": "promethium"

@@ -21,36 +21,6 @@
   min-width: 0;
 }
 
-/* Narrow viewports: the single-row layout (thumbnail, name, meta, points,
-   Add/Remove all in one line) has too many fixed-size neighbors for the
-   name to get enough room even with ellipsis truncation - wrap onto two
-   lines instead, freeing up the full row width for the name on its own
-   line. */
-@media (max-width: 480px) {
-  .row {
-    flex-wrap: wrap;
-  }
-
-  .info {
-    flex-basis: 100%;
-    order: 1;
-  }
-
-  .cardButton {
-    order: 0;
-  }
-
-  .points,
-  .addButton,
-  .removeButton {
-    order: 2;
-  }
-
-  .points {
-    flex: 1;
-  }
-}
-
 /* The row's Card is sized entirely by its own `width` prop (see
    UnitRowCard in UnitPicker.tsx) via Card.module.css's aspect-ratio - no
    fixed width/height here. cardButton just needs to not add its own
@@ -153,4 +123,44 @@
 .removeButton:hover {
   background: var(--color-player-red);
   color: var(--color-text-primary);
+}
+
+/* Narrow viewports: the single-row layout (thumbnail, name, meta, points,
+   Add/Remove all in one line) has too many fixed-size neighbors for the
+   name to get enough room even with ellipsis truncation - wrap onto two
+   lines instead, freeing up the full row width for the name on its own
+   line.
+   
+   MUST come after every base rule it overrides (.info, .points,
+   .addButton, .removeButton, .cardButton above) - CSS resolves
+   same-specificity rules by SOURCE ORDER regardless of whether one is
+   inside a media query, so placing this block earlier in the file (as an
+   earlier version of this file did) meant the later base .info { flex: 1 }
+   rule always won on flex-basis, collapsing .info to near-zero width
+   regardless of viewport - confirmed with real rendered measurements
+   (.info measured 4px wide, its text visually overlapping the
+   neighboring points/Add elements) before landing on this fix. */
+@media (max-width: 480px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .info {
+    flex-basis: 100%;
+    order: 1;
+  }
+
+  .cardButton {
+    order: 0;
+  }
+
+  .points,
+  .addButton,
+  .removeButton {
+    order: 2;
+  }
+
+  .points {
+    flex: 1;
+  }
 }

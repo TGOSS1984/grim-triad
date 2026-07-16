@@ -8,7 +8,7 @@
   {
     "slug": "adeptus-custodes",
     "name": "Adeptus Custodes",
-    "active": false,
+    "active": true,
     "unitCount": 31
   },
   {
@@ -212,7 +212,7 @@
   {
     "slug": "ultramarines",
     "name": "Ultramarines",
-    "active": false,
+    "active": true,
     "unitCount": 10
   },
   {
