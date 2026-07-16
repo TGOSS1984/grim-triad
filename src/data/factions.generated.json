@@ -38,7 +38,7 @@
   {
     "slug": "black-templars",
     "name": "Black Templars",
-    "active": false,
+    "active": true,
     "unitCount": 14
   },
   {
@@ -86,7 +86,7 @@
   {
     "slug": "death-guard",
     "name": "Death Guard",
-    "active": false,
+    "active": true,
     "unitCount": 45
   },
   {
@@ -224,7 +224,7 @@
   {
     "slug": "world-eaters",
     "name": "World Eaters",
-    "active": false,
+    "active": true,
     "unitCount": 37
   }
 ]
