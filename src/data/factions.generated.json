@@ -62,7 +62,7 @@
   {
     "slug": "chaos-space-marines",
     "name": "Chaos Space Marines",
-    "active": false,
+    "active": true,
     "unitCount": 53
   },
   {
