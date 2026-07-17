@@ -132,6 +132,7 @@ export function UnitCarousel({
             owner="blue"
             width={cardWidth}
             element={unit.element}
+            keywords={unit.keywords}
           />
           <div className={styles.unitInfo}>
             <span className={styles.unitMeta}>

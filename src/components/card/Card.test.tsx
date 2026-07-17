@@ -189,6 +189,42 @@ describe('Card', () => {
     );
   });
 
+  it('uses the plain template for a unit with no Epic Hero keyword', () => {
+    render(<Card {...baseProps} owner="blue" keywords={['Character']} />);
+    const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue.png');
+    expect(frame.src).not.toContain('template-blue-epic.png');
+  });
+
+  it('uses the plain template when keywords is omitted entirely', () => {
+    render(<Card {...baseProps} owner="blue" />);
+    const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue.png');
+    expect(frame.src).not.toContain('-epic.png');
+  });
+
+  it('uses the epic template variant for a unit with the Epic Hero keyword, for both owners', async () => {
+    const { rerender } = render(<Card {...baseProps} owner="blue" keywords={['Character', 'Epic Hero']} />);
+    let frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+    expect(frame.src).toContain('template-blue-epic.png');
+
+    rerender(<Card {...baseProps} owner="red" keywords={['Character', 'Epic Hero']} />);
+    await waitFor(() => {
+      frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+      expect(frame.src).toContain('template-red-epic.png');
+    });
+  });
+
+  it('an Epic Hero card still shows the epic template after a capture flip swaps its owner', async () => {
+    const { rerender } = render(<Card {...baseProps} owner="blue" keywords={['Monster', 'Epic Hero']} />);
+    rerender(<Card {...baseProps} owner="red" keywords={['Monster', 'Epic Hero']} />);
+
+    await waitFor(() => {
+      const frame = document.querySelector('img[src*="template-"]') as HTMLImageElement;
+      expect(frame.src).toContain('template-red-epic.png');
+    });
+  });
+
   it('shows no element badge when element is not provided', () => {
     render(<Card {...baseProps} />);
     expect(screen.queryByRole('img', { name: /affinity/ })).not.toBeInTheDocument();

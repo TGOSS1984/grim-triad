@@ -32,6 +32,8 @@ export interface BoardCardData {
   flipDelayMs?: number;
   /** Which rule captured this card in the most recent move, if any - gives each rule its own visual "tell" during the flip (see Card.tsx/CardCaptureFlame.tsx). Undefined when this card wasn't part of the most recent capture. */
   captureKind?: CaptureKind;
+  /** The unit's keyword tags - only used to pick the Epic Hero template variant (see Card.tsx). */
+  keywords?: string[];
   /** This card's own Elemental affinity - distinct from the cell's terrain element below. Only set when the Elemental rule is active this match (see GameScreen). */
   element?: ElementId;
 }
@@ -82,6 +84,7 @@ export function BoardCell({
           flipDelayMs={card.flipDelayMs}
           captureKind={card.captureKind}
           element={card.element}
+          keywords={card.keywords}
         />
         {elementBadge}
       </div>

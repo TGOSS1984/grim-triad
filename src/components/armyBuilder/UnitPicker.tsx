@@ -97,6 +97,7 @@ function UnitRowCard({ unit }: { unit: Unit }) {
           owner="blue"
           width={ROW_CARD_WIDTH}
           element={unit.element}
+          keywords={unit.keywords}
         />
       </button>
       {hovering &&
@@ -119,6 +120,7 @@ function UnitRowCard({ unit }: { unit: Unit }) {
               owner="blue"
               width={HOVER_PREVIEW_CARD_WIDTH}
               element={unit.element}
+              keywords={unit.keywords}
             />
           </div>,
           document.body,
@@ -132,6 +134,7 @@ function UnitRowCard({ unit }: { unit: Unit }) {
             owner="blue"
             width={lightboxCardWidth}
             element={unit.element}
+            keywords={unit.keywords}
           />
         </Lightbox>
       )}

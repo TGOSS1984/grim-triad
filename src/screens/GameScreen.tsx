@@ -46,13 +46,14 @@ const UNKNOWN_UNIT_PORTRAIT = 'assets/factions/unknown/units/unknown.png';
 function toDisplayFields(
   card: EngineCard,
   includeElement: boolean,
-): Pick<HandCardData, 'name' | 'stats' | 'portraitPath' | 'element'> {
+): Pick<HandCardData, 'name' | 'stats' | 'portraitPath' | 'element' | 'keywords'> {
   const unit = getUnitById(card.unitId);
   return {
     name: unit?.name ?? 'Unknown Unit',
     stats: card.stats,
     portraitPath: unit?.portraitPath ?? UNKNOWN_UNIT_PORTRAIT,
     element: includeElement ? unit?.element : undefined,
+    keywords: unit?.keywords,
   };
 }
 

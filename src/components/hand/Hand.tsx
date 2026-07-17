@@ -23,6 +23,8 @@ export interface HandCardData {
   fallbackPortraitPath?: string;
   /** This card's own Elemental affinity - only rendered when the hand is face-up (a face-down card's element stays hidden along with everything else about it). Only set when the Elemental rule is active this match (see GameScreen). */
   element?: ElementId;
+  /** The unit's keyword tags - only used to pick the Epic Hero template variant (see Card.tsx). Not a visibility/secrecy concern the way `element` is (Card.tsx is never used for a genuinely hidden card in the first place - see CardBack.tsx for that), so unlike `element` this isn't conditionally omitted for a face-down hand. */
+  keywords?: string[];
 }
 
 export interface HandProps {
@@ -73,6 +75,7 @@ export function Hand({
                 selected={card.instanceId === selectedCardId}
                 onClick={interactive ? () => onSelectCard?.(card.instanceId) : undefined}
                 element={card.element}
+                keywords={card.keywords}
               />
             </div>
           ) : (

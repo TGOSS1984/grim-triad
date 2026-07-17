@@ -332,3 +332,41 @@ describe('GameScreen rules badge', () => {
     expect(screen.getByLabelText('Active match rules')).toHaveTextContent('Same');
   });
 });
+
+describe('GameScreen Epic Hero template', () => {
+  it("a real Epic Hero unit (Commander Dante) gets the epic template frame once on the board - full pipeline from the unit catalog's own keywords through to Card", async () => {
+    const user = userEvent.setup();
+    const bluePlayer: PlayerState = {
+      colour: 'blue',
+      hand: [makeCard('blood-angels-commander-dante', 'blue', 'blue-dante')],
+    };
+    const redPlayer: PlayerState = {
+      colour: 'red',
+      hand: [makeCard(NECRON_LYCHGUARD, 'red', 'red-1')],
+    };
+    useGameStore.getState().startGame({ bluePlayer, redPlayer, startingPlayer: 'blue', ruleSet: DEFAULT_RULE_SET });
+    render(<GameScreen humanPlayer="blue" />);
+
+    await user.click(screen.getByRole('button', { name: /Commander Dante/ }));
+    await user.click(screen.getAllByRole('button', { name: /Empty cell/ })[0]);
+
+    await waitFor(() => {
+      const frame = document.querySelector('img[src*="template-blue-epic.png"]');
+      expect(frame).toBeInTheDocument();
+    });
+  });
+
+  it('a regular (non-Epic-Hero) unit never gets the epic template', async () => {
+    const user = userEvent.setup();
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" />);
+
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getAllByRole('button', { name: /Empty cell/ })[0]);
+
+    await waitFor(() => {
+      expect(document.querySelector('img[src*="template-blue.png"]')).toBeInTheDocument();
+    });
+    expect(document.querySelector('img[src*="-epic.png"]')).not.toBeInTheDocument();
+  });
+});

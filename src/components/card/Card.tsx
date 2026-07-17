@@ -100,6 +100,8 @@ export interface CardProps {
   captureKind?: CaptureKind;
   /** This card's Elemental affinity - only pass when the Elemental rule is active this match (see file header). */
   element?: ElementId;
+  /** The unit's keyword tags (e.g. "Infantry", "Epic Hero") - currently only used to pick the Epic Hero template variant below, but kept as the general catalog keyword list rather than a single isEpicHero boolean, so future keyword-driven visual treatments don't need their own separate prop. */
+  keywords?: string[];
 }
 
 function toPublicPath(path: string): string {
@@ -141,8 +143,17 @@ export function Card({
   flipDelayMs = 0,
   captureKind,
   element,
+  keywords,
 }: CardProps) {
   const [stage, setStage] = useState<PortraitStage>('primary');
+
+  // Epic Hero units get a distinct template frame (see the two new
+  // assets in public/assets/cardTemplates/) so the game's named/unique
+  // characters visually stand out from the generic roster at a glance,
+  // independent of whichever optional rules (e.g. Heroic) happen to be
+  // active this match - this is purely a visual "these are the big
+  // names" cue, not tied to any rule being on.
+  const isEpicHero = keywords?.includes('Epic Hero') ?? false;
 
   // Reset to the primary image whenever the underlying unit's art paths
   // change, so a reused/re-rendered Card (rather than a fresh remount)
@@ -258,7 +269,7 @@ export function Card({
     <>
       <img
         className={styles.frame}
-        src={`/assets/cardTemplates/template-${displayOwner}.png`}
+        src={`/assets/cardTemplates/template-${displayOwner}${isEpicHero ? '-epic' : ''}.png`}
         alt=""
         draggable={false}
       />
