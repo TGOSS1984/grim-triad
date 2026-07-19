@@ -19,6 +19,8 @@ export interface HandCardData {
   instanceId: string;
   name: string;
   stats: CardStats;
+  /** The card's in-play stats after any active buff/debuff mechanic that still applies while in hand (currently just Epic Hero Presence - see Card.tsx's own doc on effectiveStats for why this is deliberately generic). */
+  effectiveStats?: CardStats;
   portraitPath: string;
   fallbackPortraitPath?: string;
   /** This card's own Elemental affinity - only rendered when the hand is face-up (a face-down card's element stays hidden along with everything else about it). Only set when the Elemental rule is active this match (see GameScreen). */
@@ -76,6 +78,7 @@ export function Hand({
                 onClick={interactive ? () => onSelectCard?.(card.instanceId) : undefined}
                 element={card.element}
                 keywords={card.keywords}
+                effectiveStats={card.effectiveStats}
               />
             </div>
           ) : (

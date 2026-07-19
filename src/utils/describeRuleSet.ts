@@ -30,6 +30,9 @@ export function describeRuleSet(ruleSet: RuleSet): string[] {
   if (ruleSet.elemental) labels.push('Elemental');
   if (ruleSet.chain) labels.push('Chain');
   if (ruleSet.heroic) labels.push('Heroic');
+  if (ruleSet.combinedArms) labels.push('Combined Arms');
+  if (ruleSet.underdog) labels.push('Underdog');
+  if (ruleSet.epicHeroPresence) labels.push('Epic Hero Presence');
   labels.push(TRADE_RULE_LABELS[ruleSet.tradeRule]);
   return labels;
 }

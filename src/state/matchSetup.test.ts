@@ -164,6 +164,20 @@ describe('unitIdsToHand', () => {
     expect(hand[0].element).toBeDefined();
   });
 
+  it("copies each unit's real unitType onto the card, for the Combined Arms rule", () => {
+    const unit = getUnitById('blood-angels-blood-angels-captain')!;
+    const hand = unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1);
+    expect(hand[0].unitType).toBe(unit.unitType);
+    expect(hand[0].unitType).toBeDefined();
+  });
+
+  it("copies each unit's real points onto the card, for the Underdog rule", () => {
+    const unit = getUnitById('blood-angels-blood-angels-captain')!;
+    const hand = unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1);
+    expect(hand[0].points).toBe(unit.points);
+    expect(hand[0].points).toBeDefined();
+  });
+
   it('assigns unique instanceIds even for the same unit id repeated', () => {
     const hand = unitIdsToHand(
       ['blood-angels-blood-angels-captain', 'blood-angels-blood-angels-captain'],

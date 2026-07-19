@@ -69,6 +69,24 @@ const TOGGLE_RULES: ToggleRuleInfo[] = [
     description:
       "Epic Hero units can't be captured by Same or Plus - only a genuine higher-value capture can take them down.",
   },
+  {
+    key: 'combinedArms',
+    label: 'Combined Arms',
+    description:
+      'Two adjacent friendly cards of different unit types each get +1 on the side facing each other.',
+  },
+  {
+    key: 'underdog',
+    label: 'Underdog',
+    description:
+      'The first time a card captures something costing 50%+ more than itself, it permanently gains +1 on all sides.',
+  },
+  {
+    key: 'epicHeroPresence',
+    label: 'Epic Hero Presence',
+    description:
+      "If your starting hand has an Epic Hero, all your cards get +1 on one randomly chosen side for the match.",
+  },
 ];
 
 interface TradeRuleInfo {

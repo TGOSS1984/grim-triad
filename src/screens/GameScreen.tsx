@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { useGameStore } from '../state/gameStore';
 import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
-import { getEffectiveStats } from '../engine/rules/elemental';
+import { computeEffectiveStats } from '../engine/rules/effectiveStats';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
@@ -152,13 +152,12 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
         owner: cell.card.owner,
         flipDelayMs: flipDelayByPosition.get(`${rowIndex},${colIndex}`),
         captureKind: captureKindByPosition.get(`${rowIndex},${colIndex}`),
-        // Safe to always compute, not gated on game.ruleSet.elemental -
-        // getEffectiveStats naturally returns the card's stats unchanged
-        // when the cell has no assigned element (board[pos].element is
-        // only ever set in the first place when Elemental is active), so
-        // there's no behavioral difference to gate, just an unnecessary
-        // conditional.
-        effectiveStats: getEffectiveStats(game.board, cell.card, position),
+        // Safe to always compute, not gated on any single rule flag -
+        // computeEffectiveStats checks each rule's own ruleSet flag
+        // internally and naturally no-ops for anything inactive, so
+        // there's no behavioral difference to gate here, just an
+        // unnecessary conditional.
+        effectiveStats: computeEffectiveStats(cell.card, game.ruleSet, { board: game.board, pos: position }, game.epicHeroPresence),
         ...toDisplayFields(cell.card, game.ruleSet.elemental),
       };
     }),
@@ -176,6 +175,13 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
   function buildHandCards(colour: PlayerColour): HandCardData[] {
     return game!.players[colour].hand.map((card) => ({
       instanceId: card.instanceId,
+      // No boardContext (null) - a hand card has no position yet, so
+      // board-positional rules (Elemental, Combined Arms) don't apply.
+      // Underdog also can't apply (a card in hand hasn't captured
+      // anything). Epic Hero Presence is the one modifier that DOES
+      // still apply here - it's a standing army-wide buff, not
+      // positional or event-driven, so it has to show up in hand too.
+      effectiveStats: computeEffectiveStats(card, game!.ruleSet, null, game!.epicHeroPresence),
       ...toDisplayFields(card, game!.ruleSet.elemental),
     }));
   }

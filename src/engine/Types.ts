@@ -70,6 +70,34 @@ export interface Card {
    * since not every caller needs card-back branding (e.g. engine tests).
    */
   rosterFactionSlug?: string;
+  /**
+   * The unit catalog's unitType (e.g. "Infantry", "Vehicle", "Monster") -
+   * see data/schema.ts's Unit.unitType, threaded through at hand-build
+   * time. Used by the Combined Arms rule (rules/combinedArms.ts) to check
+   * whether two adjacent friendly cards are different types. Optional for
+   * the same reason keywords/element are - most existing Card fixtures
+   * across the codebase don't set it, and a card with no unitType simply
+   * never qualifies for a Combined Arms bonus either way.
+   */
+  unitType?: string;
+  /**
+   * The unit catalog's points cost - see data/schema.ts's Unit.points,
+   * threaded through at hand-build time. Used by the Underdog rule (see
+   * gameReducer.ts's applyMove) to compare the capturing card's cost
+   * against what it just captured. Optional for the same reason as the
+   * other catalog-sourced fields above.
+   */
+  points?: number;
+  /**
+   * Set once, permanently, the first time this card captures something
+   * costing at least 50% more than itself (Underdog rule) - never
+   * cleared for the rest of the match, even if this card is later
+   * recaptured by the opponent (the bonus follows the card instance, not
+   * "is this currently a winning position"). Capped at a single +1, not
+   * a counter - a card can't stack multiple Underdog bonuses by
+   * capturing several expensive cards in the same or later moves.
+   */
+  hasUnderdogBonus?: boolean;
 }
 
 /** A position on the 3x3 board, row/col each 0-2. */
@@ -124,6 +152,43 @@ export interface RuleSet {
    * that neighbor position were simply absent for matching purposes).
    */
   heroic: boolean;
+  /**
+   * Combined Arms: two adjacent FRIENDLY cards with different unitType
+   * (see data/schema.ts's Unit.unitType - Infantry/Character/Vehicle/
+   * Monster/etc.) each get +1 on the side facing each other. Checked
+   * per-side, per-neighbor independently - a card boxed in by 2 or 3
+   * different-type friendly neighbors can be boosted on that many sides
+   * at once. Board only (see rules/combinedArms.ts) - a card still in
+   * hand has no neighbors to combine with yet, same reasoning as
+   * Elemental only mattering once placed.
+   */
+  combinedArms: boolean;
+  /**
+   * Underdog: the first time a card captures something costing at least
+   * 50% more than itself (via any capture mechanism - base, Same, Plus,
+   * or a Chain-cascade neighbor check), it permanently gains +1 on all
+   * four sides for the rest of the match - see Card.hasUnderdogBonus's
+   * own doc for why this needs to be a persistent per-card flag rather
+   * than a live board calculation the way Elemental/Combined Arms are.
+   * Scoped to the DIRECTLY-PLACED card only, not every card in a cascade
+   * chain that individually captures something - see gameReducer.ts's
+   * applyMove for why attributing Underdog per-cascade-link would need a
+   * much larger engine change to track capture causality, not just this
+   * rule's own logic.
+   */
+  underdog: boolean;
+  /**
+   * Epic Hero Presence: if a player's STARTING hand contains an Epic
+   * Hero (see rules/keywords.ts's isEpicHero), one random side is chosen
+   * ONCE for that player at the start of the match, and every card that
+   * player owns - in hand AND on the board - gets +1 on that side for
+   * the whole match. Unlike Elemental/Combined Arms/Underdog, this is
+   * NOT board-only: it's a standing army-wide buff representing having a
+   * legendary character in your ranks, not a positional or event-driven
+   * effect, so it has to apply even to cards still in hand. See
+   * GameState.epicHeroPresence for where the chosen side is stored.
+   */
+  epicHeroPresence: boolean;
   tradeRule: 'one' | 'diff' | 'direct' | 'all';
 }
 
@@ -155,6 +220,17 @@ export interface GameState {
    * instead of flipping every captured card at the exact same instant.
    */
   lastCapture?: { positions: Position[]; comboTriggered: boolean; captureKinds: CaptureKind[] };
+  /**
+   * Which side (if any) each player's cards get +1 on for the whole
+   * match, from the Epic Hero Presence rule - see RuleSet.epicHeroPresence's
+   * own doc. Computed once, at game start, from each player's STARTING
+   * hand only (see gameReducer.ts's startGame) - a side drawn later
+   * doesn't retroactively grant this, since the check is "did this
+   * player's force ride out with a legendary character," not "do they
+   * currently hold one in hand." Absent for a player whose starting hand
+   * had no Epic Hero.
+   */
+  epicHeroPresence?: Partial<Record<PlayerColour, Side>>;
 }
 
 /** A player action: place a card from hand onto a board position. */

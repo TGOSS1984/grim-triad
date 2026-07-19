@@ -144,6 +144,8 @@ export function unitIdsToHand(
       stats: unit.stats,
       element: unit.element,
       keywords: unit.keywords,
+      unitType: unit.unitType,
+      points: unit.points,
       rosterFactionSlug,
     };
   });

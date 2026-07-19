@@ -24,6 +24,9 @@ export function randomRuleSet(): RuleSet {
     elemental: randomBool(),
     chain: randomBool(),
     heroic: randomBool(),
+    combinedArms: randomBool(),
+    underdog: randomBool(),
+    epicHeroPresence: randomBool(),
     tradeRule: tradeOptions[Math.floor(Math.random() * tradeOptions.length)],
   };
 }

@@ -21,6 +21,9 @@ describe('randomRuleSet', () => {
       elemental: true,
       chain: true,
       heroic: true,
+      combinedArms: true,
+      underdog: true,
+      epicHeroPresence: true,
       tradeRule: 'diff',
     });
   });

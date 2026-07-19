@@ -13,10 +13,11 @@
  * unaware of individual rule mechanics - it only needs to know "resolve
  * captures for this placement" and apply whatever comes back.
  */
-import type { Board, Card, Element, GameState, Move, PlayerColour, PlayerState, RuleSet } from './types';
+import type { Board, Card, Element, GameState, Move, PlayerColour, PlayerState, RuleSet, Side } from './types';
 import { createEmptyBoard, getCell, isBoardFull, isPositionEmpty } from './board';
 import { resolveCaptures } from './ruleEngine';
 import { assignElementalTerrain } from './rules/elemental';
+import { isEpicHero } from './rules/keywords';
 
 export const DEFAULT_RULE_SET: RuleSet = {
   open: false,
@@ -28,8 +29,21 @@ export const DEFAULT_RULE_SET: RuleSet = {
   elemental: false,
   chain: false,
   heroic: false,
+  combinedArms: false,
+  underdog: false,
+  epicHeroPresence: false,
   tradeRule: 'one',
 };
+
+/** A card must cost at least this much MORE than the capturing card to trigger Underdog - see RuleSet.underdog's own doc. */
+const UNDERDOG_THRESHOLD_MULTIPLIER = 1.5;
+
+const ALL_SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
+
+/** Picks one of the four sides uniformly at random - used once per player at game start for Epic Hero Presence (see RuleSet.epicHeroPresence's own doc), not re-rolled during play. */
+function randomSide(): Side {
+  return ALL_SIDES[Math.floor(Math.random() * ALL_SIDES.length)];
+}
 
 export interface CreateGameOptions {
   bluePlayer: PlayerState;
@@ -64,6 +78,19 @@ export function createGame(options: CreateGameOptions): GameState {
     board = applyElementalTerrain(board, availableElements);
   }
 
+  // Epic Hero Presence: checked ONCE here, against each player's STARTING
+  // hand only - see RuleSet.epicHeroPresence's own doc for why a side
+  // drawn later doesn't retroactively qualify. Only players whose
+  // starting hand actually has an Epic Hero get an entry at all (not a
+  // `blue: undefined` placeholder for the other side).
+  let epicHeroPresence: GameState['epicHeroPresence'];
+  if (ruleSet.epicHeroPresence) {
+    const presence: NonNullable<GameState['epicHeroPresence']> = {};
+    if (bluePlayer.hand.some(isEpicHero)) presence.blue = randomSide();
+    if (redPlayer.hand.some(isEpicHero)) presence.red = randomSide();
+    if (presence.blue || presence.red) epicHeroPresence = presence;
+  }
+
   return {
     board,
     players: {
@@ -75,6 +102,7 @@ export function createGame(options: CreateGameOptions): GameState {
     phase: 'playing',
     winner: null,
     history: [],
+    epicHeroPresence,
   };
 }
 
@@ -173,7 +201,41 @@ export function applyMove(state: GameState, move: Move): GameState {
     move.card,
     move.position,
     state.ruleSet,
+    state.epicHeroPresence,
   );
+
+  // Underdog: the first time THIS placement captures something costing
+  // at least 50% more than the card that did the capturing, that card
+  // permanently gains +1 on all four sides for the rest of the match -
+  // see Card.hasUnderdogBonus's own doc. Checked against whichever
+  // card(s) this move actually captured, regardless of which mechanism
+  // (base/Same/Plus/Chain) captured them - deliberately scoped to the
+  // DIRECTLY-PLACED card only, not individually to any cascade-swept
+  // card that itself captured something further down the chain (that
+  // would need tracking capture causality per-link, a much larger engine
+  // change than this rule's own scope).
+  if (
+    state.ruleSet.underdog &&
+    !move.card.hasUnderdogBonus &&
+    move.card.points !== undefined &&
+    captured.length > 0
+  ) {
+    const triggeredUnderdog = captured.some((pos) => {
+      const capturedCard = getCell(board, pos).card;
+      return (
+        capturedCard?.points !== undefined &&
+        capturedCard.points >= move.card.points! * UNDERDOG_THRESHOLD_MULTIPLIER
+      );
+    });
+    if (triggeredUnderdog) {
+      board = cloneBoard(board);
+      board[move.position.row][move.position.col] = {
+        ...getCell(board, move.position),
+        card: { ...move.card, hasUnderdogBonus: true },
+      };
+    }
+  }
+
   if (captured.length > 0) {
     board = flipCard(board, captured, move.player);
   }

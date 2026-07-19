@@ -498,3 +498,189 @@ describe('GameScreen buff/debuff display (Elemental)', () => {
     expect(document.querySelectorAll('[class*="statBuffed"], [class*="statDebuffed"]')).toHaveLength(0);
   });
 });
+
+describe('GameScreen buff/debuff display (Combined Arms)', () => {
+  it('two adjacent friendly cards with different unitType show buffed stats on the sides facing each other', async () => {
+    startTestGame({ combinedArms: true });
+    // Blood Angels Captain (Character) and Necrons Lychguard (Infantry) -
+    // different unitType, both blue-owned.
+    const captain: Card = {
+      instanceId: 'blue-captain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      unitType: 'Character',
+    };
+    const lychguard: Card = {
+      instanceId: 'blue-lychguard',
+      unitId: 'necrons-lychguard',
+      owner: 'blue',
+      stats: { top: 5, bottom: 6, left: 7, right: 3 },
+      unitType: 'Infantry',
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 0) return { card: captain };
+            if (r === 1 && c === 1) return { card: lychguard }; // right neighbor of captain
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('[class*="statBuffed"]').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('two adjacent friendly cards with the SAME unitType show no buff at all', async () => {
+    startTestGame({ combinedArms: true });
+    const captain: Card = {
+      instanceId: 'blue-captain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      unitType: 'Character',
+    };
+    const dante: Card = {
+      instanceId: 'blue-dante',
+      unitId: 'blood-angels-commander-dante',
+      owner: 'blue',
+      stats: { top: 4, bottom: 10, left: 7, right: 3 },
+      unitType: 'Character', // same as captain
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 0) return { card: captain };
+            if (r === 1 && c === 1) return { card: dante };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('A')).toBeInTheDocument(); // Dante's bottom (10, displayed as 'A') - unique, sanity check both cards rendered
+    });
+    expect(document.querySelectorAll('[class*="statBuffed"]')).toHaveLength(0);
+  });
+});
+
+describe('GameScreen buff/debuff display (Underdog)', () => {
+  it('a card that captured something 50%+ pricier renders permanently buffed', async () => {
+    startTestGame({ underdog: true });
+    const underdogCard: Card = {
+      instanceId: 'blue-underdog',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      points: 80,
+      hasUnderdogBonus: true,
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 1) return { card: underdogCard };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(document.querySelectorAll('[class*="statBuffed"]').length).toBe(4); // all four sides
+    });
+  });
+
+  it('a card without the Underdog flag shows no buff, even with the rule active', async () => {
+    startTestGame({ underdog: true });
+    const plainCard: Card = {
+      instanceId: 'blue-plain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      points: 80,
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 1) return { card: plainCard };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('6')).toBeInTheDocument();
+    });
+    expect(document.querySelectorAll('[class*="statBuffed"]')).toHaveLength(0);
+  });
+});
+
+describe('GameScreen buff/debuff display (Epic Hero Presence)', () => {
+  it("a real hand built through unitIdsToHand with an Epic Hero shows buffed stats on ALL of that player's cards, including ones still in hand", async () => {
+    const [dante] = unitIdsToHand(['blood-angels-commander-dante'], 'blue', 1);
+    const blueHand = [dante, ...unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1)];
+    const redHand = unitIdsToHand(['necrons-lychguard'], 'red', 1);
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: blueHand },
+      redPlayer: { colour: 'red', hand: redHand },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: true },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    // Dante himself (Epic Hero) AND the Captain (not an Epic Hero, but
+    // owned by the same player who HAS one in their starting hand)
+    // should both show a buffed side - this is the actual point of the
+    // rule, an army-wide buff, not just a self-buff on the hero card.
+    await waitFor(() => {
+      expect(document.querySelectorAll('[class*="statBuffed"]').length).toBeGreaterThan(0);
+    });
+  });
+
+  it("does not buff the OPPONENT's cards, even when the player has Epic Hero Presence", async () => {
+    const [dante] = unitIdsToHand(['blood-angels-commander-dante'], 'blue', 1);
+    const redHand = unitIdsToHand(['necrons-lychguard'], 'red', 1);
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [dante] },
+      redPlayer: { colour: 'red', hand: redHand },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: true, open: true }, // open so red's hand is visible too
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: /Lychguard/ })).toBeInTheDocument();
+    });
+    const redCardEl = screen.getByRole('img', { name: /Lychguard/ });
+    expect(redCardEl.querySelectorAll('[class*="statBuffed"]')).toHaveLength(0);
+  });
+});

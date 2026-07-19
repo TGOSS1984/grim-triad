@@ -239,3 +239,166 @@ describe('createGame: Elemental terrain wiring', () => {
     }
   });
 });
+
+describe('applyMove: Underdog', () => {
+  it('grants hasUnderdogBonus when a cheap card captures something 50%+ more expensive', () => {
+    let state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, underdog: true };
+
+    const cheapAttacker = makeCard('blue', 'blue-cheap', { top: 9, bottom: 1, left: 1, right: 1 });
+    cheapAttacker.points = 100;
+    state.players.blue.hand[0] = cheapAttacker;
+    state = applyMove(state, { player: 'blue', card: cheapAttacker, position: { row: 1, col: 1 } });
+
+    const expensiveVictim = makeCard('red', 'red-expensive', { top: 1, bottom: 5, left: 5, right: 5 });
+    expensiveVictim.points = 150; // exactly 1.5x - meets the threshold
+    state.players.red.hand[0] = expensiveVictim;
+    state = applyMove(state, { player: 'red', card: expensiveVictim, position: { row: 0, col: 1 } });
+
+    // Red's placement doesn't capture anything (blue's card there has a
+    // higher top than red's bottom would need) - need blue to do the
+    // capturing. Let's have blue capture red's expensive card next.
+    const secondCheapBlue = makeCard('blue', 'blue-cheap-2', { top: 1, bottom: 1, left: 1, right: 9 });
+    secondCheapBlue.points = 100;
+    state.players.blue.hand[0] = secondCheapBlue;
+    state = applyMove(state, { player: 'blue', card: secondCheapBlue, position: { row: 0, col: 0 } });
+
+    const capturedCard = state.board[0][1].card;
+    expect(capturedCard?.owner).toBe('blue');
+    const capturingCard = state.board[0][0].card;
+    expect(capturingCard?.hasUnderdogBonus).toBe(true);
+  });
+
+  it('does NOT trigger when the captured card costs less than 50% more', () => {
+    let state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, underdog: true };
+
+    const attacker = makeCard('blue', 'blue-1', { top: 9, bottom: 1, left: 1, right: 1 });
+    attacker.points = 100;
+    state.players.blue.hand[0] = attacker;
+    state = applyMove(state, { player: 'blue', card: attacker, position: { row: 1, col: 1 } });
+
+    const victim = makeCard('red', 'red-1', { top: 1, bottom: 5, left: 5, right: 5 });
+    victim.points = 140; // only 1.4x - below the 1.5x threshold
+    state.players.red.hand[0] = victim;
+    state = applyMove(state, { player: 'red', card: victim, position: { row: 0, col: 1 } });
+
+    const secondBlue = makeCard('blue', 'blue-2', { top: 1, bottom: 1, left: 1, right: 9 });
+    secondBlue.points = 100;
+    state.players.blue.hand[0] = secondBlue;
+    state = applyMove(state, { player: 'blue', card: secondBlue, position: { row: 0, col: 0 } });
+
+    expect(state.board[0][0].card?.hasUnderdogBonus).toBeFalsy();
+  });
+
+  it('does not trigger at all when the rule is off, even for an otherwise-qualifying capture', () => {
+    let state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, underdog: false };
+
+    const cheapAttacker = makeCard('blue', 'blue-cheap', { top: 9, bottom: 1, left: 1, right: 1 });
+    cheapAttacker.points = 100;
+    state.players.blue.hand[0] = cheapAttacker;
+    state = applyMove(state, { player: 'blue', card: cheapAttacker, position: { row: 1, col: 1 } });
+
+    const expensiveVictim = makeCard('red', 'red-expensive', { top: 1, bottom: 5, left: 5, right: 5 });
+    expensiveVictim.points = 200;
+    state.players.red.hand[0] = expensiveVictim;
+    state = applyMove(state, { player: 'red', card: expensiveVictim, position: { row: 0, col: 1 } });
+
+    const secondCheapBlue = makeCard('blue', 'blue-cheap-2', { top: 1, bottom: 1, left: 1, right: 9 });
+    secondCheapBlue.points = 100;
+    state.players.blue.hand[0] = secondCheapBlue;
+    state = applyMove(state, { player: 'blue', card: secondCheapBlue, position: { row: 0, col: 0 } });
+
+    expect(state.board[0][0].card?.hasUnderdogBonus).toBeFalsy();
+  });
+
+  it('does not trigger when either card has no points data (undefined)', () => {
+    let state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, underdog: true };
+
+    // No .points set on either card (as makeCard leaves it by default).
+    const attacker = makeCard('blue', 'blue-cheap', { top: 9, bottom: 1, left: 1, right: 1 });
+    state.players.blue.hand[0] = attacker;
+    state = applyMove(state, { player: 'blue', card: attacker, position: { row: 1, col: 1 } });
+
+    const victim = makeCard('red', 'red-expensive', { top: 1, bottom: 5, left: 5, right: 5 });
+    state.players.red.hand[0] = victim;
+    state = applyMove(state, { player: 'red', card: victim, position: { row: 0, col: 1 } });
+
+    const secondBlue = makeCard('blue', 'blue-cheap-2', { top: 1, bottom: 1, left: 1, right: 9 });
+    state.players.blue.hand[0] = secondBlue;
+    state = applyMove(state, { player: 'blue', card: secondBlue, position: { row: 0, col: 0 } });
+
+    expect(state.board[0][0].card?.hasUnderdogBonus).toBeFalsy();
+  });
+});
+
+describe('createGame: Epic Hero Presence', () => {
+  it('sets a random side for a player whose starting hand contains an Epic Hero', () => {
+    const epicHero = makeCard('blue', 'blue-hero');
+    epicHero.keywords = ['Character', 'Epic Hero'];
+    const bluePlayer: PlayerState = { colour: 'blue', hand: [epicHero, ...makeHand('blue', 4)] };
+    const redPlayer: PlayerState = { colour: 'red', hand: makeHand('red', 5) };
+
+    const state = createGame({
+      bluePlayer,
+      redPlayer,
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: true },
+    });
+
+    expect(state.epicHeroPresence?.blue).toBeDefined();
+    expect(['top', 'bottom', 'left', 'right']).toContain(state.epicHeroPresence?.blue);
+    expect(state.epicHeroPresence?.red).toBeUndefined();
+  });
+
+  it('sets no presence at all when neither starting hand has an Epic Hero', () => {
+    const bluePlayer: PlayerState = { colour: 'blue', hand: makeHand('blue', 5) };
+    const redPlayer: PlayerState = { colour: 'red', hand: makeHand('red', 5) };
+
+    const state = createGame({
+      bluePlayer,
+      redPlayer,
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: true },
+    });
+
+    expect(state.epicHeroPresence).toBeUndefined();
+  });
+
+  it('does not compute anything at all when the rule is off, even with an Epic Hero in hand', () => {
+    const epicHero = makeCard('blue', 'blue-hero');
+    epicHero.keywords = ['Character', 'Epic Hero'];
+    const bluePlayer: PlayerState = { colour: 'blue', hand: [epicHero, ...makeHand('blue', 4)] };
+    const redPlayer: PlayerState = { colour: 'red', hand: makeHand('red', 5) };
+
+    const state = createGame({
+      bluePlayer,
+      redPlayer,
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: false },
+    });
+
+    expect(state.epicHeroPresence).toBeUndefined();
+  });
+
+  it('sets independent sides for both players when both starting hands have an Epic Hero', () => {
+    const blueHero = makeCard('blue', 'blue-hero');
+    blueHero.keywords = ['Epic Hero'];
+    const redHero = makeCard('red', 'red-hero');
+    redHero.keywords = ['Epic Hero'];
+    const bluePlayer: PlayerState = { colour: 'blue', hand: [blueHero, ...makeHand('blue', 4)] };
+    const redPlayer: PlayerState = { colour: 'red', hand: [redHero, ...makeHand('red', 4)] };
+
+    const state = createGame({
+      bluePlayer,
+      redPlayer,
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, epicHeroPresence: true },
+    });
+
+    expect(state.epicHeroPresence?.blue).toBeDefined();
+    expect(state.epicHeroPresence?.red).toBeDefined();
+  });
+});
