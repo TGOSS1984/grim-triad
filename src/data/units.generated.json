@@ -2084,12 +2084,12 @@
     "keywords": [
       "Infantry"
     ],
-    "points": 115,
-    "statBudget": 24,
+    "points": 125,
+    "statBudget": 25,
     "stats": {
       "top": 9,
       "bottom": 3,
-      "left": 6,
+      "left": 7,
       "right": 6
     },
     "portraitPath": "assets/factions/dark-angels/units/azrael.png",
@@ -2548,12 +2548,12 @@
       "Infantry"
     ],
     "points": 115,
-    "statBudget": 23,
+    "statBudget": 24,
     "stats": {
-      "top": 6,
-      "bottom": 6,
-      "left": 5,
-      "right": 6
+      "top": 9,
+      "bottom": 1,
+      "left": 6,
+      "right": 8
     },
     "portraitPath": "assets/factions/space-wolves/units/logan-grimnar.png",
     "element": "warp"
@@ -7139,13 +7139,13 @@
     "keywords": [
       "Infantry"
     ],
-    "points": 80,
-    "statBudget": 21,
+    "points": 110,
+    "statBudget": 24,
     "stats": {
-      "top": 5,
+      "top": 6,
       "bottom": 5,
       "left": 5,
-      "right": 6
+      "right": 8
     },
     "portraitPath": "assets/factions/chaos-space-marines/units/huron-blackheart.png",
     "element": "void"

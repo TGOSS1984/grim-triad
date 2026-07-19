@@ -104,7 +104,7 @@
   {
     "slug": "emperor-s-children",
     "name": "Emperor's Children",
-    "active": false,
+    "active": true,
     "unitCount": 23
   },
   {
@@ -164,7 +164,7 @@
   {
     "slug": "orks",
     "name": "Orks",
-    "active": false,
+    "active": true,
     "unitCount": 58
   },
   {
@@ -188,7 +188,7 @@
   {
     "slug": "space-wolves",
     "name": "Space Wolves",
-    "active": false,
+    "active": true,
     "unitCount": 32
   },
   {
