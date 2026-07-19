@@ -81,6 +81,18 @@ const ELEMENT_LABELS: Record<ElementId, string> = {
 export interface CardProps {
   name: string;
   stats: CardStats;
+  /**
+   * The card's in-play stats after any active buff/debuff mechanic - if
+   * omitted, or if a given side is identical to `stats`, that side just
+   * shows its printed value normally. Where a side differs, the EFFECTIVE
+   * value is what's displayed (not the printed one), coloured green for a
+   * buff or red for a debuff - see resolveStatDisplay's own doc for why
+   * this is deliberately generic (Card has no idea what mechanic produced
+   * the difference, so any future buff/debuff system just needs to
+   * compute its own effective stats and pass them here, nothing in this
+   * component needs to change to support it).
+   */
+  effectiveStats?: CardStats;
   /** Root-relative path, e.g. "assets/factions/blood-angels/units/commander-dante.png" */
   portraitPath: string;
   /** Root-relative path to a faction-level generic fallback silhouette, if one exists. */
@@ -113,6 +125,41 @@ function displayStat(value: number): string {
   return value >= 10 ? 'A' : String(value);
 }
 
+export type StatModifierState = 'buffed' | 'debuffed' | 'none';
+
+/**
+ * Compares a single side's printed value against its effective (in-play)
+ * value and returns which one to actually show plus whether it counts as
+ * buffed/debuffed - generic, has no idea WHY the two differ. Elemental is
+ * the only mechanic that currently produces a different effectiveStats
+ * today, but this comparison is the whole reason effectiveStats is its
+ * own prop rather than Card just always trusting `stats`: any future
+ * buff/debuff mechanic (see the brainstorm this was built from - Combined
+ * Arms, Underdog, etc.) only needs to feed a modified stats object in
+ * here, nothing in Card itself needs to change to support it.
+ */
+function resolveStatDisplay(
+  printedValue: number,
+  effectiveValue: number,
+): { value: number; state: StatModifierState } {
+  if (effectiveValue > printedValue) return { value: effectiveValue, state: 'buffed' };
+  if (effectiveValue < printedValue) return { value: effectiveValue, state: 'debuffed' };
+  return { value: printedValue, state: 'none' };
+}
+
+const STAT_MODIFIER_CLASS: Record<StatModifierState, string> = {
+  buffed: 'statBuffed',
+  debuffed: 'statDebuffed',
+  none: '',
+};
+
+/** Screen-reader phrasing for a single side - states the in-play value plainly, and calls out a buff/debuff explicitly rather than relying on colour alone (colour-only state is invisible to screen readers, and easy to miss for colourblind sighted players too). */
+function describeSideForAria(label: string, printedValue: number, display: { value: number; state: StatModifierState }): string {
+  if (display.state === 'buffed') return `${label} ${display.value}, buffed from ${printedValue}`;
+  if (display.state === 'debuffed') return `${label} ${display.value}, debuffed from ${printedValue}`;
+  return `${label} ${printedValue}`;
+}
+
 type PortraitStage = 'primary' | 'fallbackImage' | 'none';
 
 /**
@@ -131,6 +178,7 @@ function delay(ms: number): Promise<void> {
 export function Card({
   name,
   stats,
+  effectiveStats,
   portraitPath,
   fallbackPortraitPath,
   owner,
@@ -265,6 +313,16 @@ export function Card({
     );
   }
 
+  const effectiveOrPrinted = effectiveStats ?? stats;
+  const topDisplay = resolveStatDisplay(stats.top, effectiveOrPrinted.top);
+  const bottomDisplay = resolveStatDisplay(stats.bottom, effectiveOrPrinted.bottom);
+  const leftDisplay = resolveStatDisplay(stats.left, effectiveOrPrinted.left);
+  const rightDisplay = resolveStatDisplay(stats.right, effectiveOrPrinted.right);
+
+  function statClassName(state: StatModifierState): string {
+    return [styles.stat, styles[STAT_MODIFIER_CLASS[state]]].filter(Boolean).join(' ');
+  }
+
   const content = (
     <>
       <img
@@ -280,10 +338,18 @@ export function Card({
           <ElementIcon element={element} title={`${ELEMENT_LABELS[element]} affinity`} />
         </div>
       )}
-      <div className={`${styles.stat} ${styles.statTop}`}>{displayStat(stats.top)}</div>
-      <div className={`${styles.stat} ${styles.statBottom}`}>{displayStat(stats.bottom)}</div>
-      <div className={`${styles.stat} ${styles.statLeft}`}>{displayStat(stats.left)}</div>
-      <div className={`${styles.stat} ${styles.statRight}`}>{displayStat(stats.right)}</div>
+      <div className={`${statClassName(topDisplay.state)} ${styles.statTop}`}>
+        {displayStat(topDisplay.value)}
+      </div>
+      <div className={`${statClassName(bottomDisplay.state)} ${styles.statBottom}`}>
+        {displayStat(bottomDisplay.value)}
+      </div>
+      <div className={`${statClassName(leftDisplay.state)} ${styles.statLeft}`}>
+        {displayStat(leftDisplay.value)}
+      </div>
+      <div className={`${statClassName(rightDisplay.state)} ${styles.statRight}`}>
+        {displayStat(rightDisplay.value)}
+      </div>
       {flipPhase !== 'idle' && (
         <CardCaptureFlame
           phase={flipPhase}
@@ -306,7 +372,7 @@ export function Card({
         style={style}
         onClick={onClick}
         aria-pressed={selected}
-        aria-label={`${name}: top ${stats.top}, bottom ${stats.bottom}, left ${stats.left}, right ${stats.right}`}
+        aria-label={`${name}: ${describeSideForAria('top', stats.top, topDisplay)}, ${describeSideForAria('bottom', stats.bottom, bottomDisplay)}, ${describeSideForAria('left', stats.left, leftDisplay)}, ${describeSideForAria('right', stats.right, rightDisplay)}`}
       >
         {content}
       </motion.button>

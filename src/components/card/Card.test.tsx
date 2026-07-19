@@ -305,3 +305,82 @@ describe('Card', () => {
     }
   });
 });
+
+describe('Card buff/debuff display (effectiveStats)', () => {
+  it('shows the plain printed value with no special styling when effectiveStats is omitted', () => {
+    render(<Card {...baseProps} />);
+    const topStat = screen.getByText('8');
+    expect(topStat.className).not.toMatch(/statBuffed|statDebuffed/);
+  });
+
+  it('shows the plain printed value when effectiveStats is identical to stats', () => {
+    render(<Card {...baseProps} effectiveStats={{ ...baseProps.stats }} />);
+    const topStat = screen.getByText('8');
+    expect(topStat.className).not.toMatch(/statBuffed|statDebuffed/);
+  });
+
+  it('shows the EFFECTIVE value, buffed-styled, when a side is higher than printed', () => {
+    render(<Card {...baseProps} effectiveStats={{ ...baseProps.stats, top: 9 }} />);
+
+    // The printed value (8) should no longer be shown for that side -
+    // the effective value (9) replaces it, not just gets an extra badge.
+    expect(screen.queryByText('8')).not.toBeInTheDocument();
+    const buffedStat = screen.getByText('9');
+    expect(buffedStat.className).toMatch(/statBuffed/);
+  });
+
+  it('shows the EFFECTIVE value, debuffed-styled, when a side is lower than printed', () => {
+    render(<Card {...baseProps} effectiveStats={{ ...baseProps.stats, top: 7 }} />);
+
+    expect(screen.queryByText('8')).not.toBeInTheDocument();
+    const debuffedStat = screen.getByText('7');
+    expect(debuffedStat.className).toMatch(/statDebuffed/);
+  });
+
+  it('only the affected side gets buff/debuff styling - the other three stay plain', () => {
+    render(<Card {...baseProps} effectiveStats={{ ...baseProps.stats, top: 9 }} />);
+
+    const bottomStat = screen.getByText('5'); // unaffected
+    const leftStat = screen.getByText('6'); // unaffected
+    const rightStat = screen.getByText('4'); // unaffected
+    expect(bottomStat.className).not.toMatch(/statBuffed|statDebuffed/);
+    expect(leftStat.className).not.toMatch(/statBuffed|statDebuffed/);
+    expect(rightStat.className).not.toMatch(/statBuffed|statDebuffed/);
+  });
+
+  it('handles buffed and debuffed sides simultaneously on the same card (e.g. Elemental affects all four sides at once)', () => {
+    render(
+      <Card
+        {...baseProps}
+        effectiveStats={{ top: 9, bottom: 6, left: 5, right: 3 }} // top/bottom +1, left/right -1
+      />,
+    );
+
+    expect(screen.getByText('9').className).toMatch(/statBuffed/);
+    expect(screen.getByText('6').className).toMatch(/statBuffed/);
+    expect(screen.getByText('5').className).toMatch(/statDebuffed/);
+    expect(screen.getByText('3').className).toMatch(/statDebuffed/);
+  });
+
+  it("caps A (10) display correctly for a buffed value that reaches the max", () => {
+    render(<Card {...baseProps} stats={{ top: 9, bottom: 5, left: 6, right: 4 }} effectiveStats={{ top: 10, bottom: 5, left: 6, right: 4 }} />);
+
+    const topStat = screen.getByText('A');
+    expect(topStat.className).toMatch(/statBuffed/);
+  });
+
+  it('describes a buffed side verbally in the accessible name, not just via colour', () => {
+    render(<Card {...baseProps} interactive effectiveStats={{ ...baseProps.stats, top: 9 }} />);
+    expect(screen.getByRole('button')).toHaveAccessibleName(/top 9, buffed from 8/);
+  });
+
+  it('describes a debuffed side verbally in the accessible name, not just via colour', () => {
+    render(<Card {...baseProps} interactive effectiveStats={{ ...baseProps.stats, left: 4 }} />);
+    expect(screen.getByRole('button')).toHaveAccessibleName(/left 4, debuffed from 6/);
+  });
+
+  it('does not mention buffed/debuffed in the accessible name for an unaffected side', () => {
+    render(<Card {...baseProps} interactive effectiveStats={{ ...baseProps.stats, top: 9 }} />);
+    expect(screen.getByRole('button')).toHaveAccessibleName(/bottom 5(?!, buffed)(?!, debuffed)/);
+  });
+});

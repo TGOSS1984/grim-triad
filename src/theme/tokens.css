@@ -15,6 +15,16 @@
  *    (drawn from Imperium-leaning references); the game needs a red
  *    player colour to pair with blue for the two card templates. Chosen
  *    to match the red card template's dominant frame tone.
+ *  - --color-danger: a THIRD gap, added alongside the above two - stat
+ *    buff/debuff indicators (see Card.tsx's effectiveStats prop) need a
+ *    red distinct from --color-player-red. Reusing that token for a
+ *    debuff would be ambiguous - a debuffed BLUE card showing red numbers
+ *    could misread as "this became red's card" rather than "this stat
+ *    took a penalty". Chosen brighter/more vivid than the deep maroon
+ *    --color-player-red specifically so it reads as an alert, not a
+ *    player-identity colour, and to visually pair with --color-success's
+ *    similar brightness for the buff/debuff pair to feel like two sides
+ *    of the same system.
  */
 :root {
   /* Supplied palette, kept as raw tokens for traceability back to source */
@@ -55,6 +65,8 @@
      clearer contrast as an active-state UI colour, not just a background. */
   --color-player-blue: #3b5b73;
   --color-player-red: #7a2320; /* added to fill a gap - see file header */
+
+  --color-danger: #e2574a; /* added to fill a gap - see file header - distinct from --color-player-red */
 
   /* Spacing scale */
   --space-xs: 0.25rem;

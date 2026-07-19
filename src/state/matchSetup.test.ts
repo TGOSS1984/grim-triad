@@ -157,6 +157,13 @@ describe('unitIdsToHand', () => {
     expect(hand[0].keywords).toContain('Character');
   });
 
+  it("copies each unit's real element onto the card - REGRESSION TEST: this was previously missing entirely, meaning every real card's element was always undefined, so Elemental treated every single card as mismatched regardless of its true element or the cell's terrain, always applying the -1 debuff and never the +1 buff in actual gameplay", () => {
+    const unit = getUnitById('blood-angels-blood-angels-captain')!;
+    const hand = unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1);
+    expect(hand[0].element).toBe(unit.element);
+    expect(hand[0].element).toBeDefined();
+  });
+
   it('assigns unique instanceIds even for the same unit id repeated', () => {
     const hand = unitIdsToHand(
       ['blood-angels-blood-angels-captain', 'blood-angels-blood-angels-captain'],

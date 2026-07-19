@@ -163,6 +163,23 @@
   box-shadow: var(--shadow-glow-red);
 }
 
+/* Buff/debuff indicators - see Card.tsx's effectiveStats prop for the
+   generic (not Elemental-specific) mechanism behind these. Colors both
+   the number and its border/glow, not just the text, so the state reads
+   clearly even at the small sizes a card can render at (see .stat's own
+   clamp()-based font-size). */
+.statBuffed {
+  color: var(--color-success);
+  border-color: var(--color-success);
+  box-shadow: 0 0 6px var(--color-success);
+}
+
+.statDebuffed {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 0 6px var(--color-danger);
+}
+
 .card.selected .frame {
   filter: drop-shadow(0 0 10px var(--color-accent-gold)) brightness(1.08);
 }

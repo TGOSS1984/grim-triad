@@ -25,6 +25,8 @@ export interface BoardCardData {
   instanceId: string;
   name: string;
   stats: CardStats;
+  /** The card's in-play stats after any active buff/debuff mechanic (currently Elemental) - see Card.tsx's own doc on effectiveStats for why this is deliberately generic. */
+  effectiveStats?: CardStats;
   portraitPath: string;
   fallbackPortraitPath?: string;
   owner: PlayerColour;
@@ -85,6 +87,7 @@ export function BoardCell({
           captureKind={card.captureKind}
           element={card.element}
           keywords={card.keywords}
+          effectiveStats={card.effectiveStats}
         />
         {elementBadge}
       </div>

@@ -142,6 +142,7 @@ export function unitIdsToHand(
       unitId,
       owner,
       stats: unit.stats,
+      element: unit.element,
       keywords: unit.keywords,
       rosterFactionSlug,
     };

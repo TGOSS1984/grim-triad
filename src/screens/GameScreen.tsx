@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useGameStore } from '../state/gameStore';
 import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
+import { getEffectiveStats } from '../engine/rules/elemental';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
@@ -145,11 +146,19 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (!cell.card) return null;
+      const position = { row: rowIndex, col: colIndex };
       return {
         instanceId: cell.card.instanceId,
         owner: cell.card.owner,
         flipDelayMs: flipDelayByPosition.get(`${rowIndex},${colIndex}`),
         captureKind: captureKindByPosition.get(`${rowIndex},${colIndex}`),
+        // Safe to always compute, not gated on game.ruleSet.elemental -
+        // getEffectiveStats naturally returns the card's stats unchanged
+        // when the cell has no assigned element (board[pos].element is
+        // only ever set in the first place when Elemental is active), so
+        // there's no behavioral difference to gate, just an unnecessary
+        // conditional.
+        effectiveStats: getEffectiveStats(game.board, cell.card, position),
         ...toDisplayFields(cell.card, game.ruleSet.elemental),
       };
     }),

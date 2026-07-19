@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GameScreen } from './GameScreen';
 import { useGameStore } from '../state/gameStore';
+import { unitIdsToHand } from '../state/matchSetup';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
 import type { Card, PlayerState, Board } from '../engine/types';
 
@@ -368,5 +369,132 @@ describe('GameScreen Epic Hero template', () => {
       expect(document.querySelector('img[src*="template-blue.png"]')).toBeInTheDocument();
     });
     expect(document.querySelector('img[src*="-epic.png"]')).not.toBeInTheDocument();
+  });
+});
+
+describe('GameScreen buff/debuff display (Elemental)', () => {
+  it("REGRESSION TEST: a card built through the REAL unitIdsToHand pipeline (not a hand-rolled Card literal) shows a genuine +1 buff on a matching cell - this is the test that would have caught the actual bug found via a real playtest screenshot: unitIdsToHand was never setting .element on the card at all, so every real card was always treated as elementally mismatched (always -1, never +1) regardless of its true element or the cell's terrain, even though the OTHER tests in this block (which set .element directly on a hand-rolled Card) passed the whole time and never caught it", async () => {
+    // Blood Angels Captain's real element and stats come from the actual
+    // catalog via unitIdsToHand - not asserted by hand, so this genuinely
+    // exercises the same code path a real match uses.
+    const [captain] = unitIdsToHand(['blood-angels-blood-angels-captain'], 'blue', 1);
+    startTestGame({ elemental: true });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            // Placing on a cell whose terrain matches the card's real
+            // element (void) - a genuine match should buff, not debuff.
+            if (r === 1 && c === 1) return { card: captain, element: captain.element };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      const buffedStats = document.querySelectorAll('[class*="statBuffed"]');
+      expect(buffedStats.length).toBeGreaterThan(0);
+    });
+    expect(document.querySelectorAll('[class*="statDebuffed"]')).toHaveLength(0);
+  });
+
+  it('a card sitting on a MISMATCHED elemental cell shows debuffed (red) stats through the full pipeline', async () => {
+    startTestGame({ elemental: true });
+    // Blood Angels Captain's real element is 'void' (top 5, bottom 5,
+    // left 6, right 5) - placing it on a 'toxic' cell is a genuine
+    // mismatch, -1 on all four sides.
+    const captain: Card = {
+      instanceId: 'blue-captain-on-terrain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      element: 'void',
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 1) return { card: captain, element: 'toxic' };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    // Effective stats should be 4/4/5/4 (each side -1) - the printed
+    // values (5/5/6/5) should no longer be shown for this card.
+    await waitFor(() => {
+      const debuffedStats = document.querySelectorAll('[class*="statDebuffed"]');
+      expect(debuffedStats.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('a card sitting on a MATCHING elemental cell shows buffed (green) stats through the full pipeline', async () => {
+    startTestGame({ elemental: true });
+    const captain: Card = {
+      instanceId: 'blue-captain-on-terrain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      element: 'void',
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 1) return { card: captain, element: 'void' }; // matches
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      const buffedStats = document.querySelectorAll('[class*="statBuffed"]');
+      expect(buffedStats.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('a card on a cell with no assigned element shows no buff/debuff styling at all', async () => {
+    startTestGame({ elemental: false });
+    const captain: Card = {
+      instanceId: 'blue-captain-no-terrain',
+      unitId: 'blood-angels-blood-angels-captain',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 6, right: 5 },
+      element: 'void',
+    };
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 1) return { card: captain }; // no element on this cell
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('6')).toBeInTheDocument(); // sanity check the card actually rendered
+    });
+    expect(document.querySelectorAll('[class*="statBuffed"], [class*="statDebuffed"]')).toHaveLength(0);
   });
 });
