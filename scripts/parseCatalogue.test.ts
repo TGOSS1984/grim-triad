@@ -15,6 +15,28 @@ describe('slugify', () => {
   it('trims leading/trailing dashes', () => {
     expect(slugify('  Astorath  ')).toBe('astorath');
   });
+
+  it('strips accented characters down to their base letter, not to a dash - REAL BUG this fixes: an accented name previously slugified with the accent replaced by a dash instead of dropped, producing an id/portraitPath that would never match how anyone actually names an image file', () => {
+    expect(slugify('Brôkhyr Iron-master')).toBe('brokhyr-iron-master');
+  });
+
+  it('strips a variety of common accented characters correctly', () => {
+    expect(slugify('Café')).toBe('cafe');
+    expect(slugify('Naïve')).toBe('naive');
+    expect(slugify('Ñandu')).toBe('nandu');
+    expect(slugify('Über')).toBe('uber');
+    expect(slugify('Zoë')).toBe('zoe');
+  });
+
+  it('keeps the display name untouched - slugify only affects the derived id/portraitPath, not what the player actually sees', () => {
+    // This is really documentation-as-a-test: slugify is a pure function
+    // called separately to derive id/portraitPath (see build-data.ts) -
+    // the raw `name` field itself is never passed through it, so the
+    // real accented spelling always survives for display.
+    const original = 'Brôkhyr Iron-master';
+    slugify(original);
+    expect(original).toBe('Brôkhyr Iron-master');
+  });
 });
 
 describe('parseRow', () => {

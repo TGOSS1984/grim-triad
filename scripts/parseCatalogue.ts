@@ -74,9 +74,23 @@ export interface NormalizedUnit {
   points: number;
 }
 
-/** Converts a unit/faction name into a URL/filename-safe slug. */
+/**
+ * Converts a unit/faction name into a URL/filename-safe slug. Accented
+ * characters (e.g. o-with-circumflex in "Brokhyr") are reduced to their
+ * plain base letter rather than being treated as punctuation and replaced
+ * with a dash - this keeps the DISPLAY name's real accented spelling
+ * (that's just `name`, untouched) while the id/portraitPath derived from
+ * it stays a plain-ASCII slug that actually matches how a portrait image
+ * file would realistically be named on disk. Without this, an accented
+ * name like "Brôkhyr Iron-master" would slugify to something like
+ * "br-khyr-iron-master" (the accented character replaced with a dash),
+ * which no one would ever actually name an image file - the accent gets
+ * silently dropped instead, matching normal filename conventions.
+ */
 export function slugify(value: string): string {
   return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip the decomposed combining accent marks, leaving the base letter
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
