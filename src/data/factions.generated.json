@@ -50,7 +50,7 @@
   {
     "slug": "chaos-daemons",
     "name": "Chaos Daemons",
-    "active": false,
+    "active": true,
     "unitCount": 52
   },
   {
