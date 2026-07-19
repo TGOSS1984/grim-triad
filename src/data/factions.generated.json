@@ -152,7 +152,7 @@
   {
     "slug": "leagues-of-votann",
     "name": "Leagues of Votann",
-    "active": false,
+    "active": true,
     "unitCount": 22
   },
   {
