@@ -2,7 +2,7 @@
   {
     "slug": "adepta-sororitas",
     "name": "Adepta Sororitas",
-    "active": false,
+    "active": true,
     "unitCount": 32
   },
   {
@@ -14,7 +14,7 @@
   {
     "slug": "adeptus-mechanicus",
     "name": "Adeptus Mechanicus",
-    "active": false,
+    "active": true,
     "unitCount": 34
   },
   {

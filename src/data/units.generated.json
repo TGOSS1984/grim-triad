@@ -4369,8 +4369,8 @@
     "stats": {
       "top": 7,
       "bottom": 7,
-      "left": 5,
-      "right": 7
+      "left": 3,
+      "right": 9
     },
     "portraitPath": "assets/factions/adepta-sororitas/units/morvenn-vahl.png",
     "element": "radiation"
@@ -4620,10 +4620,10 @@
     "points": 135,
     "statBudget": 24,
     "stats": {
-      "top": 5,
-      "bottom": 6,
-      "left": 6,
-      "right": 7
+      "top": 9,
+      "bottom": 4,
+      "left": 9,
+      "right": 2
     },
     "portraitPath": "assets/factions/adeptus-mechanicus/units/belisarius-cawl.png",
     "element": "radiation"
