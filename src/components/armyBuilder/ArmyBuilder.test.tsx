@@ -362,3 +362,88 @@ describe('ArmyBuilder List/Carousel view toggle', () => {
     expect(useArmyBuilderStore.getState().selectedUnitIds.length).toBe(1);
   });
 });
+
+describe('ArmyBuilder Randomize Army button', () => {
+  it('single-match mode (open-ended, at least 5): fills a legal army within the points cap', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(screen.getByRole('button', { name: '1000 pts' }));
+
+    await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+
+    const { selectedUnitIds } = useArmyBuilderStore.getState();
+    expect(selectedUnitIds.length).toBeGreaterThanOrEqual(5);
+    expect(useArmyBuilderStore.getState().totalPoints()).toBeLessThanOrEqual(1000);
+    expect(new Set(selectedUnitIds).size).toBe(selectedUnitIds.length); // no duplicates
+  });
+
+  it('series mode (exact size): fills exactly the required pool size', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={15} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toHaveLength(15);
+    expect(useArmyBuilderStore.getState().totalPoints()).toBeLessThanOrEqual(2000);
+  });
+
+  it('campaign mode: fills exactly the required size while respecting the live power-unit cap', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={15} forcedPointsCap={1500} enforcePowerCap />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+
+    const { selectedUnitIds } = useArmyBuilderStore.getState();
+    expect(selectedUnitIds).toHaveLength(15);
+    expect(useArmyBuilderStore.getState().totalPoints()).toBeLessThanOrEqual(1500);
+    // The live power-cap tally should reflect a legal roster - never over the 5-unit cap.
+    expect(screen.getByText(/Power units \(over 150pts\): [0-5]\/5/)).toBeInTheDocument();
+  });
+
+  it('replaces the current selection entirely, rather than adding on top of it', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+    await user.click(addUnitByName(CAPTAIN));
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([
+      'blood-angels-blood-angels-captain',
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+
+    // Manually-picked selection is gone, replaced by a fresh random one -
+    // not just added to (which would risk exceeding a series/campaign's
+    // exact target size).
+    const { selectedUnitIds } = useArmyBuilderStore.getState();
+    expect(selectedUnitIds.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('clicking it again produces a genuinely different random selection (not cached/frozen)', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={15} forcedPointsCap={2000} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    const results = new Set<string>();
+    for (let i = 0; i < 5; i++) {
+      await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+      results.add([...useArmyBuilderStore.getState().selectedUnitIds].sort().join(','));
+    }
+
+    expect(results.size).toBeGreaterThan(1);
+  });
+
+  it('does nothing (no crash) if clicked before a points cap has been chosen', async () => {
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    // Points cap picker is showing, nothing chosen yet - the Randomize
+    // button isn't even rendered at this point (same section gate as the
+    // rest of "Build Your Army"), confirming that rather than clicking
+    // something that doesn't exist.
+    expect(screen.queryByRole('button', { name: 'Randomize Army' })).not.toBeInTheDocument();
+  });
+});

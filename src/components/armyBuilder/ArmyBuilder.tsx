@@ -9,6 +9,8 @@ import { useEffect, useState } from 'react';
 import { useArmyBuilderStore } from '../../state/armyBuilderStore';
 import type { PointsCap } from '../../state/armyBuilderStore';
 import { canAddToCampaignRoster, countPowerUnits, CAMPAIGN_MAX_POWER_UNITS } from '../../state/campaignBalance';
+import { randomizeArmySelection } from '../../state/randomizeArmy';
+import type { ArmySizeTarget } from '../../state/randomizeArmy';
 import { FactionSelect } from './FactionSelect';
 import { PointsTally } from './PointsTally';
 import { UnitPicker } from './UnitPicker';
@@ -127,6 +129,32 @@ export function ArmyBuilder({
     : undefined;
   const currentPowerUnitCount = enforcePowerCap ? countPowerUnits(selectedUnitIds) : 0;
 
+  /**
+   * Randomly fills the army from scratch, for a player who'd rather not
+   * pick units by hand - respects the exact same constraints the live UI
+   * already enforces (points cap, exact-vs-minimum size, and the
+   * campaign power-unit cap), since it's built from the same
+   * canAddToCampaignRoster check and the store's own points cap, not a
+   * separate parallel set of rules that could drift out of sync.
+   * Replaces the current selection entirely rather than adding on top of
+   * it - "give me a fresh random army", not a mixed manual/random result
+   * that would make the points/count expectations confusing.
+   */
+  function handleRandomize() {
+    if (pointsCap === null) return;
+
+    const target: ArmySizeTarget =
+      requiredArmySize !== undefined ? { exact: requiredArmySize } : { atLeast: minArmySize };
+    const isBlocked = enforcePowerCap
+      ? (unitId: string, current: string[]) => !canAddToCampaignRoster(current, unitId).allowed
+      : undefined;
+
+    const chosenIds = randomizeArmySelection(availableUnits, pointsCap, target, isBlocked);
+
+    for (const id of selectedUnitIds) removeUnit(id);
+    for (const id of chosenIds) addUnit(id);
+  }
+
   return (
     <div className={styles.builder}>
       {errorMessage && (
@@ -176,6 +204,10 @@ export function ArmyBuilder({
               Power units (over 150pts): {currentPowerUnitCount}/{CAMPAIGN_MAX_POWER_UNITS}
             </p>
           )}
+
+          <button type="button" className={styles.randomizeButton} onClick={handleRandomize}>
+            Randomize Army
+          </button>
 
           <div className={styles.viewToggle} role="group" aria-label="Unit picker view">
             <button

@@ -78,6 +78,25 @@
   background: rgba(175, 131, 59, 0.12);
 }
 
+.randomizeButton {
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-accent-gold);
+  background: transparent;
+  color: var(--color-accent-gold);
+  cursor: pointer;
+  transition: background 150ms ease, box-shadow 150ms ease;
+}
+
+.randomizeButton:hover {
+  background: rgba(175, 131, 59, 0.12);
+  box-shadow: var(--shadow-glow-gold);
+}
+
 .capRow {
   display: flex;
   flex-wrap: wrap;
