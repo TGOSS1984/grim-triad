@@ -20,10 +20,122 @@
  *   900-1299px: 3 columns
  *   >=1300px  : 4 columns
  */
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.group {
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-primary);
+  transition: background-color 150ms ease;
+}
+
+.groupHeader:hover,
+.groupHeader:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.groupHeader:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: -2px;
+}
+
+.groupIcon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: color 150ms ease;
+}
+
+.groupName {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.groupCount {
+  margin-left: var(--space-xs);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.groupChevron {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 200ms ease;
+}
+
+.groupHeaderOpen .groupIcon,
+.groupHeaderOpen .groupChevron {
+  color: var(--color-accent-gold);
+}
+
+.groupHeaderOpen .groupChevron {
+  transform: rotate(180deg);
+}
+
+/* Accordion collapse/expand via grid-template-rows 0fr <-> 1fr rather
+   than height:auto/max-height: animates smoothly to the section's actual
+   content height (no fixed max-height guess needed, no snap-to-instant
+   like height:auto would). .groupBodyInner's overflow:hidden is what
+   actually clips the content while the row is sized below its natural
+   height mid-transition.
+
+   visibility is deliberately delayed (transition-delay) rather than set
+   directly by isOpen in JS/React: collapsed content should not be
+   keyboard-focusable or exposed to assistive tech, but flipping
+   visibility the instant a section closes would cut the collapse
+   animation off after one frame. Delaying it to match the transition
+   duration lets the section finish visibly collapsing before it's
+   actually removed from the accessibility tree; opening reverses
+   instantly since there's nothing to wait for. */
+.groupBody {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 240ms ease,
+    visibility 0s 240ms;
+}
+
+.groupBodyOpen {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 240ms ease;
+}
+
+.groupBodyInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--space-sm);
+  padding: 0 var(--space-md) var(--space-md);
 }
 
 .factionButton {
