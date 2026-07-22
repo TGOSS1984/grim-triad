@@ -56,7 +56,7 @@
   {
     "slug": "chaos-knights",
     "name": "Chaos Knights",
-    "active": false,
+    "active": true,
     "unitCount": 20
   },
   {
@@ -128,7 +128,7 @@
   {
     "slug": "imperial-agents",
     "name": "Imperial Agents",
-    "active": false,
+    "active": true,
     "unitCount": 28
   },
   {
@@ -194,7 +194,7 @@
   {
     "slug": "t-au-empire",
     "name": "T'au Empire",
-    "active": false,
+    "active": true,
     "unitCount": 43
   },
   {

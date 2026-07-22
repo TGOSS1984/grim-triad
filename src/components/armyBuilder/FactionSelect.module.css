@@ -1,25 +1,45 @@
 /**
- * .list uses CSS Grid rather than flex-wrap: with the faction count
- * growing toward ~40 (see FactionSelect.tsx's own doc - reads
- * ACTIVE_FACTIONS directly, so this list grows as more rosters go live),
- * a flex-wrap row of fixed-min-width buttons only happened to look like a
- * multi-column grid at specific container widths, and on a typical
- * mobile viewport (~375-410px content width) it degraded to one giant
- * single column - a very long scroll for 40 factions. Grid gives an
- * explicit, deliberate column count instead of an accidental one.
+ * .list uses CSS Grid with explicit column-count breakpoints rather than
+ * auto-fit/minmax: with the faction count growing toward ~40 (see
+ * FactionSelect.tsx's own doc - reads ACTIVE_FACTIONS directly, so this
+ * list grows as more rosters go live), auto-fit's column count depends on
+ * container width in a way that's hard to reason about and doesn't
+ * reliably reach 3-4 columns even inside a wide container (a 720px
+ * container with a 220px minmax caps out well short of 4 columns, no
+ * matter how wide the viewport actually is). Fixed, deliberate tiers
+ * below give a predictable, designed-for column count at each size
+ * instead of an accidental one, and are mobile-first (base rule = the
+ * smallest viewport, min-width media queries layer on as space grows) so
+ * each tier only has to override what actually changes at that size.
+ *
+ * Tiers (see ArmyBuilder.module.css for the matching container
+ * max-width - it was widened 720px -> 960px alongside this so 3-4
+ * columns have room to breathe rather than being cramped):
+ *   <=600px   : 2 columns, compact stacked card (icon above name/count)
+ *   601-899px : 2 columns, standard horizontal card
+ *   900-1299px: 3 columns
+ *   >=1300px  : 4 columns
  */
 .list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-md);
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
 }
 
 .factionButton {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  /* Grid (and flex) items default to a minimum width of their content's
+     min-content size, ignoring the 1fr track width - so without this,
+     a button holding a long name ("Adeptus Custodes", "Leagues of
+     Votann") refuses to shrink to fit its column and overflows past the
+     container's right edge on wider, more-columns layouts. min-width: 0
+     lets the button actually shrink to its grid track. */
+  min-width: 0;
   background: var(--color-surface);
   border: 2px solid var(--color-border-muted);
   border-radius: var(--radius-md);
@@ -47,8 +67,8 @@
 }
 
 .icon {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -56,67 +76,79 @@
 .textBlock {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
+  align-items: center;
+  text-align: center;
+  gap: 2px;
   min-width: 0;
 }
 
 .name {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   color: var(--color-text-primary);
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .count {
   font-family: var(--font-body);
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   color: var(--color-text-muted);
 }
 
-/* Mobile: force exactly 2 columns (auto-fit's 220px minimum above would
-   still collapse to 1 column at typical phone widths, ~375-410px content
-   area - 2x220px+gap doesn't fit), and shrink/restack each card - icon
-   above name/count, centered - rather than trying to squeeze the
-   original horizontal icon+text layout into a half-width card, which
-   looked cramped with real faction names ("Adeptus Custodes",
-   "Ultramarines"). This roughly halves the scroll length for a 40-entry
-   list, which was the actual ask.
+/* 601-899px: still 2 columns, but there's enough width per card to go
+   back to the original horizontal icon+text layout at full size, rather
+   than the compact stacked mobile card above.
 
    MUST come after every base rule it overrides (.list, .factionButton,
    .icon, .textBlock, .name, .count above) - CSS resolves same-specificity
    rules by SOURCE ORDER regardless of whether one is inside a media
-   query, and the mobile row-layout bug in UnitPicker.module.css (fixed
-   just before this) was caused by exactly this ordering mistake - not
-   repeating it here. */
-@media (max-width: 480px) {
+   query, and the mobile row-layout bug in UnitPicker.module.css was
+   previously caused by exactly this ordering mistake - not repeating it
+   here. */
+@media (min-width: 601px) {
   .list {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-sm);
+    gap: var(--space-md);
   }
 
   .factionButton {
-    flex-direction: column;
-    justify-content: center;
-    padding: var(--space-sm);
-    gap: var(--space-xs);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
   }
 
   .icon {
-    width: 30px;
-    height: 30px;
+    width: 40px;
+    height: 40px;
   }
 
   .textBlock {
-    align-items: center;
-    text-align: center;
-    gap: 2px;
+    align-items: flex-start;
+    text-align: left;
+    gap: var(--space-xs);
   }
 
   .name {
-    font-size: 0.85rem;
+    font-size: 1.1rem;
   }
 
   .count {
-    font-size: 0.65rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* 900-1299px: three columns. Card layout/sizing stays the same as the
+   601-899px tier above - only the column count changes. */
+@media (min-width: 900px) {
+  .list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* >=1300px: four columns, for the largest screens. */
+@media (min-width: 1300px) {
+  .list {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
