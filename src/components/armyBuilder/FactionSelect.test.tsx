@@ -58,6 +58,37 @@ describe('FactionSelect', () => {
     );
   });
 
+  it('tries .png first for each group icon, at its expected asset path', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const imperiumHeader = screen.getByRole('button', { name: /Imperium/ });
+    const icon = imperiumHeader.querySelector('img') as HTMLImageElement;
+    expect(icon.getAttribute('src')).toBe('/assets/groups/imperium/icon.png');
+  });
+
+  it('falls back to .webp if a group icon .png fails to load', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const imperiumHeader = screen.getByRole('button', { name: /Imperium/ });
+    const icon = imperiumHeader.querySelector('img') as HTMLImageElement;
+
+    fireEvent.error(icon);
+
+    const updated = imperiumHeader.querySelector('img') as HTMLImageElement;
+    expect(updated.getAttribute('src')).toBe('/assets/groups/imperium/icon.webp');
+  });
+
+  it('hides a group icon gracefully if both .png and .webp fail, without affecting the header', () => {
+    render(<FactionSelect selectedRosterName={null} onSelectRoster={vi.fn()} />);
+
+    const imperiumHeader = screen.getByRole('button', { name: /Imperium/ });
+    fireEvent.error(imperiumHeader.querySelector('img')!); // .png fails
+    fireEvent.error(imperiumHeader.querySelector('img')!); // .webp fails too
+
+    expect(imperiumHeader.querySelector('img')).not.toBeInTheDocument();
+    expect(imperiumHeader).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('calls onSelectRoster with the faction name when a faction card is clicked', async () => {
     const user = userEvent.setup();
     const onSelectRoster = vi.fn();

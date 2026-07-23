@@ -84,7 +84,7 @@ export function FactionSelect({ selectedRosterName, onSelectRoster }: FactionSel
               aria-controls={sectionId}
               onClick={() => setOpenGroup(isOpen ? null : alignment)}
             >
-              <GroupIcon kind={alignment} className={styles.groupIcon} />
+              <GroupIcon alignment={alignment} className={styles.groupIcon} />
               <span className={styles.groupName}>{alignment}</span>
               <span className={styles.groupCount}>
                 {factions.length} faction{factions.length === 1 ? '' : 's'}

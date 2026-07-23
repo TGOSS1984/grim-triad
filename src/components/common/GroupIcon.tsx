@@ -1,72 +1,42 @@
 /**
- * Icons for the three faction-group accordion headers in FactionSelect
- * (Imperium / Chaos / Xenos - see data/factionAlignment.ts).
+ * Icon for a faction-group accordion header in FactionSelect (Imperium /
+ * Chaos / Xenos - see data/factionAlignment.ts). User-supplied artwork,
+ * loaded the same way FactionIcon loads a faction's icon: tries .png
+ * first, falls back to .webp, then renders nothing if neither loads -
+ * same "graceful missing art" degrade as FactionIcon and Card's portrait
+ * fallback, rather than a broken-image icon or a hardcoded placeholder
+ * mark.
  *
- * These are original, abstract marks - deliberately NOT the actual 40k
- * iconography (aquila, 8-pointed chaos star, etc.), which are Games
- * Workshop trademarks. Each is built from the same stroke-based geometry
- * so the trio reads as a matched set at a glance:
- *   Imperium - a symmetric shield/spire silhouette: order, hierarchy.
- *   Chaos    - an irregular, asymmetric jagged burst: corruption, disorder.
- *   Xenos    - an off-center ring with a satellite dot: something alien
- *              orbiting outside the norm.
- * All three use `currentColor` for both stroke and fill so they inherit
- * color from their CSS context (muted by default, gold when the section
- * is open/hovered) exactly like the rest of the UI's icon treatment.
+ * Expected asset path, matching the existing
+ * assets/factions/<faction-slug>/icon.png convention (see ROADMAP.md's
+ * asset structure):
+ *   public/assets/groups/imperium/icon.png (+ optional icon.webp)
+ *   public/assets/groups/chaos/icon.png    (+ optional icon.webp)
+ *   public/assets/groups/xenos/icon.png    (+ optional icon.webp)
  */
-export type GroupIconKind = 'Imperium' | 'Chaos' | 'Xenos';
+import { useState } from 'react';
+import type { FactionAlignment } from '../../data/factionAlignment';
 
 export interface GroupIconProps {
-  kind: GroupIconKind;
+  alignment: FactionAlignment;
   className?: string;
 }
 
-function ImperiumGlyph() {
-  return (
-    <path
-      d="M14 2 L24 6 V15 C24 21 19.5 25.5 14 27 C8.5 25.5 4 21 4 15 V6 Z M14 2 V27"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-      strokeLinecap="round"
-    />
-  );
-}
+type IconExtension = 'png' | 'webp';
 
-function ChaosGlyph() {
-  return (
-    <path
-      d="M14 2 L17 10.5 L25.5 8 L19 14.5 L26 19 L17.5 18 L18.5 26.5 L13 20.5 L8 26.5 L8.5 18 L1.5 19.5 L7.5 14 L2 8.5 L10.5 10.5 Z"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-      strokeLinecap="round"
-    />
-  );
-}
+export function GroupIcon({ alignment, className }: GroupIconProps) {
+  const slug = alignment.toLowerCase();
+  const [extension, setExtension] = useState<IconExtension | null>('png');
+  if (extension === null) return null;
 
-function XenosGlyph() {
   return (
-    <>
-      <circle cx="13" cy="15" r="10" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <circle cx="23" cy="7" r="2.6" fill="currentColor" />
-    </>
-  );
-}
-
-export function GroupIcon({ kind, className }: GroupIconProps) {
-  return (
-    <svg
+    <img
       className={className}
-      viewBox="0 0 28 29"
+      src={`/assets/groups/${slug}/icon.${extension}`}
+      alt=""
       aria-hidden="true"
-      focusable="false"
-    >
-      {kind === 'Imperium' && <ImperiumGlyph />}
-      {kind === 'Chaos' && <ChaosGlyph />}
-      {kind === 'Xenos' && <XenosGlyph />}
-    </svg>
+      draggable={false}
+      onError={() => setExtension((current) => (current === 'png' ? 'webp' : null))}
+    />
   );
 }

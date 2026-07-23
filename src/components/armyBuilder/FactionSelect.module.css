@@ -60,9 +60,15 @@
 .groupIcon {
   width: 22px;
   height: 22px;
+  object-fit: contain;
   flex-shrink: 0;
-  color: var(--color-text-muted);
-  transition: color 150ms ease;
+  /* Raster art (unlike the old inline SVG) can't pick up currentColor,
+     so the "closed vs open" state is conveyed with opacity instead of a
+     color shift - dimmed at rest, full strength once the section is
+     open, matching the same "this is the active one" feedback the gold
+     color change gave before. */
+  opacity: 0.7;
+  transition: opacity 150ms ease;
 }
 
 .groupName {
@@ -87,12 +93,12 @@
   transition: transform 200ms ease;
 }
 
-.groupHeaderOpen .groupIcon,
-.groupHeaderOpen .groupChevron {
-  color: var(--color-accent-gold);
+.groupHeaderOpen .groupIcon {
+  opacity: 1;
 }
 
 .groupHeaderOpen .groupChevron {
+  color: var(--color-accent-gold);
   transform: rotate(180deg);
 }
 
