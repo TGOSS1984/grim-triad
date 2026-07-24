@@ -39,14 +39,15 @@ function finishedGame(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
-/** Renders CampaignResultScreen with sensible defaults for every prop (showVictoryModal off, all handlers spies) - individual tests only need to override what they actually care about. */
+/** Renders CampaignResultScreen with sensible defaults for every prop (no victory modal, all handlers spies) - individual tests only need to override what they actually care about. */
 function renderScreen(overrides: Partial<CampaignResultScreenProps> = {}) {
   const props: CampaignResultScreenProps = {
     onContinue: vi.fn(),
-    showVictoryModal: false,
+    victoryModalKind: null,
     onStartNewRun: vi.fn(),
     onReturnToTitle: vi.fn(),
     onDismissVictoryModal: vi.fn(),
+    onReinforceRival: vi.fn(),
     ...overrides,
   };
   render(<CampaignResultScreen {...props} />);
@@ -169,21 +170,22 @@ describe('CampaignResultScreen', () => {
 });
 
 describe('CampaignResultScreen victory modal', () => {
-  it('does not render the victory modal when showVictoryModal is false', () => {
+  it('renders no victory modal when victoryModalKind is null', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useGameStore.setState({ game: finishedGame() });
 
-    renderScreen({ showVictoryModal: false });
+    renderScreen({ victoryModalKind: null });
 
     expect(screen.queryByRole('heading', { name: 'Collection Complete!' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Rival Vanquished!' })).not.toBeInTheDocument();
   });
 
-  it('renders the victory modal with the Complete Collection achievement and real progress numbers when showVictoryModal is true', () => {
+  it("renders the Collection Complete modal with the right achievement and real progress numbers when victoryModalKind is 'collection-complete'", () => {
     const everyObtainableUnit = Array.from(getObtainableUnitIds());
     useCampaignStore.getState().startCampaign(everyObtainableUnit);
     useGameStore.setState({ game: finishedGame() });
 
-    renderScreen({ showVictoryModal: true });
+    renderScreen({ victoryModalKind: 'collection-complete' });
 
     expect(screen.getByRole('heading', { name: 'Collection Complete!' })).toBeInTheDocument();
     expect(screen.getByText('Complete Collection')).toBeInTheDocument();
@@ -192,6 +194,35 @@ describe('CampaignResultScreen victory modal', () => {
         `You now own ${everyObtainableUnit.length} / ${everyObtainableUnit.length} units - one of everything currently obtainable.`,
       ),
     ).toBeInTheDocument();
+    // No reinforcements button for this milestone - onReinforce isn't passed.
+    expect(
+      screen.queryByRole('button', { name: 'Continue with AI Reinforcements' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the Rival Vanquished modal with the right achievement and a reinforcements button when victoryModalKind is 'rival-vanquished'", () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useGameStore.setState({ game: finishedGame() });
+
+    renderScreen({ victoryModalKind: 'rival-vanquished' });
+
+    expect(screen.getByRole('heading', { name: 'Rival Vanquished!' })).toBeInTheDocument();
+    expect(screen.getByText('Rival Vanquished')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Continue with AI Reinforcements' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls onReinforceRival when "Continue with AI Reinforcements" is clicked', async () => {
+    const user = userEvent.setup();
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useGameStore.setState({ game: finishedGame() });
+
+    const { onReinforceRival } = renderScreen({ victoryModalKind: 'rival-vanquished' });
+
+    await user.click(screen.getByRole('button', { name: 'Continue with AI Reinforcements' }));
+
+    expect(onReinforceRival).toHaveBeenCalledOnce();
   });
 
   it('wires the modal callbacks through to the props passed to this screen', async () => {
@@ -199,7 +230,7 @@ describe('CampaignResultScreen victory modal', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useGameStore.setState({ game: finishedGame() });
 
-    const { onReturnToTitle } = renderScreen({ showVictoryModal: true });
+    const { onReturnToTitle } = renderScreen({ victoryModalKind: 'collection-complete' });
 
     await user.click(screen.getByRole('button', { name: 'Return to Title' }));
 

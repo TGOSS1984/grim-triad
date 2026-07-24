@@ -29,9 +29,19 @@
  * same reason getObtainableUnitIds() is in collectionProgress.ts: the
  * active roster grows over time, and both should automatically cover
  * whatever's active without a code change here when that happens.
+ *
+ * "Rival Vanquished" mirrors "Complete Collection" from the OTHER side of
+ * the collector meta-game: instead of the player's own collection
+ * reaching full, it fires when the AI's persistent pool (aiCollection -
+ * see campaignStore) has been ground down below CAMPAIGN_MIN_HAND_SIZE,
+ * the same threshold CampaignHomeScreen already uses to gate the
+ * player's OWN "Continue Campaign" button when THEIR collection gets too
+ * small - same rule, applied symmetrically to the other side now that it
+ * has a persistent pool of its own too.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
 import { getCollectionProgress } from '../data/collectionProgress';
+import { CAMPAIGN_MIN_HAND_SIZE } from './campaignBalance';
 
 export interface AchievementContext {
   collection: string[];
@@ -40,6 +50,8 @@ export interface AchievementContext {
   draws: number;
   /** Longest consecutive-win streak ever reached (see campaignStore's own bestWinStreak, which is permanent the same way achievements are). */
   bestWinStreak: number;
+  /** The AI rival's own persistent pool for THIS run (see campaignStore's aiCollection) - used by the Rival Vanquished achievement below. */
+  aiCollection: string[];
 }
 
 export interface Achievement {
@@ -143,6 +155,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'Complete Collection',
     description: 'Own one of every unit currently obtainable across all active factions.',
     isUnlocked: (ctx) => getCollectionProgress(ctx.collection).isComplete,
+  },
+  {
+    id: 'rival-vanquished',
+    name: 'Rival Vanquished',
+    description: "Reduce your AI rival's pool to its final cards.",
+    isUnlocked: (ctx) => ctx.aiCollection.length < CAMPAIGN_MIN_HAND_SIZE,
   },
 ];
 

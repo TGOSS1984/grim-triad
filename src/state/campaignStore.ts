@@ -72,18 +72,36 @@
  * Trades are symmetric and use the SAME gained/lost arrays already
  * passed to recordMatchResult, just mirrored: whatever the human
  * *gained* came out of the AI's pool for that match (see App.tsx's
- * matchSetup once commit 7 wires the AI's hand to actually draw from
- * aiCollection - until then this is correctly wired but not yet fed by
- * real match data), so it's removed from aiCollection here; whatever the
- * human *lost* went TO the AI, so it's added. No separate
- * aiGained/aiLost parameters needed - every transfer in a finished game
- * is by construction either human-directed or human-losing, so the
- * human's own gained/lost fully determines both sides' accounting.
+ * handleCoinFlipResult, which draws the AI's actual match hand from
+ * aiCollection via campaignRivalMatchSetup.ts), so it's removed from
+ * aiCollection here; whatever the human *lost* went TO the AI, so it's
+ * added. No separate aiGained/aiLost parameters needed - every transfer
+ * in a finished game is by construction either human-directed or
+ * human-losing, so the human's own gained/lost fully determines both
+ * sides' accounting.
+ *
+ * `hasVanquishedRival` is PERMANENT, same pattern as
+ * hasCompletedCollection: it records that the AI's pool has, at some
+ * point across ANY run, been ground down below CAMPAIGN_MIN_HAND_SIZE -
+ * the same threshold CampaignHomeScreen uses to gate the player's OWN
+ * "Continue Campaign" button when THEIR collection gets too small,
+ * applied symmetrically to the other side. Deliberately stays true even
+ * after `reinforceRival` refills the pool back up - the player DID
+ * accomplish that at some point, the same way winning a game once still
+ * counts even if you go on to lose the next one.
+ *
+ * `reinforceRival` is the recovery path once aiCollection is too
+ * depleted to field a match: it reseeds aiCollection back to a full
+ * sweep, exactly like startCampaign's own seeding, but touches NOTHING
+ * else (collection, wins/losses, streaks, achievements) - "reinforcements
+ * arrived" is purely an AI-pool event, not a new run and not a match
+ * result of any kind.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getCurrentlyUnlockedAchievementIds } from './achievements';
 import { getCollectionProgress, getObtainableUnitIds } from '../data/collectionProgress';
+import { CAMPAIGN_MIN_HAND_SIZE } from './campaignBalance';
 
 const CAMPAIGN_STORAGE_KEY = 'grim-triad-campaign';
 
@@ -109,6 +127,8 @@ export interface CampaignState {
   hasCompletedCollection: boolean;
   /** The AI rival's own persistent, depletable pool for THIS run - a multiset, same shape as `collection`. Resets (unlike hasCompletedCollection etc.) on both startCampaign and resetCampaign - see file header. */
   aiCollection: string[];
+  /** True once the AI's pool has, at any point across ANY run, been ground down below CAMPAIGN_MIN_HAND_SIZE - permanent, never reset (not even by reinforceRival). See file header. */
+  hasVanquishedRival: boolean;
 
   /** Starts a new campaign run with a starting collection (the player's initial army). Overwrites any existing run - callers should confirm with the player before calling this if a run is already active. */
   startCampaign: (startingCollection: string[]) => void;
@@ -121,8 +141,10 @@ export interface CampaignState {
    * empty gained/lost arrays for a Direct trade rule or a draw.
    */
   recordMatchResult: (outcome: 'win' | 'loss' | 'draw', gained: string[], lost: string[]) => void;
-  /** Ends the current campaign run entirely, clearing all persisted progress (including aiCollection) EXCEPT unlockedAchievementIds, bestWinStreak, and hasCompletedCollection (see file header). */
+  /** Ends the current campaign run entirely, clearing all persisted progress (including aiCollection) EXCEPT unlockedAchievementIds, bestWinStreak, hasCompletedCollection, and hasVanquishedRival (see file header). */
   resetCampaign: () => void;
+  /** Reseeds aiCollection back to a full sweep - the recovery path once the AI's pool is too depleted to field a match. Does not touch collection, wins/losses, streaks, or achievements - see file header. */
+  reinforceRival: () => void;
 }
 
 /** Removes exactly one occurrence of each id in `toRemove` from `pool` - a multiset removal, not a filter (which would remove every copy of a repeated id even if only one was actually lost). */
@@ -144,6 +166,7 @@ function unionUnlockedAchievements(
     losses: number;
     draws: number;
     bestWinStreak: number;
+    aiCollection: string[];
   },
 ): string[] {
   const newlyUnlocked = getCurrentlyUnlockedAchievementIds(snapshot);
@@ -153,6 +176,11 @@ function unionUnlockedAchievements(
 /** Monotonic OR, same "once true, never unset" pattern as unionUnlockedAchievements/bestWinStreak's Math.max: once the player has ever fully completed the collection, this stays true even if the collection given afterward (e.g. after subsequent losses) is no longer complete. */
 function resolveHasCompletedCollection(alreadyCompleted: boolean, collection: string[]): boolean {
   return alreadyCompleted || getCollectionProgress(collection).isComplete;
+}
+
+/** Monotonic OR, same pattern as resolveHasCompletedCollection: once the AI's pool has ever been ground down below CAMPAIGN_MIN_HAND_SIZE, this stays true even after reinforceRival refills it back up. */
+function resolveHasVanquishedRival(alreadyVanquished: boolean, aiCollection: string[]): boolean {
+  return alreadyVanquished || aiCollection.length < CAMPAIGN_MIN_HAND_SIZE;
 }
 
 export const useCampaignStore = create<CampaignState>()(
@@ -169,6 +197,7 @@ export const useCampaignStore = create<CampaignState>()(
       bestWinStreak: 0,
       hasCompletedCollection: false,
       aiCollection: [],
+      hasVanquishedRival: false,
 
       startCampaign: (startingCollection) => {
         const collection = [...startingCollection];
@@ -196,12 +225,14 @@ export const useCampaignStore = create<CampaignState>()(
             get().hasCompletedCollection,
             collection,
           ),
+          hasVanquishedRival: resolveHasVanquishedRival(get().hasVanquishedRival, aiCollection),
           unlockedAchievementIds: unionUnlockedAchievements(get().unlockedAchievementIds, {
             collection,
             wins,
             losses,
             draws,
             bestWinStreak,
+            aiCollection,
           }),
         });
       },
@@ -218,6 +249,7 @@ export const useCampaignStore = create<CampaignState>()(
           currentStreakCount,
           bestWinStreak,
           hasCompletedCollection,
+          hasVanquishedRival,
         } = get();
         const nextCollection = [...removeOneEach(collection, lost), ...gained];
         // Mirror image of nextCollection above: whatever the human
@@ -251,22 +283,25 @@ export const useCampaignStore = create<CampaignState>()(
             hasCompletedCollection,
             nextCollection,
           ),
+          hasVanquishedRival: resolveHasVanquishedRival(hasVanquishedRival, nextAiCollection),
           unlockedAchievementIds: unionUnlockedAchievements(unlockedAchievementIds, {
             collection: nextCollection,
             wins: nextWins,
             losses: nextLosses,
             draws: nextDraws,
             bestWinStreak: nextBestWinStreak,
+            aiCollection: nextAiCollection,
           }),
         });
       },
 
       resetCampaign: () => {
-        // unlockedAchievementIds, bestWinStreak, and hasCompletedCollection
-        // are deliberately omitted here - see file header. Everything else
-        // genuinely resets, including the CURRENT streak (which is
-        // per-run) and aiCollection (a new run means a new rival, not the
-        // same depleted one - see file header).
+        // unlockedAchievementIds, bestWinStreak, hasCompletedCollection,
+        // and hasVanquishedRival are deliberately omitted here - see file
+        // header. Everything else genuinely resets, including the
+        // CURRENT streak (which is per-run) and aiCollection (a new run
+        // means a new rival, not the same depleted one - see file
+        // header).
         set({
           isActive: false,
           collection: [],
@@ -277,6 +312,16 @@ export const useCampaignStore = create<CampaignState>()(
           currentStreakType: 'none',
           currentStreakCount: 0,
         });
+      },
+
+      reinforceRival: () => {
+        // Deliberately touches ONLY aiCollection - see file header for
+        // why this isn't a match result, a new run, or an achievement
+        // event of its own (hasVanquishedRival already stays true from
+        // whenever depletion first happened; reinforcing doesn't unset
+        // it, and doesn't need to re-run the achievement union since
+        // nothing achievement-relevant changed here).
+        set({ aiCollection: Array.from(getObtainableUnitIds()) });
       },
     }),
     { name: CAMPAIGN_STORAGE_KEY },

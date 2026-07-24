@@ -44,6 +44,17 @@ export const CAMPAIGN_STARTING_POOL_SIZE = 15;
 export const CAMPAIGN_STARTING_POINTS_CAP = 1500;
 export const CAMPAIGN_POWER_THRESHOLD_POINTS = 150;
 export const CAMPAIGN_MAX_POWER_UNITS = 5;
+/**
+ * The smallest a collection can be and still field a 5-card match hand.
+ * Shared by BOTH sides of the collector meta-game: CampaignHomeScreen
+ * uses this to gate the player's own "Continue Campaign" button (a
+ * collection this small can't be dealt a full hand), and
+ * campaignStore/campaignRivalMatchSetup use it to detect AI rival
+ * depletion the same way (see campaignStore's hasVanquishedRival). One
+ * shared constant rather than two separately-defined "5"s that could
+ * silently drift apart.
+ */
+export const CAMPAIGN_MIN_HAND_SIZE = 5;
 
 /** True if a unit counts as "powerful" for the starting-roster power cap - i.e. costs more than CAMPAIGN_POWER_THRESHOLD_POINTS. */
 export function isPowerUnit(unitId: string): boolean {

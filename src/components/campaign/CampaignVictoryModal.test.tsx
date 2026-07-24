@@ -9,10 +9,10 @@ function renderModal(overrides: Partial<Parameters<typeof CampaignVictoryModal>[
   const onDismiss = vi.fn();
   render(
     <CampaignVictoryModal
+      title="Collection Complete!"
+      subtitle="You now own 737 / 737 units - one of everything currently obtainable."
       achievementName="Complete Collection"
       achievementDescription="Own one of every unit currently obtainable across all active factions."
-      unitsOwned={737}
-      obtainableTotal={737}
       onStartNewRun={onStartNewRun}
       onReturnToTitle={onReturnToTitle}
       onDismiss={onDismiss}
@@ -23,37 +23,39 @@ function renderModal(overrides: Partial<Parameters<typeof CampaignVictoryModal>[
 }
 
 describe('CampaignVictoryModal', () => {
-  it('renders the completion title and unit counts', () => {
+  it('renders the given title and subtitle', () => {
     renderModal();
     expect(screen.getByRole('heading', { name: 'Collection Complete!' })).toBeInTheDocument();
-    expect(screen.getByText('You now own 737 / 737 units - one of everything currently obtainable.')).toBeInTheDocument();
+    expect(
+      screen.getByText('You now own 737 / 737 units - one of everything currently obtainable.'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders a different title/subtitle when given different ones (Rival Vanquished case)', () => {
+    renderModal({
+      title: 'Rival Vanquished!',
+      subtitle: "You've reduced your rival's pool to its final cards.",
+    });
+    expect(screen.getByRole('heading', { name: 'Rival Vanquished!' })).toBeInTheDocument();
+    expect(
+      screen.getByText("You've reduced your rival's pool to its final cards."),
+    ).toBeInTheDocument();
   });
 
   it('renders the achievement name and description passed in', () => {
     renderModal({
-      achievementName: 'Complete Collection',
-      achievementDescription: 'Own one of every unit currently obtainable across all active factions.',
+      achievementName: 'Rival Vanquished',
+      achievementDescription: "Reduce your AI rival's pool to its final cards.",
     });
-    expect(screen.getByText('Complete Collection')).toBeInTheDocument();
-    expect(
-      screen.getByText('Own one of every unit currently obtainable across all active factions.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Rival Vanquished')).toBeInTheDocument();
+    expect(screen.getByText("Reduce your AI rival's pool to its final cards.")).toBeInTheDocument();
   });
 
   it('calls onDismiss when the close button is clicked', async () => {
     const user = userEvent.setup();
     const { onDismiss } = renderModal();
 
-    await user.click(screen.getByRole('button', { name: 'Keep playing' }));
-
-    expect(onDismiss).toHaveBeenCalledOnce();
-  });
-
-  it('calls onDismiss when the "Keep Playing" action button is clicked', async () => {
-    const user = userEvent.setup();
-    const { onDismiss } = renderModal();
-
-    await user.click(screen.getByRole('button', { name: 'Keep Playing' }));
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
 
     expect(onDismiss).toHaveBeenCalledOnce();
   });
@@ -128,5 +130,56 @@ describe('CampaignVictoryModal', () => {
     expect(
       screen.queryByText('This will permanently discard your current collection and record.'),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('CampaignVictoryModal third action button (onReinforce)', () => {
+  it('shows "Keep Playing" and NOT the reinforcements button when onReinforce is omitted (Collection Complete case)', () => {
+    renderModal();
+
+    expect(screen.getByRole('button', { name: 'Keep Playing' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Continue with AI Reinforcements' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('calls onDismiss when "Keep Playing" is clicked', async () => {
+    const user = userEvent.setup();
+    const { onDismiss } = renderModal();
+
+    await user.click(screen.getByRole('button', { name: 'Keep Playing' }));
+
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('shows "Continue with AI Reinforcements" and NOT "Keep Playing" when onReinforce is given (Rival Vanquished case)', () => {
+    renderModal({ onReinforce: vi.fn() });
+
+    expect(
+      screen.getByRole('button', { name: 'Continue with AI Reinforcements' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Keep Playing' })).not.toBeInTheDocument();
+  });
+
+  it('calls onReinforce (not onDismiss) when "Continue with AI Reinforcements" is clicked', async () => {
+    const user = userEvent.setup();
+    const onReinforce = vi.fn();
+    const { onDismiss } = renderModal({ onReinforce });
+
+    await user.click(screen.getByRole('button', { name: 'Continue with AI Reinforcements' }));
+
+    expect(onReinforce).toHaveBeenCalledOnce();
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('the close button still dismisses without reinforcing, even when onReinforce is given', async () => {
+    const user = userEvent.setup();
+    const onReinforce = vi.fn();
+    const { onDismiss } = renderModal({ onReinforce });
+
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(onReinforce).not.toHaveBeenCalled();
   });
 });

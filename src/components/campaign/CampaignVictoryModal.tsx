@@ -1,30 +1,47 @@
 /**
- * Celebratory modal shown the MOMENT a campaign collection first reaches
- * completion (see campaignStore's hasCompletedCollection - the caller,
- * CampaignResultScreen, is responsible for detecting the false -> true
- * transition and only rendering this on that transition, not on every
- * subsequent render while still complete).
+ * Celebratory modal shown the MOMENT campaign mode reaches one of its two
+ * milestone moments (see campaignStore's hasCompletedCollection and
+ * hasVanquishedRival - the caller, CampaignResultScreen, is responsible
+ * for detecting the false -> true transition on EITHER and only
+ * rendering this on that transition, not on every subsequent render
+ * while still true). One shared component for both rather than two
+ * near-identical ones - same layout, same confirm-before-wiping-progress
+ * behavior, same portal/dismiss conventions; only the copy and the
+ * third action button differ, both driven entirely by props so this
+ * component has no idea which milestone it's even showing.
  *
- * Three real choices, matching the confirmed design (not four - "keep
- * playing with AI reinforcements" is a later, separate feature once the
- * AI has a persistent, depletable pool of its own; until then there's
- * nothing for that button to actually DO beyond what "Keep Playing"
- * already covers here):
- *   - Start New Campaign: wipes the (now-complete) collection for a fresh
- *     run. Gets its own inline two-step confirm, same wording/pattern as
+ * Three real choices in every case, matching the confirmed design:
+ *   - Start New Campaign: wipes the current run for a fresh one. Gets its
+ *     own inline two-step confirm, same wording/pattern as
  *     CampaignHomeScreen's own "Start New Run" - this is genuinely
- *     destructive (discards a just-finished 100% collection) and
- *     deserves the same guard rail that screen already gives a much less
- *     consequential version of the same action.
- *   - Return to Title: leaves campaign mode entirely. Does NOT touch the
- *     collection - it's still saved, still complete, whenever the player
- *     comes back.
- *   - Keep Playing: dismisses the modal, same as backdrop-click or
- *     Escape (see Lightbox.tsx for the same three-way dismiss
- *     convention this mirrors) - the collection stays exactly as-is,
- *     and CampaignResultScreen's ordinary Continue button underneath is
- *     unaffected. Nothing stops further play; there's just no more
- *     collection progress to chase (see file header above).
+ *     destructive (discards a just-reached milestone) and deserves the
+ *     same guard rail that screen already gives a much less consequential
+ *     version of the same action.
+ *   - Return to Title: leaves campaign mode entirely. Does NOT touch any
+ *     campaignStore state - progress is still saved, still there,
+ *     whenever the player comes back.
+ *   - The third action depends on WHICH milestone this is, via
+ *     `onReinforce` being given or not:
+ *       - Collection Complete (`onReinforce` omitted): "Keep Playing" -
+ *         dismisses the modal, same as backdrop-click or Escape (see
+ *         Lightbox.tsx for the same three-way dismiss convention this
+ *         mirrors). The collection stays exactly as-is and
+ *         CampaignResultScreen's ordinary Continue button underneath is
+ *         unaffected - nothing stops further play, there's just no more
+ *         collection progress left to chase.
+ *       - Rival Vanquished (`onReinforce` given): "Continue with AI
+ *         Reinforcements" - refills the AI's pool (campaignStore's
+ *         reinforceRival) and dismisses. Plain "Keep Playing" wouldn't
+ *         actually work here the way it does for Collection Complete: an
+ *         AI pool below CAMPAIGN_MIN_HAND_SIZE can't field another match
+ *         at all (see campaignRivalMatchSetup.ts), so simply dismissing
+ *         without reinforcing would leave the player stuck - the close
+ *         button/Escape/backdrop-click still dismiss without reinforcing
+ *         though (same conventions as always), CampaignHomeScreen has its
+ *         own defensive "Continue Campaign" guard + its own Reinforce
+ *         entry point for that case, same "shouldn't normally be reached
+ *         but isn't a crash if it is" backstop pattern used elsewhere in
+ *         this codebase (e.g. ArmyBuilder's roster-validation backstop).
  *
  * Portalled to document.body, same reasoning as Lightbox: this can be
  * triggered from CampaignResultScreen, which itself isn't inside any
@@ -37,25 +54,29 @@ import { createPortal } from 'react-dom';
 import styles from './CampaignVictoryModal.module.css';
 
 export interface CampaignVictoryModalProps {
-  /** The Complete Collection achievement's display name (see achievements.ts) - passed in rather than imported/looked-up here, keeping this component pure presentation. */
+  /** Heading text - e.g. "Collection Complete!" or "Rival Vanquished!". Fully caller-supplied; this component has no built-in copy for either milestone. */
+  title: string;
+  /** One-line supporting detail below the title - e.g. real progress numbers or a short flavour line. */
+  subtitle: string;
+  /** The relevant achievement's display name (see achievements.ts) - passed in rather than imported/looked-up here, keeping this component pure presentation. */
   achievementName: string;
   achievementDescription: string;
-  /** How many distinct obtainable units are owned - equal to `obtainableTotal` by definition when this modal is shown, but both are passed so the copy can say "737 / 737" rather than just "737". */
-  unitsOwned: number;
-  obtainableTotal: number;
   onStartNewRun: () => void;
   onReturnToTitle: () => void;
   onDismiss: () => void;
+  /** When given, the third action button becomes "Continue with AI Reinforcements" instead of "Keep Playing" - see file header. Omit for the Collection Complete milestone; pass campaignStore's reinforceRival (wrapped to also dismiss) for Rival Vanquished. */
+  onReinforce?: () => void;
 }
 
 export function CampaignVictoryModal({
+  title,
+  subtitle,
   achievementName,
   achievementDescription,
-  unitsOwned,
-  obtainableTotal,
   onStartNewRun,
   onReturnToTitle,
   onDismiss,
+  onReinforce,
 }: CampaignVictoryModalProps) {
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
@@ -80,18 +101,15 @@ export function CampaignVictoryModal({
           type="button"
           className={styles.closeButton}
           onClick={onDismiss}
-          aria-label="Keep playing"
+          aria-label="Dismiss"
         >
           &times;
         </button>
 
         <h2 id="campaign-victory-title" className={styles.title}>
-          Collection Complete!
+          {title}
         </h2>
-        <p className={styles.subtitle}>
-          You now own {unitsOwned} / {obtainableTotal} units - one of everything currently
-          obtainable.
-        </p>
+        <p className={styles.subtitle}>{subtitle}</p>
 
         <div className={styles.achievementBadge}>
           <span className={styles.achievementLabel}>Achievement Unlocked</span>
@@ -125,16 +143,18 @@ export function CampaignVictoryModal({
               >
                 Start New Campaign
               </button>
-              <button
-                type="button"
-                className={styles.titleButton}
-                onClick={onReturnToTitle}
-              >
+              <button type="button" className={styles.titleButton} onClick={onReturnToTitle}>
                 Return to Title
               </button>
-              <button type="button" className={styles.keepPlayingButton} onClick={onDismiss}>
-                Keep Playing
-              </button>
+              {onReinforce ? (
+                <button type="button" className={styles.keepPlayingButton} onClick={onReinforce}>
+                  Continue with AI Reinforcements
+                </button>
+              ) : (
+                <button type="button" className={styles.keepPlayingButton} onClick={onDismiss}>
+                  Keep Playing
+                </button>
+              )}
             </>
           )}
         </div>

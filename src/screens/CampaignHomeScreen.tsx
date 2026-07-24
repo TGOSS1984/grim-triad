@@ -12,24 +12,40 @@
 import { useState } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
 import { ACHIEVEMENTS } from '../state/achievements';
+import { CAMPAIGN_MIN_HAND_SIZE } from '../state/campaignBalance';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { HOME_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
 import styles from './CampaignHomeScreen.module.css';
-
-/** A campaign match deals a 5-card hand - fewer units than this in the collection means no match can be fielded. */
-const MIN_HAND_SIZE = 5;
 
 export interface CampaignHomeScreenProps {
   /** Continue an active run - draw the next match's hand from the existing collection. */
   onContinue: () => void;
   /** Start a fresh run - goes to the campaign army builder. If a run is already active, the caller only receives this after the player confirms via this screen's own two-step prompt. */
   onStartNewRun: () => void;
+  /**
+   * Refills the AI rival's depleted pool (campaignStore's reinforceRival).
+   * A defensive backstop, same "shouldn't normally be reached but isn't a
+   * crash if it is" pattern as ArmyBuilder's own roster-validation
+   * backstop: the primary way a player reinforces is CampaignVictoryModal
+   * right when depletion happens (see App.tsx), but a player who
+   * dismissed that without reinforcing needs a way back here too -
+   * without this, "Continue Campaign" would stay permanently disabled
+   * with no recovery path once aiCollection is too small (see
+   * campaignRivalMatchSetup.ts - it throws rather than silently building
+   * an invalid roster).
+   */
+  onReinforceRival: () => void;
 }
 
-export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeScreenProps) {
+export function CampaignHomeScreen({
+  onContinue,
+  onStartNewRun,
+  onReinforceRival,
+}: CampaignHomeScreenProps) {
   const {
     isActive,
     collection,
+    aiCollection,
     wins,
     losses,
     draws,
@@ -40,7 +56,12 @@ export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeSc
   } = useCampaignStore();
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
-  const canContinue = collection.length >= MIN_HAND_SIZE;
+  const collectionTooSmall = collection.length < CAMPAIGN_MIN_HAND_SIZE;
+  const rivalDepleted = aiCollection.length < CAMPAIGN_MIN_HAND_SIZE;
+  // Both sides need enough cards to actually deal a 5-card hand - see
+  // campaignRivalMatchSetup.ts, which throws rather than building an
+  // undersized/invalid roster if the AI's pool can't support one.
+  const canContinue = !collectionTooSmall && !rivalDepleted;
   const unlockedSet = new Set(unlockedAchievementIds);
 
   return (
@@ -100,10 +121,16 @@ export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeSc
               </div>
             </div>
 
-            {!canContinue && (
+            {collectionTooSmall && (
               <p className={styles.warning} role="alert">
-                Your collection has fallen below {MIN_HAND_SIZE} cards - not enough to field a
-                match. Start a new run to keep playing.
+                Your collection has fallen below {CAMPAIGN_MIN_HAND_SIZE} cards - not enough to
+                field a match. Start a new run to keep playing.
+              </p>
+            )}
+            {rivalDepleted && (
+              <p className={styles.warning} role="alert">
+                Your rival's pool has fallen below {CAMPAIGN_MIN_HAND_SIZE} cards - not enough to
+                field a match. Reinforce your rival to keep playing, or start a new run.
               </p>
             )}
 
@@ -116,6 +143,16 @@ export function CampaignHomeScreen({ onContinue, onStartNewRun }: CampaignHomeSc
               >
                 Continue Campaign
               </button>
+
+              {rivalDepleted && (
+                <button
+                  type="button"
+                  className={styles.newRunButton}
+                  onClick={onReinforceRival}
+                >
+                  Reinforce Rival
+                </button>
+              )}
 
               {confirmingNewRun ? (
                 <div className={styles.confirmRow}>

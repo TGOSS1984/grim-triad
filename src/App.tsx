@@ -37,7 +37,7 @@ import { RoundSummaryScreen } from './screens/RoundSummaryScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { SeriesResultScreen } from './screens/SeriesResultScreen';
 import { CampaignHomeScreen } from './screens/CampaignHomeScreen';
-import { CampaignResultScreen } from './screens/CampaignResultScreen';
+import { CampaignResultScreen, type VictoryModalKind } from './screens/CampaignResultScreen';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
@@ -114,20 +114,22 @@ export default function App() {
    */
   const [campaignRosterFactionSlug, setCampaignRosterFactionSlug] = useState<string | undefined>();
   /**
-   * True for exactly the render(s) right after a campaign match caused
-   * the collection to reach 100% completion for the first time - drives
-   * whether CampaignResultScreen shows CampaignVictoryModal. Set by
-   * comparing campaignStore's hasCompletedCollection immediately before
-   * and after the recordMatchResult call in the game-finished effect
-   * below (that's the only place a win can actually complete the
-   * collection). Explicitly reset to false by every handler that
-   * navigates away from the result screen (handleCampaignMatchDone,
-   * handleCampaignStartNewRun, handleReturnToHome) - all three are
-   * reachable directly from the modal itself, not just from
-   * CampaignResultScreen's own Continue button, so each needs to clear
-   * this rather than relying on a single choke point.
+   * Which of the two campaign milestones (if either) a match JUST newly
+   * reached - drives whether CampaignResultScreen shows
+   * CampaignVictoryModal, and which of the two variants. Set by comparing
+   * campaignStore's hasCompletedCollection and hasVanquishedRival
+   * immediately before and after the recordMatchResult call in the
+   * game-finished effect below (that's the only place a win can actually
+   * trigger either transition) - see VictoryModalKind's own doc in
+   * CampaignResultScreen.tsx for the priority rule when a single win
+   * somehow reaches both at once. Explicitly reset to null by every
+   * handler that navigates away from the result screen
+   * (handleCampaignMatchDone, handleCampaignStartNewRun,
+   * handleReturnToHome) - all three are reachable directly from the modal
+   * itself, not just from CampaignResultScreen's own Continue button, so
+   * each needs to clear this rather than relying on a single choke point.
    */
-  const [justCompletedCollection, setJustCompletedCollection] = useState(false);
+  const [victoryModalKind, setVictoryModalKind] = useState<VictoryModalKind>(null);
 
   const game = useGameStore((s) => s.game);
   const startGame = useGameStore((s) => s.startGame);
@@ -194,15 +196,15 @@ export default function App() {
         }
 
         const outcome: 'win' | 'loss' = game.winner === HUMAN_PLAYER ? 'win' : 'loss';
-        // Only the human's (blue's) collection persists in v1 - the AI's
-        // roster is regenerated fresh every campaign match (see
-        // handleCoinFlipResult), so there's no persistent red pool to
-        // update on the other side of a trade the way seriesStore updates
-        // both sides. Filtering by t.to/t.from === HUMAN_PLAYER (rather
-        // than assuming "winner always gains, loser always loses") stays
-        // correct regardless of which Trade Rule variant is active -
-        // every transferred entry has an explicit from/to, and exactly
-        // one of the two checks below can ever match a given entry.
+        // Both sides now have a persistent pool (collection / aiCollection
+        // - see campaignStore and campaignRivalMatchSetup.ts), and
+        // recordMatchResult mirrors transfers onto both automatically -
+        // this just needs the human's own gained/lost, same as before.
+        // Filtering by t.to/t.from === HUMAN_PLAYER (rather than assuming
+        // "winner always gains, loser always loses") stays correct
+        // regardless of which Trade Rule variant is active - every
+        // transferred entry has an explicit from/to, and exactly one of
+        // the two checks below can ever match a given entry.
         const tradeResult = resolveTradeRule(game);
         const gained = tradeResult.transferred
           .filter((t) => t.to === HUMAN_PLAYER)
@@ -211,15 +213,28 @@ export default function App() {
           .filter((t) => t.from === HUMAN_PLAYER)
           .map((t) => t.card.unitId);
 
-        // Only a win can ever complete the collection (a loss only
-        // removes cards, and gained/lost above are already empty for a
-        // draw's separate branch above) - but checking unconditionally
-        // here rather than only inside an `if (outcome === 'win')` costs
-        // nothing and stays correct even if that assumption ever changes.
+        // Only a win can ever complete the collection or deplete the
+        // rival (a loss only removes the human's own cards, and
+        // gained/lost above are already empty for a draw's separate
+        // branch above) - but checking both unconditionally here rather
+        // than only inside an `if (outcome === 'win')` costs nothing and
+        // stays correct even if that assumption ever changes.
         const wasComplete = useCampaignStore.getState().hasCompletedCollection;
+        const wasVanquished = useCampaignStore.getState().hasVanquishedRival;
         useCampaignStore.getState().recordMatchResult(outcome, gained, lost);
         const isCompleteNow = useCampaignStore.getState().hasCompletedCollection;
-        if (!wasComplete && isCompleteNow) setJustCompletedCollection(true);
+        const isVanquishedNow = useCampaignStore.getState().hasVanquishedRival;
+
+        // Collection Complete takes priority if a single win somehow
+        // reaches both at once - see VictoryModalKind's own doc in
+        // CampaignResultScreen.tsx. The Rival Vanquished achievement
+        // still silently unlocks either way (see recordMatchResult
+        // above); only which MODAL shows is affected by this priority.
+        if (!wasComplete && isCompleteNow) {
+          setVictoryModalKind('collection-complete');
+        } else if (!wasVanquished && isVanquishedNow) {
+          setVictoryModalKind('rival-vanquished');
+        }
 
         setStep('result');
         return;
@@ -290,7 +305,7 @@ export default function App() {
   function handleCampaignStartNewRun() {
     useCampaignStore.getState().resetCampaign();
     setArmyBuilderError(null);
-    setJustCompletedCollection(false);
+    setVictoryModalKind(null);
     setStep('armyBuilder');
   }
 
@@ -462,15 +477,21 @@ export default function App() {
     setDifficulty(DEFAULT_DIFFICULTY);
     setAiRosterFactionSlug(undefined);
     setCampaignRosterFactionSlug(undefined);
-    setJustCompletedCollection(false);
+    setVictoryModalKind(null);
     setStep('home');
   }
 
   /** A campaign match's "New Game" doesn't mean "leave campaign mode" - it means "back to the campaign hub, ready for the next match". Only the live match resets; campaignStore's collection/record are untouched. */
   function handleCampaignMatchDone() {
     resetGame();
-    setJustCompletedCollection(false);
+    setVictoryModalKind(null);
     setStep('campaignHome');
+  }
+
+  /** Refills the AI rival's depleted pool (campaignStore's reinforceRival) and dismisses the Rival Vanquished modal - the "Continue with AI Reinforcements" action. Stays on CampaignResultScreen; the player still clicks its own Continue button to actually proceed, same as dismissing any other way. */
+  function handleReinforceRival() {
+    useCampaignStore.getState().reinforceRival();
+    setVictoryModalKind(null);
   }
 
   /**
@@ -581,10 +602,11 @@ export default function App() {
       return mode === 'campaign' ? (
         <CampaignResultScreen
           onContinue={handleCampaignMatchDone}
-          showVictoryModal={justCompletedCollection}
+          victoryModalKind={victoryModalKind}
           onStartNewRun={handleCampaignStartNewRun}
           onReturnToTitle={handleReturnToHome}
-          onDismissVictoryModal={() => setJustCompletedCollection(false)}
+          onDismissVictoryModal={() => setVictoryModalKind(null)}
+          onReinforceRival={handleReinforceRival}
         />
       ) : (
         <ResultScreen
@@ -599,6 +621,7 @@ export default function App() {
         <CampaignHomeScreen
           onContinue={handleCampaignContinue}
           onStartNewRun={handleCampaignStartNewRun}
+          onReinforceRival={handleReinforceRival}
         />
       );
 

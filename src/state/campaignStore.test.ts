@@ -7,14 +7,15 @@ const STORAGE_KEY = 'grim-triad-campaign';
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
   // resetCampaign() deliberately does NOT clear unlockedAchievementIds,
-  // bestWinStreak, or hasCompletedCollection in production (all three are
-  // meant to survive across runs) - tests need a clean slate regardless,
-  // so this bypasses that via a direct setState rather than the public
-  // action.
+  // bestWinStreak, hasCompletedCollection, or hasVanquishedRival in
+  // production (all four are meant to survive across runs) - tests need
+  // a clean slate regardless, so this bypasses that via a direct
+  // setState rather than the public action.
   useCampaignStore.setState({
     unlockedAchievementIds: [],
     bestWinStreak: 0,
     hasCompletedCollection: false,
+    hasVanquishedRival: false,
   });
   localStorage.clear();
 });
@@ -33,6 +34,7 @@ describe('campaignStore', () => {
     expect(state.bestWinStreak).toBe(0);
     expect(state.hasCompletedCollection).toBe(false);
     expect(state.aiCollection).toEqual([]);
+    expect(state.hasVanquishedRival).toBe(false);
   });
 
   it('startCampaign seeds the collection and marks the run active', () => {
@@ -300,6 +302,88 @@ describe('campaignStore aiCollection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
 
     expect(useCampaignStore.getState().aiCollection).toHaveLength(getObtainableUnitIds().size);
+  });
+});
+
+describe('campaignStore hasVanquishedRival / reinforceRival', () => {
+  it('is false while the AI pool is well-stocked', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(false);
+  });
+
+  it('flips true once a win drains the AI pool below CAMPAIGN_MIN_HAND_SIZE', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3); // leaves exactly 3
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(3);
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
+  });
+
+  it('does not flip true while the pool still has exactly CAMPAIGN_MIN_HAND_SIZE units left', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const allButFive = Array.from(getObtainableUnitIds()).slice(0, -5); // leaves exactly 5
+    useCampaignStore.getState().recordMatchResult('win', allButFive, []);
+
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(5);
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(false);
+  });
+
+  it('unlocks the Rival Vanquished achievement at the same moment it flips', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('rival-vanquished');
+  });
+
+  it('reinforceRival refills the AI pool back to a full sweep', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(3);
+
+    useCampaignStore.getState().reinforceRival();
+
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(getObtainableUnitIds().size);
+  });
+
+  it('reinforceRival does NOT touch collection, wins/losses, or streaks', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+    const before = useCampaignStore.getState();
+
+    useCampaignStore.getState().reinforceRival();
+
+    const after = useCampaignStore.getState();
+    expect(after.collection).toEqual(before.collection);
+    expect(after.wins).toBe(before.wins);
+    expect(after.losses).toBe(before.losses);
+    expect(after.currentStreakType).toBe(before.currentStreakType);
+    expect(after.currentStreakCount).toBe(before.currentStreakCount);
+  });
+
+  it('hasVanquishedRival stays true even after reinforceRival refills the pool - permanent, like hasCompletedCollection', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
+
+    useCampaignStore.getState().reinforceRival();
+
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
+  });
+
+  it('survives resetCampaign - permanent across runs', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
   });
 });
 

@@ -8,7 +8,21 @@ import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
 import { getObtainableUnitIds } from '../data/collectionProgress';
 
 function ctx(overrides: Partial<AchievementContext> = {}): AchievementContext {
-  return { collection: [], wins: 0, losses: 0, draws: 0, bestWinStreak: 0, ...overrides };
+  // Default aiCollection is deliberately NOT depleted (well above
+  // CAMPAIGN_MIN_HAND_SIZE) - same "don't spuriously satisfy an
+  // unrelated achievement" care as collection defaulting to [] rather
+  // than something large. Tests for rival-vanquished specifically
+  // override this.
+  const nonDepletedAiCollection = Array.from({ length: 10 }, (_, i) => `ai-unit-${i}`);
+  return {
+    collection: [],
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    bestWinStreak: 0,
+    aiCollection: nonDepletedAiCollection,
+    ...overrides,
+  };
 }
 
 describe('ACHIEVEMENTS', () => {
@@ -138,6 +152,29 @@ describe('Complete Collection', () => {
   it('unlocks once the collection owns one of every currently-obtainable unit', () => {
     const everyObtainableUnit = Array.from(getObtainableUnitIds());
     expect(completeCollection.isUnlocked(ctx({ collection: everyObtainableUnit }))).toBe(true);
+  });
+});
+
+describe('Rival Vanquished', () => {
+  const rivalVanquished = ACHIEVEMENTS.find((a) => a.id === 'rival-vanquished')!;
+
+  it('does not unlock while the AI pool is still well-stocked', () => {
+    const wellStocked = Array.from({ length: 50 }, (_, i) => `ai-unit-${i}`);
+    expect(rivalVanquished.isUnlocked(ctx({ aiCollection: wellStocked }))).toBe(false);
+  });
+
+  it('does not unlock at exactly CAMPAIGN_MIN_HAND_SIZE units left - still enough to field one match', () => {
+    const fiveLeft = ['a', 'b', 'c', 'd', 'e'];
+    expect(rivalVanquished.isUnlocked(ctx({ aiCollection: fiveLeft }))).toBe(false);
+  });
+
+  it('unlocks once the AI pool drops below CAMPAIGN_MIN_HAND_SIZE units', () => {
+    const fourLeft = ['a', 'b', 'c', 'd'];
+    expect(rivalVanquished.isUnlocked(ctx({ aiCollection: fourLeft }))).toBe(true);
+  });
+
+  it('unlocks with a completely empty AI pool', () => {
+    expect(rivalVanquished.isUnlocked(ctx({ aiCollection: [] }))).toBe(true);
   });
 });
 

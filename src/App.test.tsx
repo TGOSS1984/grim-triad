@@ -633,6 +633,51 @@ describe('App (campaign mode flow integration)', () => {
     expect(screen.queryByRole('heading', { name: 'Collection Complete!' })).not.toBeInTheDocument();
   });
 
+  it('shows the Rival Vanquished modal the moment a win drains the AI pool below 5, and reinforcing restores Continue', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Force the AI's pool to already be below CAMPAIGN_MIN_HAND_SIZE
+    // BEFORE this win resolves (bypassing the store's own action, same
+    // technique as the Collection Complete test above) - deterministic
+    // regardless of what this particular win's trade actually transfers,
+    // since a pool already below 5 stays below 5 whether or not anything
+    // is removed from it. The real thing under test is the wiring
+    // (App.tsx's before/after hasVanquishedRival diff ->
+    // CampaignResultScreen's victoryModalKind prop -> the right
+    // CampaignVictoryModal variant actually rendering with a working
+    // reinforce action), not pool-depletion math, which
+    // campaignStore.test.ts already covers.
+    useCampaignStore.setState({
+      aiCollection: ['necrons-lokhust-destroyers', 'necrons-canoptek-scarab-swarms'],
+      hasVanquishedRival: false,
+    });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    expect(screen.getByRole('heading', { name: 'Rival Vanquished!' })).toBeInTheDocument();
+    expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('rival-vanquished');
+
+    await user.click(screen.getByRole('button', { name: 'Continue with AI Reinforcements' }));
+
+    // Modal is gone, AI pool is refilled, and - the real end-to-end
+    // proof - Continue Campaign back on the hub screen is enabled again
+    // rather than still blocked by the depleted pool.
+    expect(screen.queryByRole('heading', { name: 'Rival Vanquished!' })).not.toBeInTheDocument();
+    expect(useCampaignStore.getState().aiCollection.length).toBeGreaterThan(5);
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByRole('heading', { name: 'Campaign' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue Campaign' })).toBeEnabled();
+  });
+
   it("never rolls the 'direct' trade rule for a campaign match, even when the random roll would otherwise land on it", async () => {
     // 0.6 is the exact value that lands on index 2 ('direct') of the
     // unfiltered ['one','diff','direct','all'] list randomRuleSet.ts
