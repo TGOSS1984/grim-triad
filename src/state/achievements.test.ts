@@ -4,7 +4,8 @@ import {
   getCurrentlyUnlockedAchievementIds,
   type AchievementContext,
 } from './achievements';
-import { getUnitsForRoster } from '../data/activeFactions';
+import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
+import { getObtainableUnitIds } from '../data/collectionProgress';
 
 function ctx(overrides: Partial<AchievementContext> = {}): AchievementContext {
   return { collection: [], wins: 0, losses: 0, draws: 0, bestWinStreak: 0, ...overrides };
@@ -88,6 +89,55 @@ describe('Full Muster', () => {
     expect(
       fullMuster.isUnlocked(ctx({ collection: [...necronRosterIds, 'blood-angels-astorath'] })),
     ).toBe(true);
+  });
+});
+
+describe('per-faction Master achievements', () => {
+  it('generates exactly one Master achievement per active faction', () => {
+    const masterIds = ACHIEVEMENTS.filter((a) => a.id.startsWith('master-of-')).map((a) => a.id);
+    const expectedIds = ACTIVE_FACTIONS.map((f) => `master-of-${f.slug}`);
+
+    expect(masterIds.sort()).toEqual(expectedIds.sort());
+  });
+
+  it("Necrons' Master achievement does not unlock with an incomplete roster", () => {
+    const masterOfNecrons = ACHIEVEMENTS.find((a) => a.id === 'master-of-necrons')!;
+    const necronRosterIds = getUnitsForRoster('Necrons').map((u) => u.id);
+
+    expect(masterOfNecrons.isUnlocked(ctx({ collection: necronRosterIds.slice(0, -1) }))).toBe(
+      false,
+    );
+  });
+
+  it("Necrons' Master achievement unlocks once every Necrons unit is owned", () => {
+    const masterOfNecrons = ACHIEVEMENTS.find((a) => a.id === 'master-of-necrons')!;
+    const necronRosterIds = getUnitsForRoster('Necrons').map((u) => u.id);
+
+    expect(masterOfNecrons.isUnlocked(ctx({ collection: necronRosterIds }))).toBe(true);
+  });
+
+  it('completing one faction only unlocks THAT faction\'s Master achievement, not another faction\'s', () => {
+    const masterOfNecrons = ACHIEVEMENTS.find((a) => a.id === 'master-of-necrons')!;
+    const masterOfOrks = ACHIEVEMENTS.find((a) => a.id === 'master-of-orks')!;
+    const necronRosterIds = getUnitsForRoster('Necrons').map((u) => u.id);
+
+    const context = ctx({ collection: necronRosterIds });
+    expect(masterOfNecrons.isUnlocked(context)).toBe(true);
+    expect(masterOfOrks.isUnlocked(context)).toBe(false);
+  });
+});
+
+describe('Complete Collection', () => {
+  const completeCollection = ACHIEVEMENTS.find((a) => a.id === 'complete-collection')!;
+
+  it('does not unlock with a large but incomplete collection', () => {
+    const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -1);
+    expect(completeCollection.isUnlocked(ctx({ collection: almostEverything }))).toBe(false);
+  });
+
+  it('unlocks once the collection owns one of every currently-obtainable unit', () => {
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    expect(completeCollection.isUnlocked(ctx({ collection: everyObtainableUnit }))).toBe(true);
   });
 });
 

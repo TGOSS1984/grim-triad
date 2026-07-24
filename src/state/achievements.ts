@@ -16,12 +16,22 @@
  * resetCampaign).
  *
  * Thresholds checked against the real current data, not guessed: the
- * full catalog is 1075 units; the four active factions' EFFECTIVE roster
- * sizes (including the shared generic Space Marine pool - see
- * activeFactions.ts's getUnitsForRoster) range from 52 (Necrons/
- * Tyranids) to 99 (Blood Angels) units.
+ * full generated catalog is 1075 units, but only 737 of those are
+ * currently obtainable at all (belong to one of the 18 currently-active
+ * factions - see data/collectionProgress.ts for why that split matters).
+ * Active factions' EFFECTIVE roster sizes (including the shared generic
+ * Space Marine pool - see activeFactions.ts's getUnitsForRoster) range
+ * from ~50 to ~99 units.
+ *
+ * Per-faction "Master of X" achievements (one per entry in
+ * ACTIVE_FACTIONS) and the top-tier "Complete Collection" achievement are
+ * both generated/computed from live data rather than hardcoded, for the
+ * same reason getObtainableUnitIds() is in collectionProgress.ts: the
+ * active roster grows over time, and both should automatically cover
+ * whatever's active without a code change here when that happens.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
+import { getCollectionProgress } from '../data/collectionProgress';
 
 export interface AchievementContext {
   collection: string[];
@@ -43,13 +53,16 @@ function uniqueOwnedCount(collection: string[]): number {
   return new Set(collection).size;
 }
 
-/** True if the collection currently contains every unit in at least one active faction's full effective roster (own units + the shared generic pool, for a Space Marine chapter). */
+/** True if every unit in a given faction's full effective roster (own units + the shared generic pool, for a Space Marine chapter) is present in `owned`. Empty rosters never count as "complete" (a data gap, not an achievement). */
+function ownsRosterCompletely(owned: Set<string>, factionName: string): boolean {
+  const roster = getUnitsForRoster(factionName);
+  return roster.length > 0 && roster.every((u) => owned.has(u.id));
+}
+
+/** True if the collection currently contains every unit in at least one active faction's full effective roster - see ownsRosterCompletely. */
 function ownsCompleteFaction(collection: string[]): boolean {
   const owned = new Set(collection);
-  return ACTIVE_FACTIONS.some((faction) => {
-    const roster = getUnitsForRoster(faction.name);
-    return roster.length > 0 && roster.every((u) => owned.has(u.id));
-  });
+  return ACTIVE_FACTIONS.some((faction) => ownsRosterCompletely(owned, faction.name));
 }
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -106,6 +119,30 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'On a Roll',
     description: 'Win 5 campaign matches in a row.',
     isUnlocked: (ctx) => ctx.bestWinStreak >= 5,
+  },
+
+  // One "Master of X" achievement per currently-active faction, generated
+  // from ACTIVE_FACTIONS rather than hardcoded per name - a newly
+  // activated faction gets its own achievement automatically, no edit
+  // needed here. Distinct from - and a strictly harder bar than - the
+  // single 'full-muster' achievement above, which only asks for ANY one
+  // complete roster: full-muster is the milestone most players reach
+  // first, these give specific recognition for each faction mastered
+  // beyond that.
+  ...ACTIVE_FACTIONS.map(
+    (faction): Achievement => ({
+      id: `master-of-${faction.slug}`,
+      name: `Master of ${faction.name}`,
+      description: `Own every unit in the ${faction.name} roster.`,
+      isUnlocked: (ctx) => ownsRosterCompletely(new Set(ctx.collection), faction.name),
+    }),
+  ),
+
+  {
+    id: 'complete-collection',
+    name: 'Complete Collection',
+    description: 'Own one of every unit currently obtainable across all active factions.',
+    isUnlocked: (ctx) => getCollectionProgress(ctx.collection).isComplete,
   },
 ];
 
