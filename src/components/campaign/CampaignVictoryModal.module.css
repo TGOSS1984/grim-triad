@@ -1,0 +1,192 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 33, 36, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-xl);
+  overflow-y: auto;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glow-gold);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-muted);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.achievementBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+}
+
+.achievementLabel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-gold);
+}
+
+.achievementName {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--color-text-primary);
+}
+
+.achievementDescription {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.newRunButton {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface-alt);
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.newRunButton:hover {
+  box-shadow: var(--shadow-glow-gold);
+  transform: translateY(-2px);
+}
+
+.titleButton,
+.keepPlayingButton {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: var(--space-sm) var(--space-lg);
+  background: transparent;
+  border: 2px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.titleButton:hover,
+.keepPlayingButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}
+
+.confirmRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-player-red);
+  border-radius: var(--radius-sm);
+  background: rgba(122, 35, 32, 0.1);
+}
+
+.confirmText {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.confirmButton,
+.cancelButton {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-lg);
+  cursor: pointer;
+  border: 1px solid var(--color-border-muted);
+  background: transparent;
+  width: 100%;
+}
+
+.confirmButton {
+  border-color: var(--color-player-red);
+  color: var(--color-player-red);
+}
+
+.confirmButton:hover {
+  background: var(--color-player-red);
+  color: var(--color-text-primary);
+}
+
+.cancelButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}

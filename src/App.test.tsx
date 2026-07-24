@@ -6,6 +6,7 @@ import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
 import { useCampaignStore } from './state/campaignStore';
+import { getObtainableUnitIds } from './data/collectionProgress';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first - used to build a valid 5-card single-match army, and as
@@ -588,6 +589,48 @@ describe('App (campaign mode flow integration)', () => {
     await screen.findByRole('heading', { name: 'Red Wins!' }, { timeout: 3000 });
     expect(useCampaignStore.getState().losses).toBe(1);
     expect(useCampaignStore.getState().wins).toBe(0);
+  });
+
+  it('shows the victory modal the moment a win completes the collection, and it clears on Continue', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Force the collection to already cover every obtainable unit BEFORE
+    // this win resolves (bypassing the store's own action, same as other
+    // tests' direct useGameStore.setState calls) - this makes the
+    // completion trigger deterministic regardless of which units this
+    // particular win's trade actually transfers (a winning blue never
+    // LOSES cards regardless of trade rule - see resolveTradeRule - so a
+    // collection that's already full stays full either way). The real
+    // thing under test here is the wiring (App.tsx's before/after
+    // hasCompletedCollection diff -> CampaignResultScreen's
+    // showVictoryModal prop -> CampaignVictoryModal actually rendering),
+    // not collection math, which campaignStore.test.ts already covers.
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    useCampaignStore.setState({ collection: everyObtainableUnit, hasCompletedCollection: false });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    expect(
+      screen.getByRole('heading', { name: 'Collection Complete!' }),
+    ).toBeInTheDocument();
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+    expect(
+      useCampaignStore.getState().unlockedAchievementIds,
+    ).toContain('complete-collection');
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    // Back at the campaign hub - the modal (portalled to document.body,
+    // outside CampaignResultScreen's own tree) should be gone too, not
+    // just visually behind the new screen.
+    expect(screen.getByRole('heading', { name: 'Campaign' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Collection Complete!' })).not.toBeInTheDocument();
   });
 
   it("never rolls the 'direct' trade rule for a campaign match, even when the random roll would otherwise land on it", async () => {

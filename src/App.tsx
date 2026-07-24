@@ -112,6 +112,21 @@ export default function App() {
    * known, deliberate v1 simplification, not an oversight.
    */
   const [campaignRosterFactionSlug, setCampaignRosterFactionSlug] = useState<string | undefined>();
+  /**
+   * True for exactly the render(s) right after a campaign match caused
+   * the collection to reach 100% completion for the first time - drives
+   * whether CampaignResultScreen shows CampaignVictoryModal. Set by
+   * comparing campaignStore's hasCompletedCollection immediately before
+   * and after the recordMatchResult call in the game-finished effect
+   * below (that's the only place a win can actually complete the
+   * collection). Explicitly reset to false by every handler that
+   * navigates away from the result screen (handleCampaignMatchDone,
+   * handleCampaignStartNewRun, handleReturnToHome) - all three are
+   * reachable directly from the modal itself, not just from
+   * CampaignResultScreen's own Continue button, so each needs to clear
+   * this rather than relying on a single choke point.
+   */
+  const [justCompletedCollection, setJustCompletedCollection] = useState(false);
 
   const game = useGameStore((s) => s.game);
   const startGame = useGameStore((s) => s.startGame);
@@ -195,7 +210,16 @@ export default function App() {
           .filter((t) => t.from === HUMAN_PLAYER)
           .map((t) => t.card.unitId);
 
+        // Only a win can ever complete the collection (a loss only
+        // removes cards, and gained/lost above are already empty for a
+        // draw's separate branch above) - but checking unconditionally
+        // here rather than only inside an `if (outcome === 'win')` costs
+        // nothing and stays correct even if that assumption ever changes.
+        const wasComplete = useCampaignStore.getState().hasCompletedCollection;
         useCampaignStore.getState().recordMatchResult(outcome, gained, lost);
+        const isCompleteNow = useCampaignStore.getState().hasCompletedCollection;
+        if (!wasComplete && isCompleteNow) setJustCompletedCollection(true);
+
         setStep('result');
         return;
       }
@@ -265,6 +289,7 @@ export default function App() {
   function handleCampaignStartNewRun() {
     useCampaignStore.getState().resetCampaign();
     setArmyBuilderError(null);
+    setJustCompletedCollection(false);
     setStep('armyBuilder');
   }
 
@@ -428,12 +453,14 @@ export default function App() {
     setDifficulty(DEFAULT_DIFFICULTY);
     setAiRosterFactionSlug(undefined);
     setCampaignRosterFactionSlug(undefined);
+    setJustCompletedCollection(false);
     setStep('home');
   }
 
   /** A campaign match's "New Game" doesn't mean "leave campaign mode" - it means "back to the campaign hub, ready for the next match". Only the live match resets; campaignStore's collection/record are untouched. */
   function handleCampaignMatchDone() {
     resetGame();
+    setJustCompletedCollection(false);
     setStep('campaignHome');
   }
 
@@ -543,7 +570,13 @@ export default function App() {
 
     case 'result':
       return mode === 'campaign' ? (
-        <CampaignResultScreen onContinue={handleCampaignMatchDone} />
+        <CampaignResultScreen
+          onContinue={handleCampaignMatchDone}
+          showVictoryModal={justCompletedCollection}
+          onStartNewRun={handleCampaignStartNewRun}
+          onReturnToTitle={handleReturnToHome}
+          onDismissVictoryModal={() => setJustCompletedCollection(false)}
+        />
       ) : (
         <ResultScreen
           onPlayAgain={handlePlayAgain}

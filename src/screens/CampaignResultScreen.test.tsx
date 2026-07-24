@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { CampaignResultScreen } from './CampaignResultScreen';
+import { CampaignResultScreen, type CampaignResultScreenProps } from './CampaignResultScreen';
 import { useGameStore } from '../state/gameStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
@@ -39,6 +39,20 @@ function finishedGame(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+/** Renders CampaignResultScreen with sensible defaults for every prop (showVictoryModal off, all handlers spies) - individual tests only need to override what they actually care about. */
+function renderScreen(overrides: Partial<CampaignResultScreenProps> = {}) {
+  const props: CampaignResultScreenProps = {
+    onContinue: vi.fn(),
+    showVictoryModal: false,
+    onStartNewRun: vi.fn(),
+    onReturnToTitle: vi.fn(),
+    onDismissVictoryModal: vi.fn(),
+    ...overrides,
+  };
+  render(<CampaignResultScreen {...props} />);
+  return props;
+}
+
 beforeEach(() => {
   useGameStore.getState().reset();
   useCampaignStore.getState().resetCampaign();
@@ -47,25 +61,25 @@ beforeEach(() => {
 
 describe('CampaignResultScreen', () => {
   it('shows a fallback message when there is no finished game', () => {
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
     expect(screen.getByText('No finished match to show.')).toBeInTheDocument();
   });
 
   it("announces the winner, same as ResultScreen's own wording", () => {
     useGameStore.setState({ game: finishedGame({ winner: 'blue' }) });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
     expect(screen.getByRole('heading', { name: 'Blue Wins!' })).toBeInTheDocument();
   });
 
   it('announces a draw', () => {
     useGameStore.setState({ game: finishedGame({ winner: 'draw' }) });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
     expect(screen.getByRole('heading', { name: 'Draw' })).toBeInTheDocument();
   });
 
   it('shows the board-control score for both sides', () => {
     useGameStore.setState({ game: finishedGame() });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
     expect(screen.getByText('Blue: 2')).toBeInTheDocument();
     expect(screen.getByText('Red: 1')).toBeInTheDocument();
   });
@@ -74,7 +88,7 @@ describe('CampaignResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'blue', ruleSet: { ...DEFAULT_RULE_SET, tradeRule: 'one' } }),
     });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     expect(screen.getByText('Trade Rule: One')).toBeInTheDocument();
     expect(screen.getByText('Lychguard moves from red to blue')).toBeInTheDocument();
@@ -82,7 +96,7 @@ describe('CampaignResultScreen', () => {
 
   it('shows no trade section at all on a draw (no winner/loser to trade between)', () => {
     useGameStore.setState({ game: finishedGame({ winner: 'draw' }) });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
     expect(screen.queryByText(/Trade Rule:/)).not.toBeInTheDocument();
   });
 
@@ -93,7 +107,7 @@ describe('CampaignResultScreen', () => {
     useCampaignStore.getState().recordMatchResult('loss', [], []);
     useGameStore.setState({ game: finishedGame() });
 
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     expect(screen.getByText('2 wins')).toBeInTheDocument();
     expect(screen.getByText('1 losses')).toBeInTheDocument();
@@ -104,7 +118,7 @@ describe('CampaignResultScreen', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-immortals']);
     useGameStore.setState({ game: finishedGame() });
 
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     expect(
       screen.getByText(`Collection: 2 / ${getObtainableUnitIds().size}`),
@@ -115,7 +129,7 @@ describe('CampaignResultScreen', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-lychguard']);
     useGameStore.setState({ game: finishedGame() });
 
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     expect(
       screen.getByText(`Collection: 1 / ${getObtainableUnitIds().size}`),
@@ -126,7 +140,7 @@ describe('CampaignResultScreen', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useGameStore.setState({ game: finishedGame() });
 
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     // At least Necrons and Blood Angels should show up (both active
     // factions), each with an owned-count fraction.
@@ -136,9 +150,8 @@ describe('CampaignResultScreen', () => {
 
   it('calls onContinue when the Continue button is clicked', async () => {
     const user = userEvent.setup();
-    const onContinue = vi.fn();
     useGameStore.setState({ game: finishedGame() });
-    render(<CampaignResultScreen onContinue={onContinue} />);
+    const { onContinue } = renderScreen();
 
     await user.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -149,8 +162,47 @@ describe('CampaignResultScreen', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'draw', ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: true } }),
     });
-    render(<CampaignResultScreen onContinue={vi.fn()} />);
+    renderScreen();
 
     expect(screen.queryByRole('button', { name: /Sudden Death/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('CampaignResultScreen victory modal', () => {
+  it('does not render the victory modal when showVictoryModal is false', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useGameStore.setState({ game: finishedGame() });
+
+    renderScreen({ showVictoryModal: false });
+
+    expect(screen.queryByRole('heading', { name: 'Collection Complete!' })).not.toBeInTheDocument();
+  });
+
+  it('renders the victory modal with the Complete Collection achievement and real progress numbers when showVictoryModal is true', () => {
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    useCampaignStore.getState().startCampaign(everyObtainableUnit);
+    useGameStore.setState({ game: finishedGame() });
+
+    renderScreen({ showVictoryModal: true });
+
+    expect(screen.getByRole('heading', { name: 'Collection Complete!' })).toBeInTheDocument();
+    expect(screen.getByText('Complete Collection')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `You now own ${everyObtainableUnit.length} / ${everyObtainableUnit.length} units - one of everything currently obtainable.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('wires the modal callbacks through to the props passed to this screen', async () => {
+    const user = userEvent.setup();
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useGameStore.setState({ game: finishedGame() });
+
+    const { onReturnToTitle } = renderScreen({ showVictoryModal: true });
+
+    await user.click(screen.getByRole('button', { name: 'Return to Title' }));
+
+    expect(onReturnToTitle).toHaveBeenCalledOnce();
   });
 });
