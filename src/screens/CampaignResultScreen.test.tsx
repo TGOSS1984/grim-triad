@@ -5,7 +5,7 @@ import { CampaignResultScreen } from './CampaignResultScreen';
 import { useGameStore } from '../state/gameStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
-import { ALL_UNITS } from '../data/activeFactions';
+import { getObtainableUnitIds } from '../data/collectionProgress';
 import type { Card, GameState } from '../engine/types';
 import { createEmptyBoard } from '../engine/board';
 
@@ -100,13 +100,15 @@ describe('CampaignResultScreen', () => {
     expect(screen.getByText('0 draws')).toBeInTheDocument();
   });
 
-  it('shows collector numbers as unique units currently owned out of the full catalog', () => {
+  it('shows collector numbers as unique units currently owned out of the currently-OBTAINABLE total (not the full 1075-unit catalog, most of which is behind inactive factions - see data/collectionProgress.ts)', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-immortals']);
     useGameStore.setState({ game: finishedGame() });
 
     render(<CampaignResultScreen onContinue={vi.fn()} />);
 
-    expect(screen.getByText(`Collection: 2 / ${ALL_UNITS.length}`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`Collection: 2 / ${getObtainableUnitIds().size}`),
+    ).toBeInTheDocument();
   });
 
   it('counts a duplicate-owned unit only once toward the collector total (unique ids, not raw count)', () => {
@@ -115,7 +117,9 @@ describe('CampaignResultScreen', () => {
 
     render(<CampaignResultScreen onContinue={vi.fn()} />);
 
-    expect(screen.getByText(`Collection: 1 / ${ALL_UNITS.length}`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`Collection: 1 / ${getObtainableUnitIds().size}`),
+    ).toBeInTheDocument();
   });
 
   it('shows a per-faction completion badge for each active faction', () => {

@@ -7,11 +7,14 @@
  *
  * Adds two things ResultScreen doesn't have, both specific to the
  * persistent collector meta-game: collector numbers (how many of the
- * full catalog you currently own) and per-active-faction completion
- * badges (getUnitsForRoster already correctly includes the shared
- * generic Space Marine pool for a chapter roster - see
- * activeFactions.ts - so a chapter's badge reflects its REAL effective
- * roster size, not just its own dedicated units).
+ * CURRENTLY OBTAINABLE units you own - see data/collectionProgress.ts
+ * for why this is deliberately NOT the full 1075-unit generated catalog,
+ * most of which belongs to factions not yet active and so can never
+ * actually be won) and per-active-faction completion badges
+ * (getUnitsForRoster already correctly includes the shared generic Space
+ * Marine pool for a chapter roster - see activeFactions.ts - so a
+ * chapter's badge reflects its REAL effective roster size, not just its
+ * own dedicated units).
  *
  * "Collected" means CURRENTLY owned, not "ever owned": campaignStore only
  * tracks the live collection, not a historical log, and cards can be
@@ -32,7 +35,8 @@ import { useGameStore } from '../state/gameStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
 import { TradeTransferList } from '../components/common/TradeTransferList';
-import { ALL_UNITS, ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
+import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
+import { getCollectionProgress } from '../data/collectionProgress';
 import type { Board, PlayerColour } from '../engine/types';
 import styles from './CampaignResultScreen.module.css';
 
@@ -70,6 +74,7 @@ export function CampaignResultScreen({ onContinue }: CampaignResultScreenProps) 
   const tradeResult = !isDraw && game.winner ? resolveTradeRule(game) : null;
 
   const ownedIds = new Set(collection);
+  const progress = getCollectionProgress(collection);
 
   return (
     <div className={styles.screen}>
@@ -108,7 +113,7 @@ export function CampaignResultScreen({ onContinue }: CampaignResultScreenProps) 
 
       <div className={styles.collectorSection}>
         <h2 className={styles.subtitle}>
-          Collection: {ownedIds.size} / {ALL_UNITS.length}
+          Collection: {progress.owned} / {progress.obtainable}
         </h2>
         <div className={styles.badgeRow}>
           {ACTIVE_FACTIONS.map((faction) => {
