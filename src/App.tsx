@@ -48,6 +48,7 @@ import {
   validateCampaignStartingRoster,
 } from './state/campaignBalance';
 import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
+import { buildRivalRosterFromPool } from './state/campaignRivalMatchSetup';
 import { getFactionSlugForRosterName, inferRosterNameFromUnitIds } from './data/activeFactions';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
@@ -379,7 +380,15 @@ export default function App() {
 
     if (mode === 'campaign') {
       const collection = useCampaignStore.getState().collection;
-      const aiRoster = buildRandomAIRoster(
+      // Campaign mode is the only mode whose AI opponent draws from its
+      // OWN persistent, depletable pool rather than the unconstrained
+      // full active-faction catalog buildRandomAIRoster uses (see
+      // campaignRivalMatchSetup.ts's own header) - single-match and
+      // series mode below are unaffected, still calling
+      // buildRandomAIRoster directly.
+      const aiPool = useCampaignStore.getState().aiCollection;
+      const aiRoster = buildRivalRosterFromPool(
+        aiPool,
         CAMPAIGN_STARTING_POINTS_CAP,
         5,
         DIFFICULTY_PROFILES[difficulty].rosterStrategy,

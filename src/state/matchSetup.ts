@@ -26,8 +26,13 @@ function nextInstanceId(unitId: string): string {
  * the given order and skipping any that don't currently fit (does not stop
  * at the first unaffordable one - keeps scanning for cheaper units later
  * in the list that still fit the remaining budget).
+ *
+ * Exported (not module-private) so campaignRivalMatchSetup.ts can reuse
+ * the exact same fill logic for the AI rival's pool-constrained roster
+ * building, rather than duplicating it - see that file's own header for
+ * why campaign mode needs a separate roster-building entry point at all.
  */
-function greedyFill(units: { id: string; points: number }[], pointsCap: number): string[] {
+export function greedyFill(units: { id: string; points: number }[], pointsCap: number): string[] {
   const selected: string[] = [];
   let spent = 0;
   for (const unit of units) {
