@@ -590,6 +590,28 @@ describe('App (campaign mode flow integration)', () => {
     expect(useCampaignStore.getState().wins).toBe(0);
   });
 
+  it("never rolls the 'direct' trade rule for a campaign match, even when the random roll would otherwise land on it", async () => {
+    // 0.6 is the exact value that lands on index 2 ('direct') of the
+    // unfiltered ['one','diff','direct','all'] list randomRuleSet.ts
+    // rolls from - see randomRuleSet.test.ts's own equivalent unit test.
+    // Asserting against the real, live App-driven campaign flow here
+    // (not just the isolated randomRuleSet() function) confirms the
+    // exclusion is actually wired into handleArmyReady's campaign
+    // branch, not just available and unused. ruleSet only lands on
+    // gameStore's game.ruleSet once the coin flip actually starts the
+    // game (it's App-local state until then), so flip the coin like the
+    // other campaign tests do before reading it.
+    vi.spyOn(Math, 'random').mockReturnValue(0.6);
+
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    expect(useGameStore.getState().game?.ruleSet.tradeRule).not.toBe('direct');
+  });
+
   it('Continuing an active campaign run skips Army Builder entirely and draws the next hand from the existing collection', async () => {
     const user = userEvent.setup();
     render(<App />);

@@ -2,7 +2,8 @@
  * Produces a fully random RuleSet. Used by RuleSelectScreen's "Randomize
  * Rules" button, and by App.tsx to auto-roll rules for every series mode
  * round (see SeriesIntroScreen/RoundSummaryScreen, which surface whatever
- * this produces to the player before each round starts).
+ * this produces to the player before each round starts) and for every
+ * campaign mode match.
  *
  * Split into its own file (rather than living in RuleSelectScreen.tsx)
  * because mixing a component export with a plain function export in the
@@ -11,9 +12,27 @@
  */
 import type { RuleSet } from '../../engine/types';
 
-export function randomRuleSet(): RuleSet {
+export interface RandomRuleSetOptions {
+  /**
+   * Trade rule values that should never be rolled. Campaign mode passes
+   * `['direct']` here: resolveTradeRule's 'direct' case transfers zero
+   * cards even on a win (see engine/rules/tradeRules.ts), which is fine
+   * for a one-off single match but means a campaign win has a 1-in-4
+   * chance of adding nothing at all to the player's persistent
+   * collection - undermining the whole point of playing campaign mode.
+   * Series mode and the manual "Randomize Rules" button both call this
+   * with no options, so they're unaffected and still roll all four trade
+   * rules as before.
+   */
+  excludeTradeRules?: RuleSet['tradeRule'][];
+}
+
+export function randomRuleSet(options: RandomRuleSetOptions = {}): RuleSet {
   const randomBool = () => Math.random() < 0.5;
-  const tradeOptions: RuleSet['tradeRule'][] = ['one', 'diff', 'direct', 'all'];
+  const excluded = new Set(options.excludeTradeRules ?? []);
+  const tradeOptions: RuleSet['tradeRule'][] = (['one', 'diff', 'direct', 'all'] as const).filter(
+    (rule) => !excluded.has(rule),
+  );
   return {
     open: randomBool(),
     suddenDeath: randomBool(),

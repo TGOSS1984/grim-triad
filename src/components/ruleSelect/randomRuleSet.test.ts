@@ -34,4 +34,18 @@ describe('randomRuleSet', () => {
       expect(['one', 'diff', 'direct', 'all']).toContain(tradeRule);
     }
   });
+
+  it('never rolls an excluded trade rule, across many rolls', () => {
+    for (let i = 0; i < 50; i++) {
+      const { tradeRule } = randomRuleSet({ excludeTradeRules: ['direct'] });
+      expect(tradeRule).not.toBe('direct');
+      expect(['one', 'diff', 'all']).toContain(tradeRule);
+    }
+  });
+
+  it('still rolls direct when no exclusion is passed (default, unchanged behavior)', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.6); // index 2 of the unfiltered 4-option list = 'direct'
+
+    expect(randomRuleSet().tradeRule).toBe('direct');
+  });
 });

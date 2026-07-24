@@ -255,9 +255,9 @@ export default function App() {
     setStep('campaignHome');
   }
 
-  /** Continuing an active campaign run skips ArmyBuilder entirely - the roster already exists (campaignStore's persistent collection), so this goes straight to the coin flip for the next match. Rolls a fresh random ruleset each time, same spirit as series mode's per-round rules. */
+  /** Continuing an active campaign run skips ArmyBuilder entirely - the roster already exists (campaignStore's persistent collection), so this goes straight to the coin flip for the next match. Rolls a fresh random ruleset each time, same spirit as series mode's per-round rules - but excludes the Direct trade rule (see randomRuleSet.ts) so every campaign win always grows the player's collection. */
   function handleCampaignContinue() {
-    setRuleSet(randomRuleSet());
+    setRuleSet(randomRuleSet({ excludeTradeRules: ['direct'] }));
     setStep('coinFlip');
   }
 
@@ -291,7 +291,7 @@ export default function App() {
       useCampaignStore.getState().startCampaign(unitIds);
 
       setArmyBuilderError(null);
-      setRuleSet(randomRuleSet());
+      setRuleSet(randomRuleSet({ excludeTradeRules: ['direct'] }));
       setStep('coinFlip');
       return;
     }
