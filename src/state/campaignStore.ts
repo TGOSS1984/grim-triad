@@ -58,11 +58,32 @@
  * reached (to show a one-time celebration, vs this already having been
  * true) is left to the caller - compare this flag's value immediately
  * before and after calling recordMatchResult/startCampaign.
+ *
+ * `aiCollection` is the AI rival's own persistent pool, mirroring
+ * `collection`'s shape and lifecycle exactly (a multiset, seeded fresh on
+ * startCampaign, wiped on resetCampaign - NOT permanent, unlike
+ * unlockedAchievementIds/bestWinStreak/hasCompletedCollection above: a
+ * new campaign run means a new rival, not the same one picking up where
+ * a previous run's depleted pool left off). Seeded as one copy of every
+ * currently-obtainable unit (a full sweep - see startCampaign) rather
+ * than a small random subset, so grinding it down to depletion is a
+ * genuinely long arc, not a handful of wins.
+ *
+ * Trades are symmetric and use the SAME gained/lost arrays already
+ * passed to recordMatchResult, just mirrored: whatever the human
+ * *gained* came out of the AI's pool for that match (see App.tsx's
+ * matchSetup once commit 7 wires the AI's hand to actually draw from
+ * aiCollection - until then this is correctly wired but not yet fed by
+ * real match data), so it's removed from aiCollection here; whatever the
+ * human *lost* went TO the AI, so it's added. No separate
+ * aiGained/aiLost parameters needed - every transfer in a finished game
+ * is by construction either human-directed or human-losing, so the
+ * human's own gained/lost fully determines both sides' accounting.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getCurrentlyUnlockedAchievementIds } from './achievements';
-import { getCollectionProgress } from '../data/collectionProgress';
+import { getCollectionProgress, getObtainableUnitIds } from '../data/collectionProgress';
 
 const CAMPAIGN_STORAGE_KEY = 'grim-triad-campaign';
 
@@ -86,18 +107,21 @@ export interface CampaignState {
   bestWinStreak: number;
   /** True once the player has, at any point across ANY run, owned one of every currently-obtainable unit simultaneously - permanent, never reset. See file header for why this is a dedicated field. */
   hasCompletedCollection: boolean;
+  /** The AI rival's own persistent, depletable pool for THIS run - a multiset, same shape as `collection`. Resets (unlike hasCompletedCollection etc.) on both startCampaign and resetCampaign - see file header. */
+  aiCollection: string[];
 
   /** Starts a new campaign run with a starting collection (the player's initial army). Overwrites any existing run - callers should confirm with the player before calling this if a run is already active. */
   startCampaign: (startingCollection: string[]) => void;
   /**
    * Records one match's outcome and applies any Trade Rule transfers to
-   * the collection: `gained` unit ids are added, `lost` unit ids are
-   * removed (one matching entry each, not every copy - see file
-   * header). Safe to call with empty gained/lost arrays for a Direct
-   * trade rule or a draw.
+   * both collections: `gained` unit ids are added to the player's
+   * collection and removed from the AI's; `lost` unit ids are removed
+   * from the player's collection and added to the AI's (one matching
+   * entry each, not every copy - see file header). Safe to call with
+   * empty gained/lost arrays for a Direct trade rule or a draw.
    */
   recordMatchResult: (outcome: 'win' | 'loss' | 'draw', gained: string[], lost: string[]) => void;
-  /** Ends the current campaign run entirely, clearing all persisted progress EXCEPT unlockedAchievementIds, bestWinStreak, and hasCompletedCollection (see file header). */
+  /** Ends the current campaign run entirely, clearing all persisted progress (including aiCollection) EXCEPT unlockedAchievementIds, bestWinStreak, and hasCompletedCollection (see file header). */
   resetCampaign: () => void;
 }
 
@@ -144,9 +168,17 @@ export const useCampaignStore = create<CampaignState>()(
       currentStreakCount: 0,
       bestWinStreak: 0,
       hasCompletedCollection: false,
+      aiCollection: [],
 
       startCampaign: (startingCollection) => {
         const collection = [...startingCollection];
+        // Full sweep of every currently-obtainable unit - one copy each
+        // (see file header for why this, not a small random subset: a
+        // long-lasting rival to grind down, not a quick one). Recomputed
+        // fresh each call rather than a module-level constant, same
+        // reasoning as getObtainableUnitIds() itself - stays correct as
+        // more factions activate over time.
+        const aiCollection = Array.from(getObtainableUnitIds());
         const wins = 0;
         const losses = 0;
         const draws = 0;
@@ -154,6 +186,7 @@ export const useCampaignStore = create<CampaignState>()(
         set({
           isActive: true,
           collection,
+          aiCollection,
           wins,
           losses,
           draws,
@@ -176,6 +209,7 @@ export const useCampaignStore = create<CampaignState>()(
       recordMatchResult: (outcome, gained, lost) => {
         const {
           collection,
+          aiCollection,
           wins,
           losses,
           draws,
@@ -186,6 +220,12 @@ export const useCampaignStore = create<CampaignState>()(
           hasCompletedCollection,
         } = get();
         const nextCollection = [...removeOneEach(collection, lost), ...gained];
+        // Mirror image of nextCollection above: whatever the human
+        // gained is removed from the AI's pool (that's where it came
+        // from), whatever the human lost is added to it (that's where it
+        // went) - see file header for why gained/lost alone fully
+        // determines both sides without extra parameters.
+        const nextAiCollection = [...removeOneEach(aiCollection, gained), ...lost];
         const nextWins = wins + (outcome === 'win' ? 1 : 0);
         const nextLosses = losses + (outcome === 'loss' ? 1 : 0);
         const nextDraws = draws + (outcome === 'draw' ? 1 : 0);
@@ -200,6 +240,7 @@ export const useCampaignStore = create<CampaignState>()(
 
         set({
           collection: nextCollection,
+          aiCollection: nextAiCollection,
           wins: nextWins,
           losses: nextLosses,
           draws: nextDraws,
@@ -223,10 +264,13 @@ export const useCampaignStore = create<CampaignState>()(
       resetCampaign: () => {
         // unlockedAchievementIds, bestWinStreak, and hasCompletedCollection
         // are deliberately omitted here - see file header. Everything else
-        // genuinely resets, including the CURRENT streak (which is per-run).
+        // genuinely resets, including the CURRENT streak (which is
+        // per-run) and aiCollection (a new run means a new rival, not the
+        // same depleted one - see file header).
         set({
           isActive: false,
           collection: [],
+          aiCollection: [],
           wins: 0,
           losses: 0,
           draws: 0,

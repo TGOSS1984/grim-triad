@@ -32,6 +32,7 @@ describe('campaignStore', () => {
     expect(state.currentStreakCount).toBe(0);
     expect(state.bestWinStreak).toBe(0);
     expect(state.hasCompletedCollection).toBe(false);
+    expect(state.aiCollection).toEqual([]);
   });
 
   it('startCampaign seeds the collection and marks the run active', () => {
@@ -112,6 +113,7 @@ describe('campaignStore', () => {
     const state = useCampaignStore.getState();
     expect(state.isActive).toBe(false);
     expect(state.collection).toEqual([]);
+    expect(state.aiCollection).toEqual([]);
     expect(state.wins).toBe(0);
     expect(state.losses).toBe(0);
     expect(state.draws).toBe(0);
@@ -233,6 +235,71 @@ describe('campaignStore hasCompletedCollection', () => {
     useCampaignStore.getState().resetCampaign();
 
     expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+  });
+});
+
+describe('campaignStore aiCollection', () => {
+  it('startCampaign seeds it as a full sweep of every currently-obtainable unit, one copy each', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    const { aiCollection } = useCampaignStore.getState();
+    const obtainable = getObtainableUnitIds();
+    expect(aiCollection).toHaveLength(obtainable.size);
+    expect(new Set(aiCollection)).toEqual(obtainable);
+  });
+
+  it("does NOT depend on the player's own starting collection - it's always the full sweep regardless", () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-lychguard']);
+
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(getObtainableUnitIds().size);
+  });
+
+  it("recordMatchResult removes what the human GAINED from the AI's pool (mirror of the human's own collection)", () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    expect(useCampaignStore.getState().aiCollection).toContain('necrons-overlord');
+
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+
+    expect(useCampaignStore.getState().aiCollection).not.toContain('necrons-overlord');
+    expect(useCampaignStore.getState().collection).toContain('necrons-overlord');
+  });
+
+  it("recordMatchResult adds what the human LOST to the AI's pool (mirror of the human's own collection)", () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard']);
+
+    expect(useCampaignStore.getState().collection).not.toContain('necrons-lychguard');
+    // Already had one copy from the full-sweep seed - now has two: the
+    // original seed copy plus the one just lost to it.
+    const aiCopies = useCampaignStore
+      .getState()
+      .aiCollection.filter((id) => id === 'necrons-lychguard');
+    expect(aiCopies).toHaveLength(2);
+  });
+
+  it('resetCampaign clears aiCollection to empty - NOT permanent, unlike hasCompletedCollection', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    expect(useCampaignStore.getState().aiCollection.length).toBeGreaterThan(0);
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().aiCollection).toEqual([]);
+  });
+
+  it('a fresh startCampaign after a previous run gives a brand new full-sweep pool, not a leftover depleted one', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    // Deplete the AI's pool substantially in run 1.
+    const halfTheObtainableSet = Array.from(getObtainableUnitIds()).slice(0, 400);
+    useCampaignStore.getState().recordMatchResult('win', halfTheObtainableSet, []);
+    expect(useCampaignStore.getState().aiCollection.length).toBeLessThan(
+      getObtainableUnitIds().size,
+    );
+
+    // Starting a new run should give the rival a full pool again.
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    expect(useCampaignStore.getState().aiCollection).toHaveLength(getObtainableUnitIds().size);
   });
 });
 
