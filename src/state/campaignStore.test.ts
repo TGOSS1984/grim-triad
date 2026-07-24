@@ -1,15 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCampaignStore } from './campaignStore';
+import { getObtainableUnitIds } from '../data/collectionProgress';
 
 const STORAGE_KEY = 'grim-triad-campaign';
 
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
-  // resetCampaign() deliberately does NOT clear unlockedAchievementIds or
-  // bestWinStreak in production (both are meant to survive across runs) -
-  // tests need a clean slate regardless, so this bypasses that via a
-  // direct setState rather than the public action.
-  useCampaignStore.setState({ unlockedAchievementIds: [], bestWinStreak: 0 });
+  // resetCampaign() deliberately does NOT clear unlockedAchievementIds,
+  // bestWinStreak, or hasCompletedCollection in production (all three are
+  // meant to survive across runs) - tests need a clean slate regardless,
+  // so this bypasses that via a direct setState rather than the public
+  // action.
+  useCampaignStore.setState({
+    unlockedAchievementIds: [],
+    bestWinStreak: 0,
+    hasCompletedCollection: false,
+  });
   localStorage.clear();
 });
 
@@ -25,6 +31,7 @@ describe('campaignStore', () => {
     expect(state.currentStreakType).toBe('none');
     expect(state.currentStreakCount).toBe(0);
     expect(state.bestWinStreak).toBe(0);
+    expect(state.hasCompletedCollection).toBe(false);
   });
 
   it('startCampaign seeds the collection and marks the run active', () => {
@@ -184,6 +191,48 @@ describe('campaignStore achievements', () => {
     useCampaignStore.getState().startCampaign(fifteen);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('collector-recruit');
+  });
+});
+
+describe('campaignStore hasCompletedCollection', () => {
+  it('is false for an ordinary starting collection', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-immortals']);
+
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(false);
+  });
+
+  it('flips true once recordMatchResult brings the collection to own every obtainable unit', () => {
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    const [firstUnit, ...restOfCollection] = everyObtainableUnit;
+
+    // Start one unit short of full completion.
+    useCampaignStore.getState().startCampaign(restOfCollection);
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(false);
+
+    // Winning the last missing unit completes the set.
+    useCampaignStore.getState().recordMatchResult('win', [firstUnit], []);
+
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+  });
+
+  it('stays true even after the collection later shrinks below completion - permanent, like achievements', () => {
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    useCampaignStore.getState().startCampaign(everyObtainableUnit);
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+
+    useCampaignStore.getState().recordMatchResult('loss', [], everyObtainableUnit.slice(0, 100));
+
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+  });
+
+  it('survives resetCampaign - permanent across runs, same as unlockedAchievementIds/bestWinStreak', () => {
+    const everyObtainableUnit = Array.from(getObtainableUnitIds());
+    useCampaignStore.getState().startCampaign(everyObtainableUnit);
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
   });
 });
 

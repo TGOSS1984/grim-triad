@@ -43,10 +43,26 @@
  * achievement check (see the 'on-a-roll' achievement in achievements.ts),
  * so it has to be resolved BEFORE the achievement union runs each time,
  * not after.
+ *
+ * `hasCompletedCollection` is PERMANENT too, same "once true, never
+ * unset" pattern as unlockedAchievementIds/bestWinStreak: it records that
+ * the player has, at some point across ANY run, simultaneously owned one
+ * of every currently-obtainable unit (see data/collectionProgress.ts for
+ * why "obtainable" - active factions only - not the full generated
+ * catalog). Deliberately a dedicated boolean rather than callers checking
+ * `unlockedAchievementIds.includes('complete-collection')` - this is the
+ * one piece of state the victory-celebration UI (CampaignResultScreen)
+ * gates on directly, and a purpose-built field there is clearer and more
+ * robust than parsing a magic achievement-id string out of a generic
+ * list every time it's needed. Detecting the MOMENT completion is first
+ * reached (to show a one-time celebration, vs this already having been
+ * true) is left to the caller - compare this flag's value immediately
+ * before and after calling recordMatchResult/startCampaign.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getCurrentlyUnlockedAchievementIds } from './achievements';
+import { getCollectionProgress } from '../data/collectionProgress';
 
 const CAMPAIGN_STORAGE_KEY = 'grim-triad-campaign';
 
@@ -68,6 +84,8 @@ export interface CampaignState {
   currentStreakCount: number;
   /** Longest win streak ever reached, across ALL runs - permanent, same reasoning as unlockedAchievementIds. */
   bestWinStreak: number;
+  /** True once the player has, at any point across ANY run, owned one of every currently-obtainable unit simultaneously - permanent, never reset. See file header for why this is a dedicated field. */
+  hasCompletedCollection: boolean;
 
   /** Starts a new campaign run with a starting collection (the player's initial army). Overwrites any existing run - callers should confirm with the player before calling this if a run is already active. */
   startCampaign: (startingCollection: string[]) => void;
@@ -79,7 +97,7 @@ export interface CampaignState {
    * trade rule or a draw.
    */
   recordMatchResult: (outcome: 'win' | 'loss' | 'draw', gained: string[], lost: string[]) => void;
-  /** Ends the current campaign run entirely, clearing all persisted progress EXCEPT unlockedAchievementIds and bestWinStreak (see file header). */
+  /** Ends the current campaign run entirely, clearing all persisted progress EXCEPT unlockedAchievementIds, bestWinStreak, and hasCompletedCollection (see file header). */
   resetCampaign: () => void;
 }
 
@@ -108,6 +126,11 @@ function unionUnlockedAchievements(
   return Array.from(new Set([...existing, ...newlyUnlocked]));
 }
 
+/** Monotonic OR, same "once true, never unset" pattern as unionUnlockedAchievements/bestWinStreak's Math.max: once the player has ever fully completed the collection, this stays true even if the collection given afterward (e.g. after subsequent losses) is no longer complete. */
+function resolveHasCompletedCollection(alreadyCompleted: boolean, collection: string[]): boolean {
+  return alreadyCompleted || getCollectionProgress(collection).isComplete;
+}
+
 export const useCampaignStore = create<CampaignState>()(
   persist(
     (set, get) => ({
@@ -120,6 +143,7 @@ export const useCampaignStore = create<CampaignState>()(
       currentStreakType: 'none',
       currentStreakCount: 0,
       bestWinStreak: 0,
+      hasCompletedCollection: false,
 
       startCampaign: (startingCollection) => {
         const collection = [...startingCollection];
@@ -135,6 +159,10 @@ export const useCampaignStore = create<CampaignState>()(
           draws,
           currentStreakType: 'none',
           currentStreakCount: 0,
+          hasCompletedCollection: resolveHasCompletedCollection(
+            get().hasCompletedCollection,
+            collection,
+          ),
           unlockedAchievementIds: unionUnlockedAchievements(get().unlockedAchievementIds, {
             collection,
             wins,
@@ -155,6 +183,7 @@ export const useCampaignStore = create<CampaignState>()(
           currentStreakType,
           currentStreakCount,
           bestWinStreak,
+          hasCompletedCollection,
         } = get();
         const nextCollection = [...removeOneEach(collection, lost), ...gained];
         const nextWins = wins + (outcome === 'win' ? 1 : 0);
@@ -177,6 +206,10 @@ export const useCampaignStore = create<CampaignState>()(
           currentStreakType: nextStreakType,
           currentStreakCount: nextStreakCount,
           bestWinStreak: nextBestWinStreak,
+          hasCompletedCollection: resolveHasCompletedCollection(
+            hasCompletedCollection,
+            nextCollection,
+          ),
           unlockedAchievementIds: unionUnlockedAchievements(unlockedAchievementIds, {
             collection: nextCollection,
             wins: nextWins,
@@ -188,9 +221,9 @@ export const useCampaignStore = create<CampaignState>()(
       },
 
       resetCampaign: () => {
-        // unlockedAchievementIds and bestWinStreak are deliberately
-        // omitted here - see file header. Everything else genuinely
-        // resets, including the CURRENT streak (which is per-run).
+        // unlockedAchievementIds, bestWinStreak, and hasCompletedCollection
+        // are deliberately omitted here - see file header. Everything else
+        // genuinely resets, including the CURRENT streak (which is per-run).
         set({
           isActive: false,
           collection: [],
