@@ -1,4 +1,5 @@
 .boardWrapper {
+  position: relative;
   display: inline-block;
   padding: var(--space-lg);
   border-radius: var(--radius-md);
@@ -9,9 +10,59 @@
     inset 0 0 40px rgba(0, 0, 0, 0.5);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
+  /* Clips .boardEmblem's soft edges to this panel's own rounded corners,
+     rather than the emblem spilling a hard rectangle past them. */
+  overflow: hidden;
+}
+
+/**
+ * Single decorative watermark behind the WHOLE grid, not repeated per
+ * cell: once a card fills a cell its art covers the tile completely, so
+ * a per-cell version would only ever show through empty slots - an
+ * increasingly patchy pattern as a match progresses, competing with nine
+ * repeated dashed cell borders for attention. One centered mark reads as
+ * a battlefield backdrop instead, and gets MORE interesting as play goes
+ * on (visible early, gradually covered by cards - a "fog lifting" effect)
+ * rather than less.
+ *
+ * Path is documented in layout/backgroundPaths.ts (BOARD_EMBLEM_PATH) for
+ * discoverability, but referenced directly here since CSS can't import
+ * that constant - drop the real PNG at
+ * public/assets/backgrounds/board-emblem.png and it appears automatically,
+ * no component changes needed. Until then this simply paints nothing -
+ * same graceful "background-image 404s silently" degrade BackgroundLayer
+ * already relies on, appropriate here too since this is decoration, not
+ * meaningful content.
+ *
+ * Kept deliberately subtle so it never competes with the cards
+ * themselves for attention:
+ *  - low opacity, so it reads as a watermark, not a competing image
+ *  - a radial gradient mask fades it to fully transparent at the edges,
+ *    so there's no hard rectangular border visible against the panel's
+ *    glass background
+ *  - contain + no-repeat + centered, sized to roughly fill the grid area
+ *    without overflowing into the panel's own padding
+ *  - positioned BEHIND .grid (z-index 0 vs .grid's 1) and marked
+ *    aria-hidden, same as every other purely-decorative layer in this
+ *    app (e.g. BackgroundLayer itself)
+ */
+.boardEmblem {
+  position: absolute;
+  inset: var(--space-lg);
+  z-index: 0;
+  background-image: url('/assets/backgrounds/board-emblem.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.25;
+  -webkit-mask-image: radial-gradient(circle at center, black 45%, transparent 75%);
+  mask-image: radial-gradient(circle at center, black 45%, transparent 75%);
+  pointer-events: none;
 }
 
 .grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);

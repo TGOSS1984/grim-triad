@@ -5,6 +5,13 @@
  * Card/BoardCell: the caller (GameScreen, wired up in Phase 8) is
  * responsible for turning engine GameState + unit lookup data into this
  * shape.
+ *
+ * .boardEmblem is a purely decorative watermark sitting behind the whole
+ * grid (not repeated per-cell - see Board.module.css's own header for
+ * why), gracefully absent via CSS alone if no image has been dropped in
+ * yet - same "background-image just 404s silently, no onError needed"
+ * pattern as BackgroundLayer, since this is decoration, not meaningful
+ * content the way a faction icon <img> is.
  */
 import type { Position } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
@@ -29,6 +36,7 @@ function isHighlighted(highlighted: Position[] | undefined, pos: Position): bool
 export function Board({ cells, elements, highlightedPositions, onCellClick, cardWidth }: BoardProps) {
   return (
     <div className={styles.boardWrapper}>
+      <div className={styles.boardEmblem} aria-hidden="true" />
       <div className={styles.grid} role="grid" aria-label="Battle grid">
         {([0, 1, 2] as const).map((row) =>
           ([0, 1, 2] as const).map((col) => {

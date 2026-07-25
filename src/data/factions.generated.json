@@ -32,7 +32,7 @@
   {
     "slug": "astra-militarum",
     "name": "Astra Militarum",
-    "active": false,
+    "active": true,
     "unitCount": 72
   },
   {
