@@ -110,7 +110,7 @@
   {
     "slug": "genestealer-cults",
     "name": "Genestealer Cults",
-    "active": false,
+    "active": true,
     "unitCount": 24
   },
   {

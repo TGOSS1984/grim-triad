@@ -1775,12 +1775,12 @@
       "Infantry"
     ],
     "points": 105,
-    "statBudget": 23,
+    "statBudget": 24,
     "stats": {
       "top": 5,
-      "bottom": 6,
-      "left": 6,
-      "right": 6
+      "bottom": 9,
+      "left": 1,
+      "right": 9
     },
     "portraitPath": "assets/factions/blood-angels/units/astorath.png",
     "element": "void"
@@ -2548,12 +2548,12 @@
       "Infantry"
     ],
     "points": 115,
-    "statBudget": 23,
+    "statBudget": 24,
     "stats": {
-      "top": 5,
-      "bottom": 6,
-      "left": 6,
-      "right": 6
+      "top": 10,
+      "bottom": 1,
+      "left": 9,
+      "right": 3
     },
     "portraitPath": "assets/factions/space-wolves/units/logan-grimnar.png",
     "element": "warp"
