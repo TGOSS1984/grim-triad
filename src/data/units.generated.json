@@ -8374,10 +8374,10 @@
     "points": 150,
     "statBudget": 25,
     "stats": {
-      "top": 7,
-      "bottom": 6,
-      "left": 7,
-      "right": 5
+      "top": 9,
+      "bottom": 5,
+      "left": 8,
+      "right": 3
     },
     "portraitPath": "assets/factions/thousand-sons/units/ahriman-on-disc-of-tzeentch.png",
     "element": "radiation"
@@ -8462,8 +8462,8 @@
     "statBudget": 33,
     "stats": {
       "top": 9,
-      "bottom": 8,
-      "left": 7,
+      "bottom": 10,
+      "left": 5,
       "right": 9
     },
     "portraitPath": "assets/factions/thousand-sons/units/magnus-the-red.png",

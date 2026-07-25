@@ -200,7 +200,7 @@
   {
     "slug": "thousand-sons",
     "name": "Thousand Sons",
-    "active": false,
+    "active": true,
     "unitCount": 39
   },
   {
