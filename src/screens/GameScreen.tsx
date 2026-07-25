@@ -20,6 +20,7 @@ import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position
 import type { ElementId } from '../data/elements';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
+import { RuleTriggerCallout, type RuleTrigger } from '../components/board/RuleTriggerCallout';
 import { Hand } from '../components/hand/Hand';
 import type { HandCardData } from '../components/hand/Hand';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
@@ -56,6 +57,29 @@ function toDisplayFields(
     element: includeElement ? unit?.element : undefined,
     keywords: unit?.keywords,
   };
+}
+
+/**
+ * Picks the ONE rule to call out for a move's captures, given all of
+ * them (see engine/types.ts's CaptureKind for what each value means).
+ * Priority: 'same' or 'plus' (the initiating rule) beats a bare
+ * 'cascade' entry, since a cascaded card's kind doesn't tell you what
+ * STARTED the chain - only that this specific card was swept up by one.
+ * A standalone 'cascade' with neither 'same' nor 'plus' present means the
+ * Chain rule fired on a plain base capture, which IS worth calling out on
+ * its own ("CHAIN!"). Plain base captures (no same/plus/cascade at all)
+ * intentionally return null - that's the default mechanic every match
+ * has, not the "did you catch that?" moment Same/Plus/Chain are.
+ */
+function resolvePrimaryTrigger(
+  captureKinds: CaptureKind[] | undefined,
+  comboTriggered: boolean,
+): RuleTrigger | null {
+  if (!captureKinds || captureKinds.length === 0) return null;
+  if (captureKinds.includes('same')) return { kind: 'same', comboExtended: comboTriggered };
+  if (captureKinds.includes('plus')) return { kind: 'plus', comboExtended: comboTriggered };
+  if (captureKinds.includes('cascade')) return { kind: 'chain', comboExtended: false };
+  return null;
 }
 
 /**
@@ -142,6 +166,18 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
     const kind = game.lastCapture?.captureKinds[index];
     if (kind) captureKindByPosition.set(`${pos.row},${pos.col}`, kind);
   });
+
+  /**
+   * Which rule (if any) to call out via RuleTriggerCallout for the most
+   * recent move - see resolvePrimaryTrigger's own doc. game.history.length
+   * is passed as the callout's triggerKey (not game itself, which changes
+   * on every render for reasons unrelated to a new move) so it only
+   * re-fires when an actual new move has been recorded, once per move.
+   */
+  const currentTrigger = resolvePrimaryTrigger(
+    game.lastCapture?.captureKinds,
+    game.lastCapture?.comboTriggered ?? false,
+  );
 
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
@@ -280,13 +316,16 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
           />
         }
         center={
-          <Board
-            cells={boardCells}
-            elements={boardElements}
-            highlightedPositions={highlightedPositions}
-            onCellClick={handleCellClick}
-            cardWidth={cardWidth + 10}
-          />
+          <div className={styles.boardStack}>
+            <Board
+              cells={boardCells}
+              elements={boardElements}
+              highlightedPositions={highlightedPositions}
+              onCellClick={handleCellClick}
+              cardWidth={cardWidth + 10}
+            />
+            <RuleTriggerCallout trigger={currentTrigger} triggerKey={game.history.length} />
+          </div>
         }
         right={
           <Hand

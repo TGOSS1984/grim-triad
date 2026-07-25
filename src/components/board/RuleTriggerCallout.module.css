@@ -1,0 +1,104 @@
+/**
+ * Positioned to sit just above the board's top edge, not over the grid
+ * itself (see RuleTriggerCallout.tsx's own header for why). The parent
+ * (GameScreen) wraps <Board> and this component together in a
+ * position:relative container so `top: 0` here anchors to the board's
+ * own top edge - `translateY(-100%)` then lifts the whole banner fully
+ * above it, with a small additional gap so it doesn't touch the grid's
+ * border.
+ */
+.overlay {
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-100%);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0.4em 1.4em;
+}
+
+/* A soft radial glow behind the text, colour-matched per rule - this is
+   the "flash" the text sits inside, not a separate full-screen effect.
+   A pseudo-element-style layered span (kept as a real element rather
+   than ::before so Framer Motion doesn't need to animate a
+   pseudo-element, which it can't target directly) sized larger than the
+   text and blurred, sitting behind it via z-index. */
+.flash {
+  position: absolute;
+  inset: -60% -40%;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(18px);
+  opacity: 0.55;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  /* A crisp dark outline behind the glow keeps the text legible over any
+     background art (board emblem, battle photo) regardless of colour. */
+  -webkit-text-stroke: 1.5px rgba(10, 12, 16, 0.85);
+  paint-order: stroke fill;
+}
+
+.comboLabel {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-text-primary);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+}
+
+/* Same rule - cyan, matching CardCaptureFlame's 'same' theme exactly. */
+.banner-same .label {
+  color: #7fe0ff;
+  text-shadow:
+    0 0 10px #1c9bff,
+    0 0 24px #1c9bff;
+}
+.banner-same .flash {
+  background: radial-gradient(circle, #7fe0ff 0%, #1c9bff 45%, transparent 75%);
+}
+
+/* Plus rule - gold, matching CardCaptureFlame's 'plus' theme exactly. */
+.banner-plus .label {
+  color: #ffd35c;
+  text-shadow:
+    0 0 10px #c98a1c,
+    0 0 24px #c98a1c;
+}
+.banner-plus .flash {
+  background: radial-gradient(circle, #ffd35c 0%, #c98a1c 45%, transparent 75%);
+}
+
+/* Chain rule - violet, matching CardCaptureFlame's 'cascade' theme exactly. */
+.banner-chain .label {
+  color: #d9b3ff;
+  text-shadow:
+    0 0 10px #6a1cad,
+    0 0 24px #6a1cad;
+}
+.banner-chain .flash {
+  background: radial-gradient(circle, #b967ff 0%, #6a1cad 45%, transparent 75%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    filter: blur(10px);
+  }
+}

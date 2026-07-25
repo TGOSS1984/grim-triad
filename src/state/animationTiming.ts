@@ -9,6 +9,8 @@
  *    committed to the store in the same synchronous call as the human's
  *    move, so React rendered both outcomes at once with no visible pause
  *    between "you captured a card" and "the AI took it right back").
+ *  - App.tsx uses computeGameEndDelayMs specifically for the
+ *    finished-game -> results-screen transition (see its own doc below).
  *
  * If Card.tsx's flip duration or GameScreen's stagger amount ever change,
  * change them here - don't hand-tune a second copy of the same number
@@ -36,4 +38,29 @@ export function computeMoveAnimationDurationMs(capturedCount: number): number {
   }
   const lastCardFlipStartDelay = (capturedCount - 1) * CAPTURE_FLIP_STAGGER_MS;
   return MOVE_SETTLE_BUFFER_MS + lastCardFlipStartDelay + CAPTURE_FLIP_DURATION_MS;
+}
+
+/**
+ * Extra beat, on top of computeMoveAnimationDurationMs, specifically for
+ * the moment a MATCH ends - not just the moment a MOVE finishes
+ * animating. Those aren't the same pause: computeMoveAnimationDurationMs
+ * is tuned only to not cut off a capture's own flip animation, which
+ * gives almost no pause at all when the winning move captures nothing
+ * (falls straight through to MOVE_SETTLE_BUFFER_MS - 300ms). That's fine
+ * mid-match (the next move is coming immediately either way), but at the
+ * very end of a match the ENTIRE SCREEN changes to the results screen
+ * right after - 300ms was nowhere near enough time to actually take in
+ * the final board state before it vanished. This is a deliberate second,
+ * larger pause layered on top for that one specific transition.
+ */
+export const GAME_END_EXTRA_PAUSE_MS = 1000;
+
+/**
+ * Total delay (ms) before navigating away from a just-finished match to
+ * its results screen - the normal per-move animation wait PLUS the extra
+ * end-of-game beat above. See App.tsx's game-finished effect, the one
+ * caller of this.
+ */
+export function computeGameEndDelayMs(capturedCount: number): number {
+  return computeMoveAnimationDurationMs(capturedCount) + GAME_END_EXTRA_PAUSE_MS;
 }

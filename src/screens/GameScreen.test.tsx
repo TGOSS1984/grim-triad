@@ -206,6 +206,118 @@ describe('GameScreen', () => {
     );
   });
 
+  it('shows the "SAME!" callout banner end-to-end when a real Same capture fires', async () => {
+    const user = userEvent.setup();
+
+    // Same fixture as the combo-stagger test above: two matched sides
+    // (Same requires 2+, not just one - see engine/rules/same.ts), no
+    // cascade.
+    const triggerCard: Card = {
+      instanceId: 'blue-trigger',
+      unitId: BA_CAPTAIN,
+      owner: 'blue',
+      stats: { top: 5, bottom: 1, left: 1, right: 5 },
+    };
+    const redTop: Card = {
+      instanceId: 'red-top',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 5, left: 1, right: 1 },
+    };
+    const redRight: Card = {
+      instanceId: 'red-right',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 1, left: 5, right: 1 },
+    };
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getByLabelText('Empty cell, row 2, column 2'));
+
+    await waitFor(
+      () => {
+        expect(screen.getByText('SAME!')).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it('shows no rule trigger callout for an ordinary base capture with no Same/Plus/Chain active', async () => {
+    const user = userEvent.setup();
+
+    // A genuine capture (not just an empty placement) but via the plain
+    // base flanking rule only - same/plus/chain all left off. This is
+    // the "not the 'did you catch that?' moment" case resolvePrimaryTrigger
+    // deliberately returns null for (see its own doc in GameScreen.tsx).
+    const triggerCard: Card = {
+      instanceId: 'blue-trigger',
+      unitId: BA_CAPTAIN,
+      owner: 'blue',
+      stats: { top: 5, bottom: 9, left: 1, right: 1 },
+    };
+    const redBelow: Card = {
+      instanceId: 'red-below',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 1, left: 1, right: 1 },
+    };
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: DEFAULT_RULE_SET, // same/plus/chain all off
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 1 && c === 0) return { card: redBelow };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getByLabelText('Empty cell, row 1, column 1'));
+
+    // Confirm the capture actually happened (blue's frame on the
+    // previously-red cell), so this is genuinely testing "a real base
+    // capture shows no callout", not just "nothing happened at all".
+    await waitFor(() => {
+      expect(document.querySelectorAll('img[src*="template-blue.png"]').length).toBeGreaterThanOrEqual(2);
+    });
+
+    expect(screen.queryByText('SAME!')).not.toBeInTheDocument();
+    expect(screen.queryByText('PLUS!')).not.toBeInTheDocument();
+    expect(screen.queryByText('CHAIN!')).not.toBeInTheDocument();
+  });
+
   it('does not show a Quit button when onQuit is not provided', () => {
     startTestGame();
     render(<GameScreen humanPlayer="blue" />);

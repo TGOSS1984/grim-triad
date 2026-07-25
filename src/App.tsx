@@ -53,7 +53,7 @@ import { getFactionSlugForRosterName, inferRosterNameFromUnitIds } from './data/
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
 import { DEFAULT_RULE_SET } from './engine/gameReducer';
-import { computeMoveAnimationDurationMs } from './state/animationTiming';
+import { computeGameEndDelayMs } from './state/animationTiming';
 import { DIFFICULTY_PROFILES, DEFAULT_DIFFICULTY } from './ai/difficulty';
 import type { Difficulty } from './ai/difficulty';
 import styles from './App.module.css';
@@ -173,17 +173,22 @@ export default function App() {
   // instant `phase` flips to 'finished' (that happens synchronously in the
   // same store update that applied the move) - navigating away immediately
   // meant the final move's outcome was never actually seen, cutting
-  // straight to the result screen. So this waits out the same
-  // computeMoveAnimationDurationMs delay gameStore already uses between
-  // turns, keyed off game.lastCapture, before doing anything else. The
-  // timer is cleared on cleanup so a fast unmount/step-change (e.g. Quit)
-  // can't fire a stale navigation afterwards.
+  // straight to the result screen. So this waits out computeGameEndDelayMs
+  // - the same per-move animation delay gameStore uses between turns, PLUS
+  // a deliberate extra beat specifically for this transition (see that
+  // function's own doc in animationTiming.ts): the per-move delay alone is
+  // tuned only to not cut off a capture's own flip, which gives almost no
+  // pause at all when the winning move captures nothing - nowhere near
+  // enough time to actually take in the final board before the ENTIRE
+  // SCREEN changes to results. The timer is cleared on cleanup so a fast
+  // unmount/step-change (e.g. Quit) can't fire a stale navigation
+  // afterwards.
   useEffect(() => {
     if (step !== 'game') return;
     if (!game || game.phase !== 'finished') return;
 
     const capturedCount = game.lastCapture?.positions.length ?? 0;
-    const delayMs = computeMoveAnimationDurationMs(capturedCount);
+    const delayMs = computeGameEndDelayMs(capturedCount);
 
     const timer = setTimeout(() => {
       if (mode === 'campaign') {
