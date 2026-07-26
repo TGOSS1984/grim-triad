@@ -22,6 +22,12 @@
  * just volume) for the rarest, most iconic units in the catalog (Phantom
  * Titan, Revenant Titan, Stompa, Thunderhawk Gunship, etc.) - a genuine
  * "I earned that" moment rather than one more volume checkpoint.
+ *
+ * Each tier also exposes getProgress alongside isUnlocked - "how close",
+ * not just "yes/no" - so locked-card UI can show live progress (e.g.
+ * "6/10 games won") instead of a static, unchanging description. See
+ * getUnitUnlockProgress for the per-unit entry point armyBuilderStore
+ * uses.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from './activeFactions';
 import type { Unit } from './schema';
@@ -40,6 +46,23 @@ export interface UnlockTierContext {
   factionsContainingUnit: string[];
 }
 
+/**
+ * Live progress toward a tier's unlock condition - "how close", as
+ * opposed to isUnlocked's plain yes/no. `label` names what's being
+ * counted (e.g. "games won", "wins with Dark Angels") so the UI can
+ * render "6/10 games won" without needing its own copy of each tier's
+ * wording. `current` is always clamped to `target` (never shown as
+ * "12/10") even though the underlying stat can keep climbing past it in
+ * practice - once a tier is unlocked, getUnitUnlockProgress below stops
+ * returning progress for it at all, so callers only ever see this while
+ * a tier is still genuinely in progress.
+ */
+export interface UnlockProgress {
+  current: number;
+  target: number;
+  label: string;
+}
+
 export interface UnlockTier {
   id: string;
   /** Short display label, e.g. "300-400 pts". */
@@ -51,6 +74,8 @@ export interface UnlockTier {
   /** Human-readable unlock condition, for UI copy (locked-card tooltips, the unlock reveal, etc.). */
   description: string;
   isUnlocked: (snapshot: UnlockProgressSnapshot, context: UnlockTierContext) => boolean;
+  /** See UnlockProgress's own doc. Called regardless of current unlock state - callers needing "only while still locked" semantics (e.g. getUnitUnlockProgress below) check isUnlocked themselves first. */
+  getProgress: (snapshot: UnlockProgressSnapshot, context: UnlockTierContext) => UnlockProgress;
 }
 
 export const UNLOCK_TIERS: UnlockTier[] = [
@@ -61,6 +86,11 @@ export const UNLOCK_TIERS: UnlockTier[] = [
     maxPoints: 250,
     description: 'Win 10 games (any mode, any faction)',
     isUnlocked: (snapshot) => snapshot.totalWins >= 10,
+    getProgress: (snapshot) => ({
+      current: Math.min(snapshot.totalWins, 10),
+      target: 10,
+      label: 'games won',
+    }),
   },
   {
     id: 'tier-250-300',
@@ -69,6 +99,24 @@ export const UNLOCK_TIERS: UnlockTier[] = [
     maxPoints: 300,
     description: 'Win 20 games total, or land 15 Same/Plus combos total',
     isUnlocked: (snapshot) => snapshot.totalWins >= 20 || snapshot.sameOrPlusComboCount >= 15,
+    // Two independent paths - shows whichever the player is actually
+    // CLOSER to (by percentage of target), not always the same one, so
+    // someone who's been landing combos sees combo progress and someone
+    // who's been grinding wins sees win progress, rather than always
+    // defaulting to one path regardless of how the player's actually
+    // been playing. Ties go to wins (the >, not >=, below).
+    getProgress: (snapshot) => {
+      const winsPct = snapshot.totalWins / 20;
+      const comboPct = snapshot.sameOrPlusComboCount / 15;
+      if (comboPct > winsPct) {
+        return {
+          current: Math.min(snapshot.sameOrPlusComboCount, 15),
+          target: 15,
+          label: 'Same/Plus combos',
+        };
+      }
+      return { current: Math.min(snapshot.totalWins, 20), target: 20, label: 'games won' };
+    },
   },
   {
     id: 'tier-300-400',
@@ -80,6 +128,26 @@ export const UNLOCK_TIERS: UnlockTier[] = [
       context.factionsContainingUnit.some(
         (factionName) => (snapshot.winsByFaction[factionName] ?? 0) >= 10,
       ),
+    // A unit can belong to several factions at once (a shared generic
+    // Space Marine unit usable by multiple chapters) - shows progress
+    // against whichever ONE the player is closest to unlocking through,
+    // not an arbitrary first-in-list pick, so a card shared across five
+    // chapters reports the chapter the player's actually been playing.
+    getProgress: (snapshot, context) => {
+      if (context.factionsContainingUnit.length === 0) {
+        return { current: 0, target: 10, label: "wins with its own faction" };
+      }
+      let bestFaction = context.factionsContainingUnit[0];
+      let bestWins = snapshot.winsByFaction[bestFaction] ?? 0;
+      for (const factionName of context.factionsContainingUnit.slice(1)) {
+        const wins = snapshot.winsByFaction[factionName] ?? 0;
+        if (wins > bestWins) {
+          bestFaction = factionName;
+          bestWins = wins;
+        }
+      }
+      return { current: Math.min(bestWins, 10), target: 10, label: `wins with ${bestFaction}` };
+    },
   },
   {
     id: 'tier-400-500',
@@ -89,6 +157,14 @@ export const UNLOCK_TIERS: UnlockTier[] = [
     description: 'Win with 5 different factions (at least 1 win each)',
     isUnlocked: (snapshot) =>
       Object.values(snapshot.winsByFaction).filter((wins) => wins > 0).length >= 5,
+    getProgress: (snapshot) => ({
+      current: Math.min(
+        Object.values(snapshot.winsByFaction).filter((wins) => wins > 0).length,
+        5,
+      ),
+      target: 5,
+      label: 'factions won with',
+    }),
   },
   {
     id: 'tier-500-plus',
@@ -97,6 +173,11 @@ export const UNLOCK_TIERS: UnlockTier[] = [
     maxPoints: null,
     description: '3 flawless wins (your opponent captures nothing), each with a different faction',
     isUnlocked: (snapshot) => snapshot.flawlessWinFactions.length >= 3,
+    getProgress: (snapshot) => ({
+      current: Math.min(snapshot.flawlessWinFactions.length, 3),
+      target: 3,
+      label: 'flawless-win factions',
+    }),
   },
 ];
 
@@ -154,6 +235,28 @@ export function isUnitUnlocked(
   const tier = getTierForPoints(points);
   if (!tier) return true;
   return tier.isUnlocked(snapshot, { factionsContainingUnit: getFactionsContainingUnit(unitId) });
+}
+
+/**
+ * Live "how close" progress toward unlocking a specific unit, given a
+ * progress snapshot - companion to isUnitUnlocked's plain yes/no. Returns
+ * null for anything that isn't currently locked at all: either it has no
+ * tier (under 200pts, always available), or its tier is already
+ * unlocked. Callers (locked-card UI) only ever need this while a card is
+ * actually still locked - checking isUnlocked first here means a caller
+ * doesn't have to separately guard against showing stale/meaningless
+ * progress on a card that isn't locked anymore.
+ */
+export function getUnitUnlockProgress(
+  unitId: string,
+  points: number,
+  snapshot: UnlockProgressSnapshot,
+): UnlockProgress | null {
+  const tier = getTierForPoints(points);
+  if (!tier) return null;
+  const context = { factionsContainingUnit: getFactionsContainingUnit(unitId) };
+  if (tier.isUnlocked(snapshot, context)) return null;
+  return tier.getProgress(snapshot, context);
 }
 
 /**

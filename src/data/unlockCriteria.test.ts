@@ -4,6 +4,7 @@ import {
   getTierForPoints,
   getFactionsContainingUnit,
   isUnitUnlocked,
+  getUnitUnlockProgress,
   getNewlyUnlockedBatches,
   type UnlockProgressSnapshot,
 } from './unlockCriteria';
@@ -105,6 +106,22 @@ describe('tier-200-250 isUnlocked (universal: 10 total wins)', () => {
   });
 });
 
+describe('tier-200-250 getProgress', () => {
+  const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-200-250')!;
+
+  it('reports current/target/label for partial progress', () => {
+    const progress = tier.getProgress(snapshot({ totalWins: 6 }), { factionsContainingUnit: [] });
+    expect(progress).toEqual({ current: 6, target: 10, label: 'games won' });
+  });
+
+  it('clamps current at target, never showing more than the goal', () => {
+    const progress = tier.getProgress(snapshot({ totalWins: 15 }), {
+      factionsContainingUnit: [],
+    });
+    expect(progress.current).toBe(10);
+  });
+});
+
 describe('tier-250-300 isUnlocked (20 wins OR 15 combos)', () => {
   const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-250-300')!;
 
@@ -133,6 +150,38 @@ describe('tier-250-300 isUnlocked (20 wins OR 15 combos)', () => {
   });
 });
 
+describe('tier-250-300 getProgress (shows whichever path is closer)', () => {
+  const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-250-300')!;
+  const ctx = { factionsContainingUnit: [] };
+
+  it('shows win progress when wins are proportionally closer to their target than combos', () => {
+    // 10/20 = 50% vs 3/15 = 20% - wins is closer.
+    const progress = tier.getProgress(snapshot({ totalWins: 10, sameOrPlusComboCount: 3 }), ctx);
+    expect(progress).toEqual({ current: 10, target: 20, label: 'games won' });
+  });
+
+  it('shows combo progress when combos are proportionally closer to their target than wins', () => {
+    // 2/20 = 10% vs 9/15 = 60% - combos is closer.
+    const progress = tier.getProgress(snapshot({ totalWins: 2, sameOrPlusComboCount: 9 }), ctx);
+    expect(progress).toEqual({ current: 9, target: 15, label: 'Same/Plus combos' });
+  });
+
+  it('breaks an exact tie in favor of wins', () => {
+    // 10/20 = 50% exactly equals 7.5/15 = 50% is impossible with integers,
+    // but a clean tie IS possible: 4/20 = 20% vs 3/15 = 20%.
+    const progress = tier.getProgress(snapshot({ totalWins: 4, sameOrPlusComboCount: 3 }), ctx);
+    expect(progress.label).toBe('games won');
+  });
+
+  it('clamps each path at its own target', () => {
+    const progress = tier.getProgress(
+      snapshot({ totalWins: 30, sameOrPlusComboCount: 0 }),
+      ctx,
+    );
+    expect(progress.current).toBe(20);
+  });
+});
+
 describe('tier-300-400 isUnlocked (10 wins with the unit\'s OWN faction)', () => {
   const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-300-400')!;
 
@@ -154,6 +203,35 @@ describe('tier-300-400 isUnlocked (10 wins with the unit\'s OWN faction)', () =>
   });
 });
 
+describe('tier-300-400 getProgress (shows the closest faction among factionsContainingUnit)', () => {
+  const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-300-400')!;
+
+  it('reports progress for a single-faction unit', () => {
+    const context = { factionsContainingUnit: ['Necrons'] };
+    const progress = tier.getProgress(snapshot({ winsByFaction: { Necrons: 4 } }), context);
+    expect(progress).toEqual({ current: 4, target: 10, label: 'wins with Necrons' });
+  });
+
+  it('picks the faction with the MOST wins among a shared unit\'s factions, not the first-listed one', () => {
+    const context = { factionsContainingUnit: ['Blood Angels', 'Dark Angels', 'Ultramarines'] };
+    const winsByFaction = { 'Blood Angels': 2, 'Dark Angels': 7, Ultramarines: 1 };
+    const progress = tier.getProgress(snapshot({ winsByFaction }), context);
+    expect(progress).toEqual({ current: 7, target: 10, label: 'wins with Dark Angels' });
+  });
+
+  it('treats a faction with zero recorded wins as 0, not a crash', () => {
+    const context = { factionsContainingUnit: ['Necrons'] };
+    const progress = tier.getProgress(snapshot(), context);
+    expect(progress.current).toBe(0);
+  });
+
+  it('falls back gracefully if somehow given no factions at all (defensive, should not normally happen)', () => {
+    const progress = tier.getProgress(snapshot(), { factionsContainingUnit: [] });
+    expect(progress.current).toBe(0);
+    expect(progress.target).toBe(10);
+  });
+});
+
 describe('tier-400-500 isUnlocked (5 different factions, >=1 win each)', () => {
   const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-400-500')!;
 
@@ -169,6 +247,26 @@ describe('tier-400-500 isUnlocked (5 different factions, >=1 win each)', () => {
     expect(tier.isUnlocked(snapshot({ winsByFaction }), { factionsContainingUnit: [] })).toBe(
       true,
     );
+  });
+});
+
+describe('tier-400-500 getProgress', () => {
+  const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-400-500')!;
+
+  it('counts distinct factions with at least one win, not total wins', () => {
+    const winsByFaction = { Necrons: 20, Orks: 1, Aeldari: 1 };
+    const progress = tier.getProgress(snapshot({ winsByFaction }), {
+      factionsContainingUnit: [],
+    });
+    expect(progress).toEqual({ current: 3, target: 5, label: 'factions won with' });
+  });
+
+  it('does not count a faction with zero wins toward the distinct count', () => {
+    const winsByFaction = { Necrons: 5, Orks: 0 };
+    const progress = tier.getProgress(snapshot({ winsByFaction }), {
+      factionsContainingUnit: [],
+    });
+    expect(progress.current).toBe(1);
   });
 });
 
@@ -189,6 +287,50 @@ describe('tier-500-plus isUnlocked (3 flawless wins, 3 different factions)', () 
         factionsContainingUnit: [],
       }),
     ).toBe(true);
+  });
+});
+
+describe('tier-500-plus getProgress', () => {
+  const tier = UNLOCK_TIERS.find((t) => t.id === 'tier-500-plus')!;
+
+  it('counts distinct flawless-win factions', () => {
+    const progress = tier.getProgress(snapshot({ flawlessWinFactions: ['Necrons'] }), {
+      factionsContainingUnit: [],
+    });
+    expect(progress).toEqual({ current: 1, target: 3, label: 'flawless-win factions' });
+  });
+});
+
+describe('getUnitUnlockProgress (integration, real unit data)', () => {
+  it('returns null for a unit under 200pts - always available, nothing to show progress toward', () => {
+    expect(getUnitUnlockProgress('necrons-annihilation-barge', 105, snapshot())).toBeNull();
+  });
+
+  it('returns null once a unit\'s tier is already unlocked - nothing left to track', () => {
+    const progress = getUnitUnlockProgress(
+      'necrons-doom-scythe',
+      230,
+      snapshot({ totalWins: 10 }),
+    );
+    expect(progress).toBeNull();
+  });
+
+  it('returns live progress for a unit that is still locked', () => {
+    const progress = getUnitUnlockProgress(
+      'necrons-doom-scythe',
+      230,
+      snapshot({ totalWins: 6 }),
+    );
+    expect(progress).toEqual({ current: 6, target: 10, label: 'games won' });
+  });
+
+  it('a chapter-exclusive 300-400 unit reports progress against its own faction by name', () => {
+    const progress = getUnitUnlockProgress(
+      'dark-angels-lion-el-jonson',
+      315,
+      snapshot({ winsByFaction: { 'Dark Angels': 3 } }),
+    );
+    expect(progress).toEqual({ current: 3, target: 10, label: 'wins with Dark Angels' });
   });
 });
 
