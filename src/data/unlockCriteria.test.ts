@@ -4,6 +4,7 @@ import {
   getTierForPoints,
   getFactionsContainingUnit,
   isUnitUnlocked,
+  getNewlyUnlockedBatches,
   type UnlockProgressSnapshot,
 } from './unlockCriteria';
 
@@ -224,5 +225,83 @@ describe('isUnitUnlocked (integration, real unit data)', () => {
   it('a shared generic unit in the 500+ tier unlocks via the universal flawless-win condition, independent of which chapter', () => {
     const progress = snapshot({ flawlessWinFactions: ['Blood Angels', 'Space Wolves', 'Ultramarines'] });
     expect(isUnitUnlocked('space-marines-thunderhawk-gunship', 840, progress)).toBe(true);
+  });
+});
+
+describe('getNewlyUnlockedBatches', () => {
+  it('returns an empty array when nothing newly unlocked', () => {
+    const before = snapshot({ totalWins: 5 });
+    const after = snapshot({ totalWins: 9 }); // still short of the 200-250 tier's 10
+    expect(getNewlyUnlockedBatches(before, after)).toEqual([]);
+  });
+
+  it('returns an empty array when progress went backward (should never happen in practice, but never reports a "newly unlocked" unit that was already unlocked before)', () => {
+    const before = snapshot({ totalWins: 10 });
+    const after = snapshot({ totalWins: 5 });
+    expect(getNewlyUnlockedBatches(before, after)).toEqual([]);
+  });
+
+  it('crossing the 10-win threshold produces exactly one batch, for the 200-250 tier, with every one of its units', () => {
+    const before = snapshot({ totalWins: 9 });
+    const after = snapshot({ totalWins: 10 });
+
+    const batches = getNewlyUnlockedBatches(before, after);
+
+    expect(batches).toHaveLength(1);
+    expect(batches[0].tier.id).toBe('tier-200-250');
+    const expectedTierUnitCount = 34; // see unlockCriteria.ts's own header - real data as of this writing
+    expect(batches[0].units).toHaveLength(expectedTierUnitCount);
+  });
+
+  it('the batch\'s units are sorted MOST EXPENSIVE FIRST - units[0] is the intended hero card', () => {
+    const before = snapshot({ totalWins: 9 });
+    const after = snapshot({ totalWins: 10 });
+
+    const [{ units }] = getNewlyUnlockedBatches(before, after);
+
+    for (let i = 1; i < units.length; i++) {
+      expect(units[i - 1].points).toBeGreaterThanOrEqual(units[i].points);
+    }
+  });
+
+  it('only includes a unit ONCE, in the batch matching its OWN tier, even though every tier below 500+ is also crossed by a single huge win/streak jump', () => {
+    // A snapshot this generous crosses every tier's threshold at once -
+    // confirms each unit lands in exactly its own tier's batch, not
+    // duplicated across multiple.
+    const before = snapshot();
+    const after = snapshot({
+      totalWins: 50,
+      sameOrPlusComboCount: 50,
+      winsByFaction: { Necrons: 50, Orks: 50, Aeldari: 50, Ultramarines: 50, 'Dark Angels': 50 },
+      flawlessWinFactions: ['Necrons', 'Orks', 'Aeldari'],
+    });
+
+    const batches = getNewlyUnlockedBatches(before, after);
+    const tierIds = batches.map((b) => b.tier.id);
+
+    expect(tierIds).toEqual([
+      'tier-200-250',
+      'tier-250-300',
+      'tier-300-400',
+      'tier-400-500',
+      'tier-500-plus',
+    ]);
+    const allUnitIds = batches.flatMap((b) => b.units.map((u) => u.id));
+    expect(new Set(allUnitIds).size).toBe(allUnitIds.length); // no duplicates across batches
+  });
+
+  it('a per-faction tier-300-400 crossing for ONE faction does not include another faction\'s exclusive 300-400 units', () => {
+    const before = snapshot({ winsByFaction: { 'Dark Angels': 9 } });
+    const after = snapshot({ winsByFaction: { 'Dark Angels': 10 } });
+
+    const batches = getNewlyUnlockedBatches(before, after);
+    const tier300to400 = batches.find((b) => b.tier.id === 'tier-300-400');
+
+    expect(tier300to400).toBeDefined();
+    const unitIds = tier300to400!.units.map((u) => u.id);
+    expect(unitIds).toContain('dark-angels-lion-el-jonson');
+    // Space Wolves' own 300-400 exclusive shouldn't appear from a
+    // Dark Angels win alone.
+    expect(unitIds).not.toContain('space-wolves-stormfang-gunship');
   });
 });

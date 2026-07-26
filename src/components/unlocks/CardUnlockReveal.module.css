@@ -1,0 +1,141 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 33, 36, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* One higher than CampaignVictoryModal's own z-index (1000) - in the
+     rare case both a campaign milestone AND a unit unlock land on the
+     same match, the unlock reveal sits on top rather than the two
+     fighting for stacking order by DOM insertion order alone. */
+  z-index: 1001;
+  padding: var(--space-xl);
+  overflow-y: auto;
+}
+
+.frame {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xl);
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-glow-gold);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border-muted);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-gold);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-sm);
+}
+
+.heroCardWrap {
+  position: relative;
+  display: inline-flex;
+  margin: var(--space-sm) 0;
+}
+
+/* Soft radial glow behind the hero card - the same "flash the content
+   sits inside" treatment RuleTriggerCallout uses for its own banner,
+   reused here so a big achievement moment reads consistently across the
+   app rather than each feature inventing its own version of "make this
+   feel special". */
+.glow {
+  position: absolute;
+  inset: -15%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd35c 0%, #c98a1c 45%, transparent 75%);
+  filter: blur(28px);
+  opacity: 0.45;
+}
+
+.heroName {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--color-text-primary);
+  margin: var(--space-xs) 0 0;
+}
+
+.tierLabel {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+}
+
+.moreCount {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: var(--space-xs) 0 0;
+}
+
+.continueButton {
+  margin-top: var(--space-md);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  background: var(--color-surface-alt);
+  border: 2px solid var(--color-accent-gold);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-xl);
+  cursor: pointer;
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.continueButton:hover {
+  box-shadow: var(--shadow-glow-gold);
+  transform: translateY(-2px);
+}

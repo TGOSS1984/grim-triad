@@ -25,6 +25,7 @@
  * seriesStore.applyRoundResult - see seriesStore.ts for the full mechanic.
  */
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { HomeScreen } from './screens/HomeScreen';
 import { ModeSelectScreen } from './screens/ModeSelectScreen';
 import { ArmyBuilderScreen } from './screens/ArmyBuilderScreen';
@@ -51,6 +52,8 @@ import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
 import { buildRivalRosterFromPool } from './state/campaignRivalMatchSetup';
 import { getFactionSlugForRosterName, getFactionNameForSlug, inferRosterNameFromUnitIds } from './data/activeFactions';
 import { useUnlockStore } from './state/unlockStore';
+import { getNewlyUnlockedBatches, type NewlyUnlockedBatch } from './data/unlockCriteria';
+import { CardUnlockReveal } from './components/unlocks/CardUnlockReveal';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
 import { DEFAULT_RULE_SET } from './engine/gameReducer';
@@ -132,6 +135,22 @@ export default function App() {
    */
   const [victoryModalKind, setVictoryModalKind] = useState<VictoryModalKind>(null);
 
+  /**
+   * Queue of newly-unlocked-unit batches (see
+   * data/unlockCriteria.ts's getNewlyUnlockedBatches) waiting to be shown
+   * via CardUnlockReveal, one at a time - queue[0] is always whichever is
+   * currently on screen. Cross-mode and mode-agnostic on purpose: unlike
+   * victoryModalKind (campaign-only, rendered only from
+   * CampaignResultScreen), this is rendered directly from App.tsx's own
+   * JSX below so it layers on top of WHATEVER result screen is showing,
+   * regardless of mode - a single-match or series win can unlock cards
+   * exactly the same as a campaign win can. Deliberately NOT reset by the
+   * result-screen navigation handlers the way victoryModalKind is: if a
+   * batch is still queued when the player continues past the result
+   * screen, it should still get shown, not silently dropped.
+   */
+  const [unlockRevealQueue, setUnlockRevealQueue] = useState<NewlyUnlockedBatch[]>([]);
+
   const game = useGameStore((s) => s.game);
   const startGame = useGameStore((s) => s.startGame);
   const resetGame = useGameStore((s) => s.reset);
@@ -203,6 +222,13 @@ export default function App() {
       // effect again once IT finishes, recording then instead.
       const isInconclusiveSeriesDraw = mode === 'series' && game.winner === 'draw';
       if (game.winner && !isInconclusiveSeriesDraw) {
+        // Snapshotted BEFORE any of this match's progress is recorded -
+        // getNewlyUnlockedBatches (below) needs to compare against
+        // exactly this moment to know which units this specific match's
+        // outcome newly unlocked, the same "before/after diff" pattern
+        // already used for campaignStore's hasCompletedCollection.
+        const progressBefore = useUnlockStore.getState();
+
         const outcome: 'win' | 'loss' | 'draw' =
           game.winner === 'draw' ? 'draw' : game.winner === HUMAN_PLAYER ? 'win' : 'loss';
         // Campaign's "Continue" flow skips ArmyBuilder on every match
@@ -240,6 +266,18 @@ export default function App() {
         }
         if (matchChainReactionCount > 0) {
           useUnlockStore.getState().recordChainReaction(matchChainReactionCount);
+        }
+
+        // Now that every stat this match could possibly affect has been
+        // recorded, diff against progressBefore to find what newly
+        // unlocked - queued for CardUnlockReveal to show one batch at a
+        // time (see that component's own header for why one-per-TIER,
+        // not one-per-unit). Appends rather than replaces the queue,
+        // since a still-showing previous reveal (the player hasn't
+        // dismissed it yet) shouldn't lose its own remaining batches.
+        const newBatches = getNewlyUnlockedBatches(progressBefore, useUnlockStore.getState());
+        if (newBatches.length > 0) {
+          setUnlockRevealQueue((queue) => [...queue, ...newBatches]);
         }
       }
 
@@ -586,7 +624,17 @@ export default function App() {
     handleArmyReady(humanArmyUnitIds);
   }
 
-  switch (step) {
+  /**
+   * Renders whichever screen `step` currently points to. Extracted into
+   * its own function (rather than being the component's own top-level
+   * return, as it used to be) specifically so CardUnlockReveal below can
+   * be layered on top of THIS, whatever it is - that reveal needs to
+   * appear regardless of which screen is currently showing (any mode's
+   * result screen, or even mid-navigation), not be threaded into every
+   * individual screen's own render call.
+   */
+  function renderStep(): ReactNode {
+    switch (step) {
     case 'home':
       return <HomeScreen onNewGame={handleHomeNewGame} />;
 
@@ -693,5 +741,21 @@ export default function App() {
           onReturnToMenu={handleReturnToHome}
         />
       );
+    }
   }
+
+  const currentUnlockReveal = unlockRevealQueue[0];
+
+  return (
+    <>
+      {renderStep()}
+      {currentUnlockReveal && (
+        <CardUnlockReveal
+          tier={currentUnlockReveal.tier}
+          units={currentUnlockReveal.units}
+          onDismiss={() => setUnlockRevealQueue((queue) => queue.slice(1))}
+        />
+      )}
+    </>
+  );
 }

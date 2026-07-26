@@ -24,6 +24,7 @@
  * "I earned that" moment rather than one more volume checkpoint.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from './activeFactions';
+import type { Unit } from './schema';
 
 /** Matches unlockStore's UnlockState shape (minus the action functions) - a plain snapshot, not the live store, so this module never needs to import unlockStore itself. */
 export interface UnlockProgressSnapshot {
@@ -153,4 +154,68 @@ export function isUnitUnlocked(
   const tier = getTierForPoints(points);
   if (!tier) return true;
   return tier.isUnlocked(snapshot, { factionsContainingUnit: getFactionsContainingUnit(unitId) });
+}
+
+/**
+ * Every currently-obtainable unit that has SOME tier at all (points >=
+ * 200) - i.e. every unit isUnitUnlocked could ever actually return false
+ * for. Precomputed once at module load, same reasoning as
+ * FACTIONS_CONTAINING_UNIT above: this gets scanned on every
+ * getNewlyUnlockedBatches call (once per finished match, across every
+ * mode - see App.tsx), so there's no reason to re-derive it from every
+ * active faction's full roster each time when the underlying data never
+ * changes after load.
+ */
+const LOCKABLE_UNITS: Unit[] = (() => {
+  const seen = new Set<string>();
+  const units: Unit[] = [];
+  for (const faction of ACTIVE_FACTIONS) {
+    for (const unit of getUnitsForRoster(faction.name)) {
+      if (seen.has(unit.id) || getTierForPoints(unit.points) === null) continue;
+      seen.add(unit.id);
+      units.push(unit);
+    }
+  }
+  return units;
+})();
+
+export interface NewlyUnlockedBatch {
+  tier: UnlockTier;
+  /** Every unit that just unlocked in this tier, sorted MOST EXPENSIVE FIRST - units[0] is the intended "hero" card for a reveal (the single most impressive unlock to actually show big), with the rest summarized as a count rather than shown individually. See file header on CardUnlockReveal.tsx for why: a single threshold crossing can unlock an entire tier's worth of units at once (up to 34, at the 200-250 tier), and showing that many full-screen reveals in a row would be exhausting rather than premium. */
+  units: Unit[];
+}
+
+/**
+ * Compares unlock progress BEFORE and AFTER something changed it (a
+ * finished match, in practice - see App.tsx) and returns which units
+ * newly became unlocked, grouped by tier, in ascending tier order. Empty
+ * array if nothing newly unlocked. A unit already unlocked in `before`
+ * is never included even if it's ALSO unlocked in `after` - only a
+ * genuine false -> true transition counts, matching every other
+ * "newly happened" detection already used elsewhere in this app (e.g.
+ * campaignStore's hasCompletedCollection transition in App.tsx).
+ */
+export function getNewlyUnlockedBatches(
+  before: UnlockProgressSnapshot,
+  after: UnlockProgressSnapshot,
+): NewlyUnlockedBatch[] {
+  const byTierId = new Map<string, Unit[]>();
+  for (const unit of LOCKABLE_UNITS) {
+    const wasLocked = !isUnitUnlocked(unit.id, unit.points, before);
+    const isNowUnlocked = isUnitUnlocked(unit.id, unit.points, after);
+    if (!wasLocked || !isNowUnlocked) continue;
+
+    const tier = getTierForPoints(unit.points)!;
+    const existing = byTierId.get(tier.id);
+    if (existing) {
+      existing.push(unit);
+    } else {
+      byTierId.set(tier.id, [unit]);
+    }
+  }
+
+  return UNLOCK_TIERS.filter((tier) => byTierId.has(tier.id)).map((tier) => ({
+    tier,
+    units: byTierId.get(tier.id)!.sort((a, b) => b.points - a.points),
+  }));
 }

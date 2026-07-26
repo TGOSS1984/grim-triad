@@ -949,4 +949,47 @@ describe('cross-mode unlock progress recording (state/unlockStore.ts)', () => {
     expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(3);
     expect(useUnlockStore.getState().chainReactionCount).toBe(2);
   });
+
+  it('shows the CardUnlockReveal modal the moment a win crosses an unlock threshold, and dismissing it clears the queue', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Force progress to be exactly one win short of the 200-250 tier's
+    // threshold (10 wins) before this win resolves - deterministic
+    // regardless of any other unlock math, same "preset state right
+    // before forcing the win" technique used by the Collection Complete
+    // and Rival Vanquished integration tests above.
+    useUnlockStore.setState({ totalWins: 9 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    expect(screen.getByRole('heading', { name: 'New Units Unlocked!' })).toBeInTheDocument();
+    expect(screen.getByText('200-250 pts')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(screen.queryByRole('heading', { name: 'New Units Unlocked!' })).not.toBeInTheDocument();
+  });
+
+  it('shows no unlock reveal on an ordinary win that crosses no threshold', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    expect(screen.queryByRole('heading', { name: /New Units? Unlocked!/ })).not.toBeInTheDocument();
+  });
 });
