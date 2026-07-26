@@ -251,4 +251,191 @@ describe('reset', () => {
     expect(game).toBeNull();
     expect(aiPlayer).toBeNull();
   });
+
+  it('also clears the unlock-tracking counters back to zero/false', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+    useGameStore.setState({
+      matchSameOrPlusComboCount: 3,
+      matchChainReactionCount: 2,
+      matchOpponentCapturedFromHuman: true,
+    });
+
+    useGameStore.getState().reset();
+
+    const state = useGameStore.getState();
+    expect(state.matchSameOrPlusComboCount).toBe(0);
+    expect(state.matchChainReactionCount).toBe(0);
+    expect(state.matchOpponentCapturedFromHuman).toBe(false);
+  });
+});
+
+describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReactionCount / matchOpponentCapturedFromHuman)', () => {
+  it('starts every match at zero/false', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+
+    const state = useGameStore.getState();
+    expect(state.matchSameOrPlusComboCount).toBe(0);
+    expect(state.matchChainReactionCount).toBe(0);
+    expect(state.matchOpponentCapturedFromHuman).toBe(false);
+  });
+
+  it("increments matchSameOrPlusComboCount when the HUMAN's own move triggers a Same capture", async () => {
+    const triggerCard = makeCard('blue', 'trigger', { top: 5, bottom: 1, left: 1, right: 5 });
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+
+    // Two matched sides - Same requires 2+ (see engine/rules/same.ts).
+    const redTop = makeCard('red', 'red-top', { top: 1, bottom: 5, left: 1, right: 1 });
+    const redRight = makeCard('red', 'red-right', { top: 1, bottom: 1, left: 5, right: 1 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ),
+      },
+    });
+
+    await useGameStore.getState().playCard(triggerCard, { row: 1, col: 1 });
+
+    expect(useGameStore.getState().matchSameOrPlusComboCount).toBe(1);
+    expect(useGameStore.getState().matchChainReactionCount).toBe(0);
+  });
+
+  it('does NOT increment matchSameOrPlusComboCount for a plain base capture (not a Same/Plus/Chain moment)', async () => {
+    const triggerCard = makeCard('blue', 'trigger', { top: 5, bottom: 9, left: 1, right: 1 });
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+    });
+
+    const redBelow = makeCard('red', 'red-below', { top: 1, bottom: 1, left: 1, right: 1 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => (r === 1 && c === 0 ? { card: redBelow } : cell)),
+        ),
+      },
+    });
+
+    await useGameStore.getState().playCard(triggerCard, { row: 0, col: 0 });
+
+    expect(useGameStore.getState().matchSameOrPlusComboCount).toBe(0);
+    expect(useGameStore.getState().matchChainReactionCount).toBe(0);
+  });
+
+  it('sets matchOpponentCapturedFromHuman when the AI captures a card from the human', async () => {
+    const blueFiller = makeCard('blue', 'blue-filler');
+    const redCapture = makeCard('red', 'red-capture', { top: 9, bottom: 9, left: 9, right: 9 });
+
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [blueFiller] },
+      redPlayer: { colour: 'red', hand: [redCapture] },
+      startingPlayer: 'blue',
+      aiPlayer: 'red',
+    });
+
+    // Rig the board so both sides have exactly one legal move each,
+    // deterministically forcing the AI's only possible move to capture a
+    // weak pre-placed blue card - no reliance on heuristic AI's move
+    // *choice* logic, since there's genuinely only one legal move at each
+    // step.
+    const weakBlue = makeCard('blue', 'weak-blue', { top: 1, bottom: 1, left: 1, right: 1 });
+    const filler = makeCard('red', 'other-filler');
+    const { game } = useGameStore.getState();
+    const board = game!.board.map((row, r) =>
+      row.map((cell, c) => {
+        if (r === 0 && c === 0) return { card: weakBlue }; // capture target
+        if (r === 0 && c === 1) return cell; // stays empty - the AI's only legal move, adjacent to weakBlue
+        if (r === 2 && c === 2) return cell; // stays empty - blue's own move target
+        return { card: filler };
+      }),
+    );
+    useGameStore.setState({ game: { ...game!, board } });
+
+    expect(useGameStore.getState().matchOpponentCapturedFromHuman).toBe(false);
+
+    await useGameStore.getState().playCard(blueFiller, { row: 2, col: 2 });
+
+    expect(useGameStore.getState().matchOpponentCapturedFromHuman).toBe(true);
+  });
+
+  it("does NOT increment matchSameOrPlusComboCount for the AI's own Same/Plus trigger - only the human's moves count", async () => {
+    // Same rigged-single-legal-move technique as above, but with Same
+    // active and two matched sides on the AI's forced capture, to confirm
+    // an AI-triggered Same still leaves the human's own combo count at 0.
+    const blueFiller = makeCard('blue', 'blue-filler', { top: 2, bottom: 2, left: 2, right: 2 });
+    const redCapture = makeCard('red', 'red-capture', { top: 5, bottom: 1, left: 5, right: 1 });
+
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [blueFiller] },
+      redPlayer: { colour: 'red', hand: [redCapture] },
+      startingPlayer: 'blue',
+      aiPlayer: 'red',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+
+    const blueAbove = makeCard('blue', 'blue-above', { top: 1, bottom: 5, left: 1, right: 1 });
+    const blueLeft = makeCard('blue', 'blue-left', { top: 1, bottom: 1, left: 1, right: 5 });
+    const filler = makeCard('red', 'other-filler');
+    const { game } = useGameStore.getState();
+    const board = game!.board.map((row, r) =>
+      row.map((cell, c) => {
+        if (r === 0 && c === 1) return { card: blueAbove };
+        if (r === 1 && c === 0) return { card: blueLeft };
+        if (r === 1 && c === 1) return cell; // stays empty - the AI's only legal move
+        if (r === 2 && c === 2) return cell; // stays empty - blue's own move target
+        return { card: filler };
+      }),
+    );
+    useGameStore.setState({ game: { ...game!, board } });
+
+    await useGameStore.getState().playCard(blueFiller, { row: 2, col: 2 });
+
+    expect(useGameStore.getState().matchOpponentCapturedFromHuman).toBe(true);
+    expect(useGameStore.getState().matchSameOrPlusComboCount).toBe(0);
+  });
+
+  it('triggerSuddenDeathRematch resets all three tracking fields for the fresh replay', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 1) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 1) },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, suddenDeath: true },
+    });
+    useGameStore.setState({
+      matchSameOrPlusComboCount: 2,
+      matchChainReactionCount: 1,
+      matchOpponentCapturedFromHuman: true,
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'draw' } });
+
+    await useGameStore.getState().triggerSuddenDeathRematch();
+
+    const state = useGameStore.getState();
+    expect(state.matchSameOrPlusComboCount).toBe(0);
+    expect(state.matchChainReactionCount).toBe(0);
+    expect(state.matchOpponentCapturedFromHuman).toBe(false);
+  });
 });

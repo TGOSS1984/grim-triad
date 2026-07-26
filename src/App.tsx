@@ -49,7 +49,8 @@ import {
 } from './state/campaignBalance';
 import { buildRandomAIRoster, unitIdsToHand } from './state/matchSetup';
 import { buildRivalRosterFromPool } from './state/campaignRivalMatchSetup';
-import { getFactionSlugForRosterName, inferRosterNameFromUnitIds } from './data/activeFactions';
+import { getFactionSlugForRosterName, getFactionNameForSlug, inferRosterNameFromUnitIds } from './data/activeFactions';
+import { useUnlockStore } from './state/unlockStore';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
 import { DEFAULT_RULE_SET } from './engine/gameReducer';
@@ -191,6 +192,57 @@ export default function App() {
     const delayMs = computeGameEndDelayMs(capturedCount);
 
     const timer = setTimeout(() => {
+      // Cross-mode unlock progress (state/unlockStore.ts) - recorded
+      // once, uniformly, for every mode's genuinely CONCLUDED match,
+      // before any of the mode-specific branches below (which handle
+      // campaign's collection, series' round progression, etc. -
+      // separate concerns campaignStore/seriesStore own). Skipped
+      // specifically for series mode's drawn round, which isn't actually
+      // concluded yet (auto-triggers a Sudden Death replay just below) -
+      // that replay's own eventual real result passes through this same
+      // effect again once IT finishes, recording then instead.
+      const isInconclusiveSeriesDraw = mode === 'series' && game.winner === 'draw';
+      if (game.winner && !isInconclusiveSeriesDraw) {
+        const outcome: 'win' | 'loss' | 'draw' =
+          game.winner === 'draw' ? 'draw' : game.winner === HUMAN_PLAYER ? 'win' : 'loss';
+        // Campaign's "Continue" flow skips ArmyBuilder on every match
+        // after the first, so armyBuilderStore would be stale by then -
+        // campaignRosterFactionSlug is captured once up front instead
+        // (see its own doc above) and converted slug -> name here, since
+        // unlockStore keys by NAME (matching achievements.ts's existing
+        // convention) while campaignRosterFactionSlug only has the slug.
+        // Single-match/series mode can read armyBuilderStore directly -
+        // ArmyBuilder always immediately precedes those matches, no
+        // "Continue"-style skip to go stale across.
+        const factionName =
+          mode === 'campaign'
+            ? campaignRosterFactionSlug
+              ? getFactionNameForSlug(campaignRosterFactionSlug)
+              : undefined
+            : (useArmyBuilderStore.getState().rosterName ?? undefined);
+        // "Flawless" = the opponent never captured a single card from the
+        // human across the whole match - see gameStore.ts's own header
+        // for why this has to be tracked live during play rather than
+        // reconstructed from the finished GameState alone.
+        const wasFlawless = !useGameStore.getState().matchOpponentCapturedFromHuman;
+        useUnlockStore.getState().recordMatchOutcome(outcome, factionName, wasFlawless);
+
+        // Flush this match's running Same/Plus/Chain tallies (see
+        // gameStore.ts's own header for why they accumulate there during
+        // play rather than being pushed to unlockStore trigger-by-trigger)
+        // as a single batched count each - unconditionally correct even
+        // when a tally is 0, but guarded anyway to avoid two pointless
+        // no-op store writes on the (very common) match with no
+        // Same/Plus/Chain triggers at all.
+        const { matchSameOrPlusComboCount, matchChainReactionCount } = useGameStore.getState();
+        if (matchSameOrPlusComboCount > 0) {
+          useUnlockStore.getState().recordSameOrPlusCombo(matchSameOrPlusComboCount);
+        }
+        if (matchChainReactionCount > 0) {
+          useUnlockStore.getState().recordChainReaction(matchChainReactionCount);
+        }
+      }
+
       if (mode === 'campaign') {
         if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
 

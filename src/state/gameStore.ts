@@ -14,11 +14,33 @@
  * render, so a card you'd just won back could be re-captured by the AI
  * before you ever saw it change colour - the animation existed, but
  * nothing paused long enough for it to register.
+ *
+ * matchSameOrPlusComboCount / matchChainReactionCount /
+ * matchOpponentCapturedFromHuman: running tallies for THIS match only,
+ * reset at the start of every startGame/triggerSuddenDeathRematch call -
+ * NOT persisted here, just fed into unlockStore's permanent cross-mode
+ * totals once the match actually finishes (see App.tsx's finished-game
+ * effect, the only reader of these three fields). They live here rather
+ * than being reconstructed after the fact because game.history (see
+ * engine/types.ts's Move) only records {player, card, position} per move
+ * - it doesn't retain which rule captured what, so "how many Same/Plus
+ * triggers happened this match" genuinely can't be answered after the
+ * match ends without tracking it AS it happens. Updated right after every
+ * applyMove call, for both the human's move (playCard) and each of the
+ * AI's (playAITurnsWithDelay) - using the same
+ * engine/captureTriggerKind.ts resolver RuleTriggerCallout uses, so
+ * what's tracked here always agrees with what the player actually saw
+ * called out on screen. Combo/chain counts only accumulate for the
+ * HUMAN's own moves (this is meant to track the PLAYER's achievement
+ * progress, not "combos that happened in a game they were part of");
+ * matchOpponentCapturedFromHuman only ever gets set by an AI move, since
+ * only the AI can capture cards FROM the human.
  */
 import { create } from 'zustand';
 import type { Card, Element, GameState, PlayerColour, PlayerState, Position, RuleSet } from '../engine/types';
 import { createGame, applyMove, DEFAULT_RULE_SET } from '../engine/gameReducer';
 import { startSuddenDeathRematch } from '../engine/rules/suddenDeath';
+import { resolvePrimaryCaptureTriggerKind } from '../engine/captureTriggerKind';
 import { chooseMove } from '../ai/heuristicAI';
 import type { AIOptions } from '../ai/types';
 import { computeMoveAnimationDurationMs } from './animationTiming';
@@ -41,6 +63,12 @@ export interface GameStoreState {
   game: GameState | null;
   aiPlayer: PlayerColour | null;
   aiOptions: AIOptions;
+  /** Running tally of Same/Plus triggers BY THE HUMAN this match - see file header. */
+  matchSameOrPlusComboCount: number;
+  /** Running tally of Chain triggers BY THE HUMAN this match - see file header. */
+  matchChainReactionCount: number;
+  /** True once the opponent has captured at least one card from the human at any point this match - see file header. */
+  matchOpponentCapturedFromHuman: boolean;
 
   startGame: (options: StartGameOptions) => Promise<void>;
   /** Plays a card for the current human turn, then auto-plays the AI's turn(s) if applicable. */
@@ -57,6 +85,31 @@ export interface GameStoreState {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** After the HUMAN's own move, tallies a Same/Plus/Chain trigger into this match's running counts - see file header for why this happens here, in real time, rather than being reconstructed after the match ends. */
+function trackHumanMoveForUnlocks(
+  get: () => GameStoreState,
+  set: (partial: Partial<GameStoreState>) => void,
+  resultingGame: GameState,
+): void {
+  const kind = resolvePrimaryCaptureTriggerKind(resultingGame.lastCapture?.captureKinds);
+  if (kind === 'same' || kind === 'plus') {
+    set({ matchSameOrPlusComboCount: get().matchSameOrPlusComboCount + 1 });
+  } else if (kind === 'chain') {
+    set({ matchChainReactionCount: get().matchChainReactionCount + 1 });
+  }
+}
+
+/** After an AI move, flags matchOpponentCapturedFromHuman if it captured anything - see file header. Only ever needs to flip false -> true once; a capture-free AI move leaves it untouched rather than needlessly re-setting an unchanged value. */
+function trackAIMoveForUnlocks(
+  set: (partial: Partial<GameStoreState>) => void,
+  resultingGame: GameState,
+): void {
+  const capturedCount = resultingGame.lastCapture?.positions.length ?? 0;
+  if (capturedCount > 0) {
+    set({ matchOpponentCapturedFromHuman: true });
+  }
 }
 
 /**
@@ -91,6 +144,7 @@ async function playAITurnsWithDelay(
     const move = chooseMove(current, aiPlayer, aiOptions);
     const next = applyMove(current, move);
     set({ game: next });
+    trackAIMoveForUnlocks(set, next);
   }
 }
 
@@ -98,6 +152,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   game: null,
   aiPlayer: null,
   aiOptions: {},
+  matchSameOrPlusComboCount: 0,
+  matchChainReactionCount: 0,
+  matchOpponentCapturedFromHuman: false,
 
   startGame: async ({
     bluePlayer,
@@ -109,7 +166,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     aiOptions = {},
   }) => {
     const game = createGame({ bluePlayer, redPlayer, startingPlayer, ruleSet, availableElements });
-    set({ game, aiPlayer, aiOptions });
+    set({
+      game,
+      aiPlayer,
+      aiOptions,
+      matchSameOrPlusComboCount: 0,
+      matchChainReactionCount: 0,
+      matchOpponentCapturedFromHuman: false,
+    });
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
 
@@ -126,6 +190,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const afterHuman = applyMove(game, { player: game.activePlayer, card, position });
     set({ game: afterHuman });
+    trackHumanMoveForUnlocks(get, set, afterHuman);
 
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
@@ -136,9 +201,26 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       throw new Error('Cannot start Sudden Death without a game');
     }
     const nextGame = startSuddenDeathRematch(game);
-    set({ game: nextGame });
+    // Sudden Death is a fresh decisive replay with new hands (see
+    // startSuddenDeathRematch) - resetting the running tallies here too,
+    // same as startGame, rather than carrying over counts from the drawn
+    // match that preceded it.
+    set({
+      game: nextGame,
+      matchSameOrPlusComboCount: 0,
+      matchChainReactionCount: 0,
+      matchOpponentCapturedFromHuman: false,
+    });
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
 
-  reset: () => set({ game: null, aiPlayer: null, aiOptions: {} }),
+  reset: () =>
+    set({
+      game: null,
+      aiPlayer: null,
+      aiOptions: {},
+      matchSameOrPlusComboCount: 0,
+      matchChainReactionCount: 0,
+      matchOpponentCapturedFromHuman: false,
+    }),
 }));

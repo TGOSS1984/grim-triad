@@ -7,6 +7,7 @@ import { useArmyBuilderStore } from './state/armyBuilderStore';
 import { useSeriesStore } from './state/seriesStore';
 import { useCampaignStore } from './state/campaignStore';
 import { getObtainableUnitIds } from './data/collectionProgress';
+import { useUnlockStore } from './state/unlockStore';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first - used to build a valid 5-card single-match army, and as
@@ -33,6 +34,7 @@ beforeEach(() => {
   useArmyBuilderStore.getState().reset();
   useSeriesStore.getState().reset();
   useCampaignStore.getState().resetCampaign();
+  useUnlockStore.getState().resetProgress();
   localStorage.clear();
 });
 
@@ -834,5 +836,117 @@ describe('App (campaign mode flow integration)', () => {
 
     expect(useCampaignStore.getState().draws).toBe(1);
     expect(useCampaignStore.getState().collection).toHaveLength(15);
+  });
+});
+
+describe('cross-mode unlock progress recording (state/unlockStore.ts)', () => {
+  it('a single-match win records totalWins and winsByFaction for the human\'s chosen faction', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().totalWins).toBe(1);
+    expect(useUnlockStore.getState().winsByFaction['Blood Angels']).toBe(1);
+  });
+
+  it('a single-match LOSS does not add to totalWins or winsByFaction', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'red' } });
+
+    await screen.findByRole('heading', { name: 'Red Wins!' }, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().totalWins).toBe(0);
+    expect(useUnlockStore.getState().winsByFaction['Blood Angels']).toBeUndefined();
+  });
+
+  it('a campaign win records progress too, correctly resolving the faction name from the tracked slug (not just armyBuilderStore, which campaign\'s Continue flow leaves stale)', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().totalWins).toBe(1);
+    // buildCampaignArmy builds a Blood Angels starting roster - see its own definition.
+    expect(useUnlockStore.getState().winsByFaction['Blood Angels']).toBe(1);
+  });
+
+  it('a series round win records progress too - confirms this is genuinely cross-mode, not campaign-only', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSeriesArmy(user, 10);
+    await user.click(screen.getByRole('button', { name: 'Start Round 1' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: /Round 1: Blue Wins/ }, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().totalWins).toBe(1);
+    expect(useUnlockStore.getState().winsByFaction['Blood Angels']).toBe(1);
+  });
+
+  it("series mode's drawn round does NOT record to unlockStore - it isn't actually concluded yet (Sudden Death takes over)", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSeriesArmy(user, 10);
+    await user.click(screen.getByRole('button', { name: 'Start Round 1' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'draw' } });
+
+    // Sudden Death auto-triggers - wait for a live game again rather than
+    // any particular screen, then confirm nothing was recorded from the
+    // inconclusive draw itself.
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().totalWins).toBe(0);
+  });
+
+  it("flushes this match's Same/Plus and Chain tallies from gameStore into unlockStore's permanent totals on a win", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildSingleMatchArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Simulate this match having already racked up some real-time tallies
+    // during play (see gameStore.test.ts for how these actually get
+    // incremented move-by-move) - this test's job is only to confirm
+    // App.tsx correctly FLUSHES whatever gameStore ended up with, not to
+    // re-prove the tallying logic itself.
+    useGameStore.setState({ matchSameOrPlusComboCount: 3, matchChainReactionCount: 2 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+
+    expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(3);
+    expect(useUnlockStore.getState().chainReactionCount).toBe(2);
   });
 });

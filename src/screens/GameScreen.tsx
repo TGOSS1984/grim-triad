@@ -17,6 +17,7 @@ import { computeEffectiveStats } from '../engine/rules/effectiveStats';
 import { emptyPositions } from '../engine/board';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
+import { resolvePrimaryCaptureTriggerKind } from '../engine/captureTriggerKind';
 import type { ElementId } from '../data/elements';
 import { Board } from '../components/board/Board';
 import type { BoardCardData } from '../components/board/BoardCell';
@@ -60,26 +61,19 @@ function toDisplayFields(
 }
 
 /**
- * Picks the ONE rule to call out for a move's captures, given all of
- * them (see engine/types.ts's CaptureKind for what each value means).
- * Priority: 'same' or 'plus' (the initiating rule) beats a bare
- * 'cascade' entry, since a cascaded card's kind doesn't tell you what
- * STARTED the chain - only that this specific card was swept up by one.
- * A standalone 'cascade' with neither 'same' nor 'plus' present means the
- * Chain rule fired on a plain base capture, which IS worth calling out on
- * its own ("CHAIN!"). Plain base captures (no same/plus/cascade at all)
- * intentionally return null - that's the default mechanic every match
- * has, not the "did you catch that?" moment Same/Plus/Chain are.
+ * Picks the ONE rule to call out for a move's captures - a thin wrapper
+ * around the shared engine/captureTriggerKind.ts resolver (also used by
+ * gameStore.ts for cross-mode unlock progress tracking, so both stay in
+ * perfect agreement about what counts as a trigger), adding only the UI
+ * concern of whether to show the smaller "Chain Reaction!" flourish.
  */
 function resolvePrimaryTrigger(
   captureKinds: CaptureKind[] | undefined,
   comboTriggered: boolean,
 ): RuleTrigger | null {
-  if (!captureKinds || captureKinds.length === 0) return null;
-  if (captureKinds.includes('same')) return { kind: 'same', comboExtended: comboTriggered };
-  if (captureKinds.includes('plus')) return { kind: 'plus', comboExtended: comboTriggered };
-  if (captureKinds.includes('cascade')) return { kind: 'chain', comboExtended: false };
-  return null;
+  const kind = resolvePrimaryCaptureTriggerKind(captureKinds);
+  if (!kind) return null;
+  return { kind, comboExtended: comboTriggered };
 }
 
 /**

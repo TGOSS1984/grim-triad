@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getUnitsForRoster,
   getFactionSlugForRosterName,
+  getFactionNameForSlug,
   inferRosterNameFromUnitIds,
   getUnitById,
 } from './activeFactions';
@@ -58,6 +59,21 @@ describe('getFactionSlugForRosterName', () => {
 
   it('returns undefined for an unknown roster name', () => {
     expect(getFactionSlugForRosterName('Not A Real Roster')).toBeUndefined();
+  });
+});
+
+describe('getFactionNameForSlug', () => {
+  it('resolves a known slug to its roster name - the reverse of getFactionSlugForRosterName', () => {
+    expect(getFactionNameForSlug('blood-angels')).toBe('Blood Angels');
+  });
+
+  it('round-trips with getFactionSlugForRosterName', () => {
+    const slug = getFactionSlugForRosterName('Necrons')!;
+    expect(getFactionNameForSlug(slug)).toBe('Necrons');
+  });
+
+  it('returns undefined for an unknown slug', () => {
+    expect(getFactionNameForSlug('not-a-real-slug')).toBeUndefined();
   });
 });
 

@@ -21,15 +21,24 @@
  * relationship achievements.ts has to campaignStore's raw fields.
  *
  * Two DIFFERENT kinds of "how many combos happened" are tracked
- * separately on purpose:
- *  - recordSameOrPlusCombo/recordChainReaction are meant to be called in
- *    REAL TIME, once per trigger, as they happen during a live match
- *    (the natural hook point is wherever GameScreen already resolves
- *    RuleTriggerCallout's primary trigger per move - see that
- *    component's own history). This avoids having to reconstruct "how
- *    many Same/Plus triggers happened across this whole match" after the
- *    fact from game.history, which lastCapture alone (only ever reflects
- *    the MOST RECENT move) can't answer.
+ * separately from `recordMatchOutcome` below, on purpose:
+ *  - recordSameOrPlusCombo/recordChainReaction add to their running
+ *    totals here, but AREN'T called trigger-by-trigger in real time from
+ *    wherever a Same/Plus/Chain moment actually happens (e.g.
+ *    RuleTriggerCallout's resolution in GameScreen.tsx) - that would mean
+ *    this store reaching into the middle of live gameplay. Instead,
+ *    gameStore.ts keeps its OWN running per-match tally
+ *    (matchSameOrPlusComboCount/matchChainReactionCount, reset every
+ *    startGame) using the exact same trigger-resolution logic
+ *    (engine/captureTriggerKind.ts), and App.tsx flushes that tally here
+ *    as a single batched count once the match finishes - see this
+ *    interface's own doc on each function for why they still accept an
+ *    optional count rather than assuming "always +1". Either way avoids
+ *    reconstructing "how many Same/Plus triggers happened across this
+ *    whole match" after the fact from game.history, which lastCapture
+ *    alone (only ever reflects the MOST RECENT move) can't answer -
+ *    tracking has to happen AS it happens, just at the gameStore layer
+ *    rather than in this store directly.
  *  - recordMatchOutcome is called exactly ONCE per finished match,
  *    regardless of mode, and separately carries whether that win was
  *    FLAWLESS (opponent captured zero cards across the whole match) -
@@ -74,10 +83,10 @@ export interface UnlockState {
   /** Faction names the player has won at least one FLAWLESS match with (opponent captured zero cards across the whole match) - each name appears once regardless of how many flawless wins with that faction. */
   flawlessWinFactions: string[];
 
-  /** Call once per Same or Plus trigger, in real time during a live match - see file header for why this can't be reconstructed after the match ends. */
-  recordSameOrPlusCombo: () => void;
-  /** Call once per Chain-rule trigger, in real time during a live match - see file header. */
-  recordChainReaction: () => void;
+  /** Adds `count` (default 1) to sameOrPlusComboCount. Flexible enough for a one-at-a-time real-time call, but in practice App.tsx calls this ONCE per match with gameStore's final matchSameOrPlusComboCount tally - see that store's own header for why the running total lives there during play rather than being pushed here trigger-by-trigger. */
+  recordSameOrPlusCombo: (count?: number) => void;
+  /** Same as recordSameOrPlusCombo, for chainReactionCount. */
+  recordChainReaction: (count?: number) => void;
   /**
    * Call exactly once when a match finishes, regardless of game mode.
    * `factionName` is the human player's faction for that match (undefined
@@ -111,12 +120,12 @@ export const useUnlockStore = create<UnlockState>()(
     (set, get) => ({
       ...initialState,
 
-      recordSameOrPlusCombo: () => {
-        set({ sameOrPlusComboCount: get().sameOrPlusComboCount + 1 });
+      recordSameOrPlusCombo: (count = 1) => {
+        set({ sameOrPlusComboCount: get().sameOrPlusComboCount + count });
       },
 
-      recordChainReaction: () => {
-        set({ chainReactionCount: get().chainReactionCount + 1 });
+      recordChainReaction: (count = 1) => {
+        set({ chainReactionCount: get().chainReactionCount + count });
       },
 
       recordMatchOutcome: (outcome, factionName, wasFlawless) => {

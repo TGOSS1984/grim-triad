@@ -34,6 +34,26 @@ describe('unlockStore recordSameOrPlusCombo / recordChainReaction', () => {
     expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(1);
     expect(useUnlockStore.getState().chainReactionCount).toBe(2);
   });
+
+  it('accepts a batch count in one call - the actual way App.tsx flushes gameStore\'s per-match tally', () => {
+    useUnlockStore.getState().recordSameOrPlusCombo(4);
+    useUnlockStore.getState().recordChainReaction(2);
+
+    expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(4);
+    expect(useUnlockStore.getState().chainReactionCount).toBe(2);
+  });
+
+  it('a batch call adds to, rather than replaces, any existing count', () => {
+    useUnlockStore.getState().recordSameOrPlusCombo();
+    useUnlockStore.getState().recordSameOrPlusCombo(3);
+
+    expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(4);
+  });
+
+  it('a batch count of 0 is a safe no-op', () => {
+    useUnlockStore.getState().recordSameOrPlusCombo(0);
+    expect(useUnlockStore.getState().sameOrPlusComboCount).toBe(0);
+  });
 });
 
 describe('unlockStore recordMatchOutcome', () => {

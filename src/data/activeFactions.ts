@@ -135,6 +135,23 @@ export function getFactionSlugForRosterName(rosterName: string): string | undefi
   return FACTION_SLUG_BY_ROSTER_NAME.get(rosterName);
 }
 
+/** O(1) reverse lookup from a faction slug back to its roster name - built once at module load, same reasoning as UNITS_BY_ID above. */
+const ROSTER_NAME_BY_FACTION_SLUG = new Map<string, string>(
+  ALL_FACTIONS.map((f) => [f.slug, f.name]),
+);
+
+/**
+ * The reverse of getFactionSlugForRosterName - resolves a faction slug
+ * back to its roster/chapter NAME. Needed anywhere a slug is the only
+ * thing already tracked (e.g. App.tsx's campaignRosterFactionSlug) but a
+ * NAME is what's actually needed downstream (unlockStore's
+ * winsByFaction/flawlessWinFactions are keyed by name, matching the
+ * convention achievements.ts already established).
+ */
+export function getFactionNameForSlug(slug: string): string | undefined {
+  return ROSTER_NAME_BY_FACTION_SLUG.get(slug);
+}
+
 /**
  * Infers which roster an AI-generated unit id list (from
  * matchSetup.buildRandomAIRoster) was actually drawn for, WITHOUT
