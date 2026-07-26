@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ACTIVE_FACTIONS } from './activeFactions';
 import {
   UNLOCK_TIERS,
   getTierForPoints,
@@ -6,6 +7,7 @@ import {
   isUnitUnlocked,
   getUnitUnlockProgress,
   getNewlyUnlockedBatches,
+  getTierUnlockCounts,
   type UnlockProgressSnapshot,
 } from './unlockCriteria';
 
@@ -445,5 +447,78 @@ describe('getNewlyUnlockedBatches', () => {
     // Space Wolves' own 300-400 exclusive shouldn't appear from a
     // Dark Angels win alone.
     expect(unitIds).not.toContain('space-wolves-stormfang-gunship');
+  });
+});
+
+describe('getTierUnlockCounts', () => {
+  it('returns all five tiers, in ascending order, even with zero progress', () => {
+    const counts = getTierUnlockCounts(snapshot());
+    expect(counts.map((c) => c.tier.id)).toEqual([
+      'tier-200-250',
+      'tier-250-300',
+      'tier-300-400',
+      'tier-400-500',
+      'tier-500-plus',
+    ]);
+  });
+
+  it('reports 0 unlocked (but a nonzero total) for every tier with no progress', () => {
+    const counts = getTierUnlockCounts(snapshot());
+    for (const { unlocked, total } of counts) {
+      expect(unlocked).toBe(0);
+      expect(total).toBeGreaterThan(0);
+    }
+  });
+
+  it("each tier's total matches the real data - see unlockCriteria.ts's own header for the source numbers", () => {
+    const counts = getTierUnlockCounts(snapshot());
+    const totalsByTierId = Object.fromEntries(counts.map((c) => [c.tier.id, c.total]));
+    expect(totalsByTierId).toEqual({
+      'tier-200-250': 34,
+      'tier-250-300': 23,
+      'tier-300-400': 16,
+      'tier-400-500': 9,
+      'tier-500-plus': 10,
+    });
+  });
+
+  it('reports every unit unlocked once every tier is fully crossed', () => {
+    // tier-300-400 requires 10 wins with THAT UNIT'S OWN faction - a
+    // handful of factions isn't enough to unlock every 300-400 unit, only
+    // wins across EVERY active faction genuinely clears it (any exclusive
+    // unit belonging to a faction left out would still be locked).
+    const winsByFaction = Object.fromEntries(ACTIVE_FACTIONS.map((f) => [f.name, 50]));
+    const generous = snapshot({
+      totalWins: 50,
+      sameOrPlusComboCount: 50,
+      winsByFaction,
+      flawlessWinFactions: ['Necrons', 'Orks', 'Aeldari'],
+    });
+
+    const counts = getTierUnlockCounts(generous);
+
+    for (const { unlocked, total } of counts) {
+      expect(unlocked).toBe(total);
+    }
+  });
+
+  it('a 300-400 (per-faction) count reflects only units unlockable via the factions actually played, not the whole tier', () => {
+    // Winning only with Dark Angels shouldn't unlock every 300-400 unit,
+    // just the ones reachable through Dark Angels (directly, or via a
+    // shared generic pool it belongs to).
+    const counts = getTierUnlockCounts(snapshot({ winsByFaction: { 'Dark Angels': 10 } }));
+    const tier300to400 = counts.find((c) => c.tier.id === 'tier-300-400')!;
+
+    expect(tier300to400.unlocked).toBeGreaterThan(0);
+    expect(tier300to400.unlocked).toBeLessThan(tier300to400.total);
+  });
+
+  it('counts increase monotonically as progress increases (never decreases for more progress)', () => {
+    const low = getTierUnlockCounts(snapshot({ totalWins: 5 }));
+    const high = getTierUnlockCounts(snapshot({ totalWins: 15 }));
+
+    const lowTier1 = low.find((c) => c.tier.id === 'tier-200-250')!;
+    const highTier1 = high.find((c) => c.tier.id === 'tier-200-250')!;
+    expect(highTier1.unlocked).toBeGreaterThanOrEqual(lowTier1.unlocked);
   });
 });

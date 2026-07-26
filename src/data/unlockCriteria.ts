@@ -27,7 +27,8 @@
  * not just "yes/no" - so locked-card UI can show live progress (e.g.
  * "6/10 games won") instead of a static, unchanging description. See
  * getUnitUnlockProgress for the per-unit entry point armyBuilderStore
- * uses.
+ * uses, and getTierUnlockCounts for the tier-level "12/34 units unlocked"
+ * summary screens/ProgressScreen.tsx uses.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from './activeFactions';
 import type { Unit } from './schema';
@@ -282,6 +283,24 @@ const LOCKABLE_UNITS: Unit[] = (() => {
   return units;
 })();
 
+/**
+ * LOCKABLE_UNITS grouped by which tier each belongs to - precomputed once
+ * at module load alongside LOCKABLE_UNITS itself, same reasoning: this
+ * gets scanned by getTierUnlockCounts below (the Progress screen's own
+ * summary), no reason to re-filter the full list by tier on every call
+ * when the grouping never changes after load.
+ */
+const LOCKABLE_UNITS_BY_TIER_ID = new Map<string, Unit[]>();
+for (const unit of LOCKABLE_UNITS) {
+  const tier = getTierForPoints(unit.points)!;
+  const existing = LOCKABLE_UNITS_BY_TIER_ID.get(tier.id);
+  if (existing) {
+    existing.push(unit);
+  } else {
+    LOCKABLE_UNITS_BY_TIER_ID.set(tier.id, [unit]);
+  }
+}
+
 export interface NewlyUnlockedBatch {
   tier: UnlockTier;
   /** Every unit that just unlocked in this tier, sorted MOST EXPENSIVE FIRST - units[0] is the intended "hero" card for a reveal (the single most impressive unlock to actually show big), with the rest summarized as a count rather than shown individually. See file header on CardUnlockReveal.tsx for why: a single threshold crossing can unlock an entire tier's worth of units at once (up to 34, at the 200-250 tier), and showing that many full-screen reveals in a row would be exhausting rather than premium. */
@@ -321,4 +340,38 @@ export function getNewlyUnlockedBatches(
     tier,
     units: byTierId.get(tier.id)!.sort((a, b) => b.points - a.points),
   }));
+}
+
+export interface TierUnlockCount {
+  tier: UnlockTier;
+  /** How many of this tier's units are unlocked right now, given the snapshot passed to getTierUnlockCounts. */
+  unlocked: number;
+  /** Total units in this tier - fixed by the catalog, independent of any snapshot. */
+  total: number;
+}
+
+/**
+ * How many units are currently unlocked vs the total in each tier, given
+ * a progress snapshot - the Progress screen's own "12/34 units unlocked"
+ * per-tier summary. Returns ALL FIVE tiers, in ascending order, regardless
+ * of whether anything in a given tier is unlocked yet - unlike
+ * getNewlyUnlockedBatches above (which only returns tiers that JUST
+ * changed, for a one-time reveal), this is a full snapshot of every
+ * tier's current state, meant for a persistent summary view that's
+ * re-read on every visit, not a transition to react to once.
+ *
+ * Deliberately does NOT try to reduce tier-300-400 (the per-faction tier)
+ * to a single current/target number the way getProgress does for one
+ * specific unit - there's no single meaningful "6/10" for a tier whose
+ * condition varies per unit's own faction. The unlocked/total COUNT still
+ * works fine for it (a unit either counts as unlocked or it doesn't,
+ * regardless of which faction got it there), which is all a tier-level
+ * summary actually needs.
+ */
+export function getTierUnlockCounts(snapshot: UnlockProgressSnapshot): TierUnlockCount[] {
+  return UNLOCK_TIERS.map((tier) => {
+    const units = LOCKABLE_UNITS_BY_TIER_ID.get(tier.id) ?? [];
+    const unlocked = units.filter((unit) => isUnitUnlocked(unit.id, unit.points, snapshot)).length;
+    return { tier, unlocked, total: units.length };
+  });
 }
