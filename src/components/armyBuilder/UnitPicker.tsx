@@ -11,18 +11,22 @@
  * the silhouette rather than nothing at all. The card itself still opens
  * in the hover preview and Lightbox at full size, locked treatment and
  * all - a player should be able to admire exactly what they're working
- * toward, not just read a tier label. `isLocked` is injected as a
- * predicate (same pattern as isDisabledExtra below) so this component
- * stays mode-agnostic and never needs to know armyBuilderStore or
- * unlockStore exist; the human-readable "why" text, on the other hand, is
- * computed directly from getTierForPoints - that's pure data about the
- * unit itself (its points cost), not a store-dependent decision, so no
- * injection is needed for it.
+ * toward, not just read a tier label. `isLocked`/`getUnlockProgress` are
+ * both injected as predicates (same pattern as isDisabledExtra below) so
+ * this component stays mode-agnostic and never needs to know
+ * armyBuilderStore or unlockStore exist.
+ *
+ * The locked caption prefers LIVE progress ("6/10 games won", from
+ * getUnlockProgress) over the tier's static description ("Win 10 games")
+ * whenever it's available - formatLockedCaption below falls back to the
+ * static text only if getUnlockProgress wasn't provided at all, or
+ * (shouldn't normally happen) returns null for a unit this component
+ * otherwise believes is locked.
  */
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Unit } from '../../data/schema';
-import { getTierForPoints } from '../../data/unlockCriteria';
+import { getTierForPoints, type UnlockProgress } from '../../data/unlockCriteria';
 import { Card } from '../card/Card';
 import { Lightbox } from '../common/Lightbox';
 import { useResponsiveLightboxCardWidth } from './useResponsiveLightboxCardWidth';
@@ -56,8 +60,20 @@ export interface UnitPickerProps {
    * omitted or wrong, a locked unit still can't actually be added.
    */
   isLocked?: (unitId: string) => boolean;
+  /** Live "how close" progress for a locked unit - see armyBuilderStore's own getUnlockProgress, the intended caller. See file header for the fallback when this is omitted or returns null. */
+  getUnlockProgress?: (unitId: string) => UnlockProgress | null;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
+}
+
+/** Locked-caption text for a unit - live progress when available, the tier's static description otherwise. See file header. */
+function formatLockedCaption(
+  unit: Unit,
+  getUnlockProgress?: (unitId: string) => UnlockProgress | null,
+): string {
+  const progress = getUnlockProgress?.(unit.id);
+  if (progress) return `${progress.current}/${progress.target} ${progress.label}`;
+  return getTierForPoints(unit.points)?.description ?? '';
 }
 
 /** Width (px) of the small row thumbnail card - kept tight so rows stay compact in the scrolling list. */
@@ -90,7 +106,15 @@ const HOVER_PREVIEW_GAP = 12;
  * than being cut off inside it. Clicking opens a full-size Card in a
  * Lightbox.
  */
-function UnitRowCard({ unit, locked }: { unit: Unit; locked: boolean }) {
+function UnitRowCard({
+  unit,
+  locked,
+  getUnlockProgress,
+}: {
+  unit: Unit;
+  locked: boolean;
+  getUnlockProgress?: (unitId: string) => UnlockProgress | null;
+}) {
   const [hovering, setHovering] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -170,7 +194,7 @@ function UnitRowCard({ unit, locked }: { unit: Unit; locked: boolean }) {
       {lightboxOpen && (
         <Lightbox
           onClose={() => setLightboxOpen(false)}
-          caption={locked ? `Locked - ${getTierForPoints(unit.points)?.description}` : undefined}
+          caption={locked ? `Locked - ${formatLockedCaption(unit, getUnlockProgress)}` : undefined}
         >
           <div className={locked ? styles.lockedCardWrap : undefined}>
             <Card
@@ -201,6 +225,7 @@ export function UnitPicker({
   atCapacity = false,
   isDisabledExtra,
   isLocked,
+  getUnlockProgress,
   onAdd,
   onRemove,
 }: UnitPickerProps) {
@@ -215,15 +240,16 @@ export function UnitPicker({
         const affordable = remainingPoints !== null && unit.points <= remainingPoints;
         const blockedByExtraRule = isDisabledExtra?.(unit.id) ?? false;
         const canAdd = !isSelected && affordable && !atCapacity && !blockedByExtraRule && !locked;
-        const tier = locked ? getTierForPoints(unit.points) : null;
 
         return (
           <li key={unit.id} className={[styles.row, locked ? styles.rowLocked : ''].join(' ')}>
-            <UnitRowCard unit={unit} locked={locked} />
+            <UnitRowCard unit={unit} locked={locked} getUnlockProgress={getUnlockProgress} />
             <div className={styles.info}>
               <span className={styles.name}>{unit.name}</span>
-              {locked && tier ? (
-                <span className={styles.lockedMeta}>&#128274; {tier.description}</span>
+              {locked ? (
+                <span className={styles.lockedMeta}>
+                  &#128274; {formatLockedCaption(unit, getUnlockProgress)}
+                </span>
               ) : (
                 <span className={styles.meta}>
                   {unit.battlefieldRole} &middot; {unit.unitType}

@@ -346,3 +346,36 @@ describe('unlock gating (isUnitLocked / addUnit)', () => {
     expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([LAND_RAIDER]);
   });
 });
+
+describe('getUnlockProgress', () => {
+  const LAND_RAIDER = 'space-marines-land-raider'; // 240pts, generic pool
+
+  it('returns null for a unit that is not locked at all', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.getUnlockProgress(CAPTAIN)).toBeNull(); // 80pts
+  });
+
+  it('returns live progress for a locked unit', () => {
+    for (let i = 0; i < 6; i++) useUnlockStore.getState().recordMatchOutcome('win', 'Orks', false);
+
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.getUnlockProgress(LAND_RAIDER)).toEqual({
+      current: 6,
+      target: 10,
+      label: 'games won',
+    });
+  });
+
+  it('returns null again once the unit becomes fully unlocked', () => {
+    for (let i = 0; i < 10; i++) useUnlockStore.getState().recordMatchOutcome('win', 'Orks', false);
+
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.getUnlockProgress(LAND_RAIDER)).toBeNull();
+  });
+});

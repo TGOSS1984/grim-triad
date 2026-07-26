@@ -330,6 +330,61 @@ describe('UnitPicker locked units', () => {
     expect(screen.queryByText('Vehicle')).not.toBeInTheDocument();
   });
 
+  it('prefers LIVE progress from getUnlockProgress over the static tier description, when provided', () => {
+    const units = [makeUnit({ id: 'a', points: 240, battlefieldRole: 'Vehicle' })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        getUnlockProgress={() => ({ current: 6, target: 10, label: 'games won' })}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/6\/10 games won/)).toBeInTheDocument();
+    expect(screen.queryByText(/Win 10 games/)).not.toBeInTheDocument();
+  });
+
+  it('falls back to the static tier description if getUnlockProgress returns null despite the unit being locked', () => {
+    const units = [makeUnit({ id: 'a', points: 240 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        getUnlockProgress={() => null}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Win 10 games/)).toBeInTheDocument();
+  });
+
+  it('shows live progress in the Lightbox caption too, not just the row', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Progress Unit', points: 240 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        getUnlockProgress={() => ({ current: 3, target: 10, label: 'wins with Necrons' })}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /View larger card for locked unit Progress Unit/ }));
+
+    expect(screen.getByText('Locked - 3/10 wins with Necrons')).toBeInTheDocument();
+  });
+
   it('a locked unit still opens its card in the Lightbox when clicked - browsing what you could unlock is allowed', async () => {
     const user = userEvent.setup();
     const units = [makeUnit({ id: 'a', name: 'Mystery Titan', points: 600 })];

@@ -45,10 +45,18 @@
  * changes at the end of a match, which always happens on a different
  * screen (ResultScreen/CampaignResultScreen/SeriesResultScreen) - by the
  * time the player navigates back to ArmyBuilder it remounts fresh anyway.
+ * Same limitation applies to getUnlockProgress below, for the same reason.
+ *
+ * getUnlockProgress mirrors isUnitLocked's own shape - same
+ * ENABLE_CARD_UNLOCKS respect, same getState() snapshot read - but
+ * answers "how close" (data/unlockCriteria.ts's getUnitUnlockProgress)
+ * rather than isUnitLocked's plain yes/no, so locked-card UI can show
+ * live progress ("6/10 games won") instead of a static, unchanging
+ * description.
  */
 import { create } from 'zustand';
 import { getUnitsForRoster, getUnitById } from '../data/activeFactions';
-import { isUnitUnlocked } from '../data/unlockCriteria';
+import { isUnitUnlocked, getUnitUnlockProgress, type UnlockProgress } from '../data/unlockCriteria';
 import { useUnlockStore, ENABLE_CARD_UNLOCKS } from './unlockStore';
 import type { Unit } from '../data/schema';
 
@@ -74,6 +82,8 @@ export interface ArmyBuilderState {
   availableUnits: () => Unit[];
   /** True if this unit is currently locked by cross-mode unlock progress - see file header. Always false when unlockStore's ENABLE_CARD_UNLOCKS is off, or for a unit id that doesn't resolve to a real unit (defensive, shouldn't normally happen). */
   isUnitLocked: (unitId: string) => boolean;
+  /** Live "how close" progress toward unlocking this unit, or null if it isn't currently locked at all - see file header. */
+  getUnlockProgress: (unitId: string) => UnlockProgress | null;
 }
 
 function unitById(rosterUnits: Unit[], unitId: string): Unit | undefined {
@@ -183,5 +193,12 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
     const unit = getUnitById(unitId);
     if (!unit) return false;
     return !isUnitUnlocked(unitId, unit.points, useUnlockStore.getState());
+  },
+
+  getUnlockProgress: (unitId) => {
+    if (!ENABLE_CARD_UNLOCKS) return null;
+    const unit = getUnitById(unitId);
+    if (!unit) return null;
+    return getUnitUnlockProgress(unitId, unit.points, useUnlockStore.getState());
   },
 }));

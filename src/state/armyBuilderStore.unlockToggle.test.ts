@@ -39,4 +39,11 @@ describe('armyBuilderStore with ENABLE_CARD_UNLOCKS off', () => {
     expect(added).toBe(true);
     expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual(['space-marines-land-raider']);
   });
+
+  it('getUnlockProgress always returns null, even for an expensive unit with zero unlock progress', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.getUnlockProgress('space-marines-land-raider')).toBeNull();
+  });
 });

@@ -82,6 +82,7 @@ export function ArmyBuilder({
   const remainingPoints = useArmyBuilderStore((s) => s.remainingPoints());
   const availableUnits = useArmyBuilderStore((s) => s.availableUnits());
   const isUnitLocked = useArmyBuilderStore((s) => s.isUnitLocked);
+  const getUnlockProgress = useArmyBuilderStore((s) => s.getUnlockProgress);
 
   const minArmySize = requiredArmySize ?? DEFAULT_MIN_ARMY_SIZE;
 
@@ -250,6 +251,7 @@ export function ArmyBuilder({
               atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
               isDisabledExtra={isDisabledByPowerCap}
               isLocked={isUnitLocked}
+              getUnlockProgress={getUnlockProgress}
               onAdd={addUnit}
               onRemove={removeUnit}
             />
@@ -261,6 +263,7 @@ export function ArmyBuilder({
               atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
               isDisabledExtra={isDisabledByPowerCap}
               isLocked={isUnitLocked}
+              getUnlockProgress={getUnlockProgress}
               onAdd={addUnit}
               onRemove={removeUnit}
             />

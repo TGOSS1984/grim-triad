@@ -10,8 +10,10 @@
  * to know the other exists) - including the same locked-unit treatment:
  * a locked unit is still shown and still fully browsable (it's the
  * "large card" view, arguably the BETTER place to admire a locked unit
- * up close), just can't be added, with the same "why" caption UnitPicker
- * shows.
+ * up close), just can't be added, with the same live-progress caption
+ * UnitPicker shows (formatLockedCaption below is a deliberate duplicate
+ * of UnitPicker's own copy, not a shared import - same "these two views
+ * don't know about each other" independence as the rest of this file).
  *
  * Reuses useResponsiveLightboxCardWidth for the big card - it's the exact
  * same sizing problem the Lightbox already solved (a large card that must
@@ -21,7 +23,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, TouchEvent } from 'react';
 import type { Unit } from '../../data/schema';
-import { getTierForPoints } from '../../data/unlockCriteria';
+import { getTierForPoints, type UnlockProgress } from '../../data/unlockCriteria';
 import { Card } from '../card/Card';
 import { useResponsiveLightboxCardWidth } from './useResponsiveLightboxCardWidth';
 import styles from './UnitCarousel.module.css';
@@ -37,8 +39,20 @@ export interface UnitCarouselProps {
   isDisabledExtra?: (unitId: string) => boolean;
   /** Same locked-unit predicate as UnitPicker - see that component's own doc. */
   isLocked?: (unitId: string) => boolean;
+  /** Same live-progress predicate as UnitPicker - see that component's own doc. */
+  getUnlockProgress?: (unitId: string) => UnlockProgress | null;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
+}
+
+/** Locked-caption text for a unit - live progress when available, the tier's static description otherwise. Deliberate duplicate of UnitPicker's own copy - see file header. */
+function formatLockedCaption(
+  unit: Unit,
+  getUnlockProgress?: (unitId: string) => UnlockProgress | null,
+): string {
+  const progress = getUnlockProgress?.(unit.id);
+  if (progress) return `${progress.current}/${progress.target} ${progress.label}`;
+  return getTierForPoints(unit.points)?.description ?? '';
 }
 
 /** Horizontal swipe distance (px) required to trigger Prev/Next - short enough to feel responsive, long enough to not fire on an incidental tap-drag. */
@@ -51,6 +65,7 @@ export function UnitCarousel({
   atCapacity = false,
   isDisabledExtra,
   isLocked,
+  getUnlockProgress,
   onAdd,
   onRemove,
 }: UnitCarouselProps) {
@@ -78,7 +93,6 @@ export function UnitCarousel({
   const affordable = remainingPoints !== null && unit.points <= remainingPoints;
   const blockedByExtraRule = isDisabledExtra?.(unit.id) ?? false;
   const canAdd = !isSelected && affordable && !atCapacity && !blockedByExtraRule && !locked;
-  const tier = locked ? getTierForPoints(unit.points) : null;
 
   function goPrev() {
     setIndex((i) => (i - 1 + sorted.length) % sorted.length);
@@ -152,8 +166,10 @@ export function UnitCarousel({
             )}
           </div>
           <div className={styles.unitInfo}>
-            {locked && tier ? (
-              <span className={styles.unitMetaLocked}>&#128274; {tier.description}</span>
+            {locked ? (
+              <span className={styles.unitMetaLocked}>
+                &#128274; {formatLockedCaption(unit, getUnlockProgress)}
+              </span>
             ) : (
               <span className={styles.unitMeta}>
                 {unit.battlefieldRole} &middot; {unit.unitType}
