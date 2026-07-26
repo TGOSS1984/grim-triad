@@ -7,7 +7,11 @@
  * scan - same underlying data and the same add/remove/affordability
  * rules as UnitPicker (this takes an identical prop shape on purpose, so
  * ArmyBuilder can swap between the two views without either one needing
- * to know the other exists).
+ * to know the other exists) - including the same locked-unit treatment:
+ * a locked unit is still shown and still fully browsable (it's the
+ * "large card" view, arguably the BETTER place to admire a locked unit
+ * up close), just can't be added, with the same "why" caption UnitPicker
+ * shows.
  *
  * Reuses useResponsiveLightboxCardWidth for the big card - it's the exact
  * same sizing problem the Lightbox already solved (a large card that must
@@ -17,6 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, TouchEvent } from 'react';
 import type { Unit } from '../../data/schema';
+import { getTierForPoints } from '../../data/unlockCriteria';
 import { Card } from '../card/Card';
 import { useResponsiveLightboxCardWidth } from './useResponsiveLightboxCardWidth';
 import styles from './UnitCarousel.module.css';
@@ -30,6 +35,8 @@ export interface UnitCarouselProps {
   atCapacity?: boolean;
   /** Same per-unit extra disable check as UnitPicker - see that component's own doc. */
   isDisabledExtra?: (unitId: string) => boolean;
+  /** Same locked-unit predicate as UnitPicker - see that component's own doc. */
+  isLocked?: (unitId: string) => boolean;
   onAdd: (unitId: string) => void;
   onRemove: (unitId: string) => void;
 }
@@ -43,6 +50,7 @@ export function UnitCarousel({
   remainingPoints,
   atCapacity = false,
   isDisabledExtra,
+  isLocked,
   onAdd,
   onRemove,
 }: UnitCarouselProps) {
@@ -66,9 +74,11 @@ export function UnitCarousel({
   const unit = sorted[clampedIndex];
   const selectedSet = new Set(selectedIds);
   const isSelected = selectedSet.has(unit.id);
+  const locked = isLocked?.(unit.id) ?? false;
   const affordable = remainingPoints !== null && unit.points <= remainingPoints;
   const blockedByExtraRule = isDisabledExtra?.(unit.id) ?? false;
-  const canAdd = !isSelected && affordable && !atCapacity && !blockedByExtraRule;
+  const canAdd = !isSelected && affordable && !atCapacity && !blockedByExtraRule && !locked;
+  const tier = locked ? getTierForPoints(unit.points) : null;
 
   function goPrev() {
     setIndex((i) => (i - 1 + sorted.length) % sorted.length);
@@ -125,19 +135,30 @@ export function UnitCarousel({
         </button>
 
         <div className={styles.cardArea}>
-          <Card
-            name={unit.name}
-            stats={unit.stats}
-            portraitPath={unit.portraitPath}
-            owner="blue"
-            width={cardWidth}
-            element={unit.element}
-            keywords={unit.keywords}
-          />
+          <div className={locked ? styles.lockedCardWrap : undefined}>
+            <Card
+              name={unit.name}
+              stats={unit.stats}
+              portraitPath={unit.portraitPath}
+              owner="blue"
+              width={cardWidth}
+              element={unit.element}
+              keywords={unit.keywords}
+            />
+            {locked && (
+              <span className={styles.lockIconLarge} aria-hidden="true">
+                &#128274;
+              </span>
+            )}
+          </div>
           <div className={styles.unitInfo}>
-            <span className={styles.unitMeta}>
-              {unit.battlefieldRole} &middot; {unit.unitType}
-            </span>
+            {locked && tier ? (
+              <span className={styles.unitMetaLocked}>&#128274; {tier.description}</span>
+            ) : (
+              <span className={styles.unitMeta}>
+                {unit.battlefieldRole} &middot; {unit.unitType}
+              </span>
+            )}
             <span className={styles.unitPoints}>{unit.points} pts</span>
           </div>
         </div>
@@ -157,7 +178,7 @@ export function UnitCarousel({
         </button>
       ) : (
         <button type="button" className={styles.addButton} disabled={!canAdd} onClick={() => onAdd(unit.id)}>
-          Add
+          {locked ? 'Locked' : 'Add'}
         </button>
       )}
     </div>

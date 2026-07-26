@@ -221,3 +221,83 @@ describe('UnitCarousel', () => {
     expect(screen.getByText('1 / 1')).toBeInTheDocument();
   });
 });
+
+describe('UnitCarousel locked units', () => {
+  it('with no isLocked given, the unit behaves as unlocked', () => {
+    const units = [makeUnit({ id: 'a', points: 300 })];
+    render(<UnitCarousel units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+  });
+
+  it('shows "Locked" instead of "Add", disabled, for a locked unit even if otherwise affordable', () => {
+    const units = [makeUnit({ id: 'a', points: 100 })];
+    render(
+      <UnitCarousel
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Locked' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+  });
+
+  it('clicking Locked does not call onAdd', async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const units = [makeUnit({ id: 'a', points: 100 })];
+    render(
+      <UnitCarousel
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={onAdd}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Locked' }));
+
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('shows the unlock tier description in place of the ordinary role/type meta line', () => {
+    const units = [makeUnit({ id: 'a', points: 240, battlefieldRole: 'Vehicle' })];
+    render(
+      <UnitCarousel
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Win 10 games/)).toBeInTheDocument();
+    expect(screen.queryByText('Vehicle')).not.toBeInTheDocument();
+  });
+
+  it('an already-selected unit shows Remove, not Locked, even if isLocked would return true for it', () => {
+    const units = [makeUnit({ id: 'a', points: 600 })];
+    render(
+      <UnitCarousel
+        units={units}
+        selectedIds={['a']}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Locked' })).not.toBeInTheDocument();
+  });
+});

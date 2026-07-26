@@ -265,3 +265,127 @@ describe('UnitPicker', () => {
     expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
   });
 });
+
+describe('UnitPicker locked units', () => {
+  it('with no isLocked given, every unit behaves as unlocked (defaults to never locking)', () => {
+    const units = [makeUnit({ id: 'a', points: 300 })];
+    render(<UnitPicker units={units} selectedIds={[]} remainingPoints={500} onAdd={vi.fn()} onRemove={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+  });
+
+  it('shows "Locked" instead of "Add", disabled, for a locked unit even if otherwise affordable', () => {
+    const units = [makeUnit({ id: 'a', points: 100 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const lockedButton = screen.getByRole('button', { name: 'Locked' });
+    expect(lockedButton).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+  });
+
+  it('clicking a locked unit\'s card does not call onAdd - locking blocks the Add button, not just relabels it', async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    const units = [makeUnit({ id: 'a', points: 100 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={onAdd}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Locked' }));
+
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('shows the unlock tier description in place of the ordinary role/type meta line', () => {
+    // 240pts falls into unlockCriteria.ts's tier-200-250 ("Win 10 games").
+    const units = [makeUnit({ id: 'a', points: 240, battlefieldRole: 'Vehicle' })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Win 10 games/)).toBeInTheDocument();
+    expect(screen.queryByText('Vehicle')).not.toBeInTheDocument();
+  });
+
+  it('a locked unit still opens its card in the Lightbox when clicked - browsing what you could unlock is allowed', async () => {
+    const user = userEvent.setup();
+    const units = [makeUnit({ id: 'a', name: 'Mystery Titan', points: 600 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /View larger card for locked unit Mystery Titan/ }));
+
+    expect(screen.getAllByText('Mystery Titan').length).toBeGreaterThan(0);
+  });
+
+  it('an already-selected unit shows Remove (not Locked), even if isLocked would return true for it', () => {
+    // Once genuinely in the army, a unit is never re-locked out from under
+    // the player - isLocked only ever gates ADDING a new unit.
+    const units = [makeUnit({ id: 'a', points: 600 })];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={['a']}
+        remainingPoints={500}
+        isLocked={() => true}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Locked' })).not.toBeInTheDocument();
+  });
+
+  it('locking is per-unit, not all-or-nothing across the whole list', () => {
+    const units = [
+      makeUnit({ id: 'cheap', name: 'Cheap Unit', points: 50 }),
+      makeUnit({ id: 'pricey', name: 'Pricey Unit', points: 600 }),
+    ];
+    render(
+      <UnitPicker
+        units={units}
+        selectedIds={[]}
+        remainingPoints={1000}
+        isLocked={(unitId) => unitId === 'pricey'}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const rows = screen.getAllByRole('listitem');
+    expect(within(rows[0]).getByRole('button', { name: 'Add' })).toBeEnabled();
+    expect(within(rows[1]).getByRole('button', { name: 'Locked' })).toBeDisabled();
+  });
+});

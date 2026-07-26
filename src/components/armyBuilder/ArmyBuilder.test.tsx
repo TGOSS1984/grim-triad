@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ArmyBuilder } from './ArmyBuilder';
 import { useArmyBuilderStore } from '../../state/armyBuilderStore';
+import { useUnlockStore } from '../../state/unlockStore';
 
 // Real generated Blood Angels units (see src/data/units.generated.json).
 const CAPTAIN = 'Blood Angels Captain'; // 80pts
@@ -21,6 +22,7 @@ const POWER_UNIT_6 = 'Stormtalon Gunship'; // 165pts
 
 beforeEach(() => {
   useArmyBuilderStore.getState().reset();
+  useUnlockStore.getState().resetProgress();
 });
 
 /**
@@ -401,6 +403,27 @@ describe('ArmyBuilder Randomize Army button', () => {
     expect(useArmyBuilderStore.getState().totalPoints()).toBeLessThanOrEqual(1500);
     // The live power-cap tally should reflect a legal roster - never over the 5-unit cap.
     expect(screen.getByText(/Power units \(over 150pts\): [0-5]\/5/)).toBeInTheDocument();
+  });
+
+  it('Randomize Army still fills the exact required size when unlock progress is zero (locked units correctly excluded from candidates, not just rejected after the fact)', async () => {
+    // Real regression: with zero unlock progress, every 200+pt unit is
+    // locked (see data/unlockCriteria.ts). If the randomizer picked from
+    // ALL units and only found out a pick was locked when addUnit later
+    // refused it, an { exact: 15 } target could come up short (this
+    // genuinely happened - 14 instead of 15 - before handleRandomize's
+    // isBlocked predicate was updated to exclude locked candidates up
+    // front, the same way it already did for campaign's power-unit cap).
+    const user = userEvent.setup();
+    render(<ArmyBuilder onReady={vi.fn()} requiredArmySize={15} forcedPointsCap={1500} />);
+    await user.click(screen.getByRole('listitem', { name: /Blood Angels/ }));
+
+    await user.click(screen.getByRole('button', { name: 'Randomize Army' }));
+
+    const store = useArmyBuilderStore.getState();
+    expect(store.selectedUnitIds).toHaveLength(15);
+    for (const unitId of store.selectedUnitIds) {
+      expect(store.isUnitLocked(unitId)).toBe(false);
+    }
   });
 
   it('replaces the current selection entirely, rather than adding on top of it', async () => {

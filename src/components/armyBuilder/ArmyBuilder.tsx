@@ -81,6 +81,7 @@ export function ArmyBuilder({
   const totalPoints = useArmyBuilderStore((s) => s.totalPoints());
   const remainingPoints = useArmyBuilderStore((s) => s.remainingPoints());
   const availableUnits = useArmyBuilderStore((s) => s.availableUnits());
+  const isUnitLocked = useArmyBuilderStore((s) => s.isUnitLocked);
 
   const minArmySize = requiredArmySize ?? DEFAULT_MIN_ARMY_SIZE;
 
@@ -145,9 +146,20 @@ export function ArmyBuilder({
 
     const target: ArmySizeTarget =
       requiredArmySize !== undefined ? { exact: requiredArmySize } : { atLeast: minArmySize };
-    const isBlocked = enforcePowerCap
-      ? (unitId: string, current: string[]) => !canAddToCampaignRoster(current, unitId).allowed
-      : undefined;
+    // Locked units are ALWAYS excluded from random candidates, regardless
+    // of mode - addUnit would refuse them anyway (see armyBuilderStore's
+    // own enforcement), but rejecting them only AFTER randomizeArmySelection
+    // already committed to a target count meant an { exact: N } roster
+    // could come up short (e.g. 14 units instead of 15) whenever the
+    // random shuffle happened to include a locked unit among its picks.
+    // Excluding them up front, the same way enforcePowerCap's check
+    // already does for campaign's power-unit cap, lets the retry/fallback
+    // logic already built into randomizeArmySelection do its job properly.
+    const isBlocked = (unitId: string, current: string[]) => {
+      if (isUnitLocked(unitId)) return true;
+      if (enforcePowerCap && !canAddToCampaignRoster(current, unitId).allowed) return true;
+      return false;
+    };
 
     const chosenIds = randomizeArmySelection(availableUnits, pointsCap, target, isBlocked);
 
@@ -237,6 +249,7 @@ export function ArmyBuilder({
               remainingPoints={remainingPoints}
               atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
               isDisabledExtra={isDisabledByPowerCap}
+              isLocked={isUnitLocked}
               onAdd={addUnit}
               onRemove={removeUnit}
             />
@@ -247,6 +260,7 @@ export function ArmyBuilder({
               remainingPoints={remainingPoints}
               atCapacity={requiredArmySize !== undefined && selectedUnitIds.length >= requiredArmySize}
               isDisabledExtra={isDisabledByPowerCap}
+              isLocked={isUnitLocked}
               onAdd={addUnit}
               onRemove={removeUnit}
             />

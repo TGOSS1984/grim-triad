@@ -75,6 +75,40 @@
   color: var(--color-text-muted);
 }
 
+/**
+ * Locked-unit treatment, matching UnitPicker.module.css's own classes of
+ * the same name/purpose - deliberately kept visually identical between
+ * the two views, since a player switching between List and Carousel view
+ * should see the same locked units treated the same way, not two
+ * different conventions.
+ */
+.lockedCardWrap {
+  position: relative;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.lockedCardWrap > * {
+  filter: grayscale(0.85) brightness(0.55);
+}
+
+.lockIconLarge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+  pointer-events: none;
+}
+
+.unitMetaLocked {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-accent-gold);
+  opacity: 0.85;
+}
+
 .unitPoints {
   font-family: var(--font-display);
   font-size: 1rem;

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useArmyBuilderStore } from './armyBuilderStore';
+import { useUnlockStore } from './unlockStore';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first, used as concrete fixtures so this store is tested against
@@ -9,6 +10,12 @@ const DEATH_COMPANY = 'blood-angels-death-company-marines'; // 85pts
 
 beforeEach(() => {
   useArmyBuilderStore.getState().reset();
+  // Every existing fixture above is well under the 200pt unlock threshold
+  // (see data/unlockCriteria.ts), so this reset doesn't change any
+  // existing test's behavior - it's here so unlock-specific tests added
+  // below (and any future tests) start from a clean, predictable
+  // unlockStore snapshot rather than whatever a previous test left behind.
+  useUnlockStore.getState().resetProgress();
 });
 
 describe('selectRoster', () => {
@@ -280,5 +287,62 @@ describe('maxArmySize', () => {
     store.reset();
 
     expect(useArmyBuilderStore.getState().maxArmySize).toBeNull();
+  });
+});
+
+describe('unlock gating (isUnitLocked / addUnit)', () => {
+  // Blood Angels is a chapter, so its EFFECTIVE roster (via
+  // getUnitsForRoster) includes the shared generic Space Marine pool -
+  // this real unit is one of those generic units, at 240pts, so it falls
+  // into unlockCriteria.ts's tier-200-250 (Win 10 games).
+  const LAND_RAIDER = 'space-marines-land-raider'; // 240pts, generic pool
+
+  it('a unit under 200pts is never locked, regardless of unlock progress', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.isUnitLocked(CAPTAIN)).toBe(false); // 80pts
+  });
+
+  it('a 200+pt unit is locked with no unlock progress', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(store.isUnitLocked(LAND_RAIDER)).toBe(true);
+  });
+
+  it('a 200+pt unit becomes unlocked once the relevant progress is met', () => {
+    useUnlockStore.getState().recordMatchOutcome('win', 'Blood Angels', false);
+    for (let i = 0; i < 9; i++) useUnlockStore.getState().recordMatchOutcome('win', 'Orks', false);
+
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+
+    expect(useUnlockStore.getState().totalWins).toBe(10);
+    expect(store.isUnitLocked(LAND_RAIDER)).toBe(false);
+  });
+
+  it('addUnit refuses to add a locked unit - enforced in the store, not just the UI', () => {
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+
+    const added = store.addUnit(LAND_RAIDER);
+
+    expect(added).toBe(false);
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([]);
+  });
+
+  it('addUnit succeeds for that same unit once it becomes unlocked', () => {
+    for (let i = 0; i < 10; i++) useUnlockStore.getState().recordMatchOutcome('win', 'Orks', false);
+
+    const store = useArmyBuilderStore.getState();
+    store.selectRoster('Blood Angels');
+    store.setPointsCap(2000);
+
+    const added = store.addUnit(LAND_RAIDER);
+
+    expect(added).toBe(true);
+    expect(useArmyBuilderStore.getState().selectedUnitIds).toEqual([LAND_RAIDER]);
   });
 });

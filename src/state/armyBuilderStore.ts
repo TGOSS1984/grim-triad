@@ -22,9 +22,34 @@
  * player select more than they committed to would make that math meaningless.
  * Enforced here in the store (addUnit refuses once at capacity), not just
  * in the UI, since the store is the real source of truth.
+ *
+ * isUnitLocked/addUnit's lock check: gates unit selection by cross-mode
+ * unlock progress (state/unlockStore.ts + data/unlockCriteria.ts) - this
+ * is the ONE place across the whole app that decides what's pickable, so
+ * it's also the one place that needs to know about locks. Single-match,
+ * series, AND campaign's initial roster build all go through this same
+ * store, so gating here covers every mode automatically rather than
+ * needing three separate checks. Same "enforce in the store, not just the
+ * UI" principle as maxArmySize above - addUnit refuses a locked unit
+ * outright, it's not only UnitPicker's add button being disabled.
+ * Respects unlockStore's own ENABLE_CARD_UNLOCKS switch: when that's
+ * false, isUnitLocked always returns false here, matching "every unit
+ * behaves exactly as it did before this feature existed".
+ *
+ * Known limitation, deliberately accepted rather than engineered around:
+ * isUnitLocked reads unlockStore via a plain getState() snapshot, not a
+ * subscribed selector - so if unlock progress changes WHILE ArmyBuilder
+ * happens to already be mounted, it won't reactively re-render to show a
+ * newly-unlocked unit without some other state change triggering a
+ * re-render first. In practice this doesn't come up: progress only
+ * changes at the end of a match, which always happens on a different
+ * screen (ResultScreen/CampaignResultScreen/SeriesResultScreen) - by the
+ * time the player navigates back to ArmyBuilder it remounts fresh anyway.
  */
 import { create } from 'zustand';
-import { getUnitsForRoster } from '../data/activeFactions';
+import { getUnitsForRoster, getUnitById } from '../data/activeFactions';
+import { isUnitUnlocked } from '../data/unlockCriteria';
+import { useUnlockStore, ENABLE_CARD_UNLOCKS } from './unlockStore';
 import type { Unit } from '../data/schema';
 
 export type PointsCap = 500 | 1000 | 2000;
@@ -47,6 +72,8 @@ export interface ArmyBuilderState {
   remainingPoints: () => number | null;
   selectedUnits: () => Unit[];
   availableUnits: () => Unit[];
+  /** True if this unit is currently locked by cross-mode unlock progress - see file header. Always false when unlockStore's ENABLE_CARD_UNLOCKS is off, or for a unit id that doesn't resolve to a real unit (defensive, shouldn't normally happen). */
+  isUnitLocked: (unitId: string) => boolean;
 }
 
 function unitById(rosterUnits: Unit[], unitId: string): Unit | undefined {
@@ -94,10 +121,11 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
   },
 
   addUnit: (unitId) => {
-    const { rosterName, pointsCap, selectedUnitIds, maxArmySize } = get();
+    const { rosterName, pointsCap, selectedUnitIds, maxArmySize, isUnitLocked } = get();
     if (!rosterName || pointsCap === null) return false;
     if (selectedUnitIds.includes(unitId)) return false;
     if (maxArmySize !== null && selectedUnitIds.length >= maxArmySize) return false;
+    if (isUnitLocked(unitId)) return false;
 
     const rosterUnits = getUnitsForRoster(rosterName);
     const unit = unitById(rosterUnits, unitId);
@@ -148,5 +176,12 @@ export const useArmyBuilderStore = create<ArmyBuilderState>((set, get) => ({
     const { rosterName } = get();
     if (!rosterName) return [];
     return getUnitsForRoster(rosterName);
+  },
+
+  isUnitLocked: (unitId) => {
+    if (!ENABLE_CARD_UNLOCKS) return false;
+    const unit = getUnitById(unitId);
+    if (!unit) return false;
+    return !isUnitUnlocked(unitId, unit.points, useUnlockStore.getState());
   },
 }));
