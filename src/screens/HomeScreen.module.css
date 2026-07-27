@@ -82,11 +82,18 @@
 }
 
 /**
- * Wraps secondary navigation buttons (Progress & Achievements here; How
- * to Play joins it in a later commit) - kept visually distinct and
- * smaller than .newGameButton, which stays the one unmistakable primary
- * action on this screen.
+ * Wraps secondary navigation buttons (How to Play, Progress &
+ * Achievements) - kept visually distinct and smaller than
+ * .newGameButton, which stays the one unmistakable primary action on
+ * this screen.
  */
+.secondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
 .secondaryButton {
   font-family: var(--font-body);
   font-size: 0.9rem;

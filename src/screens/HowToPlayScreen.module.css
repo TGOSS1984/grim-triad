@@ -1,0 +1,149 @@
+.screen {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  text-align: center;
+}
+
+.panel {
+  composes: glass-panel from global;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl) calc(var(--space-xl) * 1.5);
+  max-width: 640px;
+  max-height: 90vh;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 3rem);
+  color: var(--color-accent-gold);
+  text-shadow: var(--shadow-glow-gold);
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-xs);
+  width: 100%;
+}
+
+.tabButton {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 2px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    background 150ms ease;
+}
+
+.tabButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}
+
+.tabButtonActive {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+  background: rgba(175, 131, 59, 0.12);
+}
+
+.tabContent {
+  width: 100%;
+  overflow-y: auto;
+  max-height: 50vh;
+  text-align: left;
+  padding-right: var(--space-xs);
+}
+
+.basicsContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.basicsContent p {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.ruleList,
+.modeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ruleRow,
+.modeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.ruleLabel,
+.modeName {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--color-accent-gold);
+}
+
+.ruleDescription,
+.modeDescription {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.tradeRulesIntro {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-sm);
+}
+
+.backButton {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: var(--space-sm) var(--space-lg);
+  background: transparent;
+  border: 2px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.backButton:hover {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}

@@ -1062,3 +1062,27 @@ describe('Progress screen navigation', () => {
     expect(firstBlood?.className).toMatch(/achievementUnlocked/);
   });
 });
+
+describe('How to Play screen navigation', () => {
+  it('navigates Home -> How to Play -> back to Home', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'How to Play' }));
+    expect(screen.getByRole('heading', { name: 'How to Play' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('heading', { name: 'Grim Triad' })).toBeInTheDocument();
+  });
+
+  it('shows real rule content sourced from the shared data module, reusable across tabs', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'How to Play' }));
+    await user.click(screen.getByRole('tab', { name: 'Optional Rules' }));
+
+    expect(screen.getByText('Same')).toBeInTheDocument();
+    expect(screen.getByText('Chain')).toBeInTheDocument();
+  });
+});

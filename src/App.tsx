@@ -39,6 +39,7 @@ import { ResultScreen } from './screens/ResultScreen';
 import { SeriesResultScreen } from './screens/SeriesResultScreen';
 import { CampaignHomeScreen } from './screens/CampaignHomeScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
+import { HowToPlayScreen } from './screens/HowToPlayScreen';
 import { CampaignResultScreen, type VictoryModalKind } from './screens/CampaignResultScreen';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
@@ -75,7 +76,8 @@ type Step =
   | 'result'
   | 'seriesResult'
   | 'campaignHome'
-  | 'progress';
+  | 'progress'
+  | 'howToPlay';
 
 type Mode = 'single' | 'series' | 'campaign';
 
@@ -390,6 +392,16 @@ export default function App() {
     setStep('home');
   }
 
+  /** Navigates to screens/HowToPlayScreen.tsx - reachable from Home only (unlike Progress, no other screen links here yet). */
+  function handleShowHowToPlay() {
+    setStep('howToPlay');
+  }
+
+  /** Same "always back to home" simplicity as handleBackFromProgress - see that function's own doc. */
+  function handleBackFromHowToPlay() {
+    setStep('home');
+  }
+
   function handleSelectSingleMatch(chosenDifficulty: Difficulty) {
     setMode('single');
     setSeriesPoolSize(null);
@@ -656,7 +668,13 @@ export default function App() {
   function renderStep(): ReactNode {
     switch (step) {
     case 'home':
-      return <HomeScreen onNewGame={handleHomeNewGame} onViewProgress={handleViewProgress} />;
+      return (
+        <HomeScreen
+          onNewGame={handleHomeNewGame}
+          onViewProgress={handleViewProgress}
+          onShowHowToPlay={handleShowHowToPlay}
+        />
+      );
 
     case 'modeSelect':
       return (
@@ -753,6 +771,9 @@ export default function App() {
 
     case 'progress':
       return <ProgressScreen onBack={handleBackFromProgress} />;
+
+    case 'howToPlay':
+      return <HowToPlayScreen onBack={handleBackFromHowToPlay} />;
 
     case 'seriesResult':
       return (

@@ -8,6 +8,9 @@
  * (unlock-tier progress + achievements, both permanent/cross-session), so
  * a player can check "where do I stand" without needing to be mid-way
  * through starting a new game first.
+ * onShowHowToPlay: a secondary entry point to screens/HowToPlayScreen.tsx
+ * (the rules/trade rules/game modes reference) - same reasoning, a player
+ * shouldn't need to start a match just to look up what a rule does.
  */
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { HOME_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
@@ -16,9 +19,10 @@ import styles from './HomeScreen.module.css';
 export interface HomeScreenProps {
   onNewGame: () => void;
   onViewProgress: () => void;
+  onShowHowToPlay: () => void;
 }
 
-export function HomeScreen({ onNewGame, onViewProgress }: HomeScreenProps) {
+export function HomeScreen({ onNewGame, onViewProgress, onShowHowToPlay }: HomeScreenProps) {
   return (
     <div className={styles.home}>
       <BackgroundLayer imagePath={HOME_BACKGROUND_PATH} />
@@ -30,9 +34,14 @@ export function HomeScreen({ onNewGame, onViewProgress }: HomeScreenProps) {
         <button type="button" className={styles.newGameButton} onClick={onNewGame}>
           New Game
         </button>
-        <button type="button" className={styles.secondaryButton} onClick={onViewProgress}>
-          Progress &amp; Achievements
-        </button>
+        <div className={styles.secondaryActions}>
+          <button type="button" className={styles.secondaryButton} onClick={onShowHowToPlay}>
+            How to Play
+          </button>
+          <button type="button" className={styles.secondaryButton} onClick={onViewProgress}>
+            Progress &amp; Achievements
+          </button>
+        </div>
       </div>
     </div>
   );
