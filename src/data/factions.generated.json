@@ -92,7 +92,7 @@
   {
     "slug": "deathwatch",
     "name": "Deathwatch",
-    "active": false,
+    "active": true,
     "unitCount": 9
   },
   {
@@ -134,7 +134,7 @@
   {
     "slug": "imperial-fists",
     "name": "Imperial Fists",
-    "active": false,
+    "active": true,
     "unitCount": 2
   },
   {

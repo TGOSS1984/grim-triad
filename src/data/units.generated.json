@@ -451,12 +451,12 @@
       "Infantry"
     ],
     "points": 100,
-    "statBudget": 22,
+    "statBudget": 23,
     "stats": {
       "top": 4,
       "bottom": 10,
-      "left": 4,
-      "right": 4
+      "left": 9,
+      "right": 1
     },
     "portraitPath": "assets/factions/imperial-fists/units/darnath-lysander.png",
     "element": "radiation"
@@ -1665,12 +1665,12 @@
       "Infantry"
     ],
     "points": 90,
-    "statBudget": 22,
+    "statBudget": 23,
     "stats": {
-      "top": 5,
+      "top": 7,
       "bottom": 6,
-      "left": 5,
-      "right": 6
+      "left": 1,
+      "right": 9
     },
     "portraitPath": "assets/factions/imperial-fists/units/tor-garadon.png",
     "element": "void"
