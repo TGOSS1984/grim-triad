@@ -80,3 +80,34 @@
 .newGameButton:active {
   transform: translateY(0);
 }
+
+/**
+ * Wraps secondary navigation buttons (Progress & Achievements here; How
+ * to Play joins it in a later commit) - kept visually distinct and
+ * smaller than .newGameButton, which stays the one unmistakable primary
+ * action on this screen.
+ */
+.secondaryButton {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 2px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.secondaryButton:hover,
+.secondaryButton:focus-visible {
+  border-color: var(--color-accent-gold);
+  color: var(--color-accent-gold);
+}
+
+.secondaryButton:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: 3px;
+}

@@ -8,10 +8,18 @@
  * Reads campaignStore directly (not purely presentational, unlike most
  * other screens) - this screen's whole purpose is showing live store
  * state, the same reasoning GameScreen reads useGameStore directly.
+ *
+ * Achievements (and card-unlock progress) moved OUT of this screen to
+ * screens/ProgressScreen.tsx - this used to have its own embedded
+ * achievement trophy case, but achievements and unlock-tier progress
+ * belong on the same consolidated "where do I stand" screen rather than
+ * splitting across two places, and this screen already has plenty of its
+ * own campaign-specific content (record, streaks, continue/reinforce/
+ * start-new-run) without also owning a second, unrelated concern.
+ * onViewProgress is the shortcut there.
  */
 import { useState } from 'react';
 import { useCampaignStore } from '../state/campaignStore';
-import { ACHIEVEMENTS } from '../state/achievements';
 import { CAMPAIGN_MIN_HAND_SIZE } from '../state/campaignBalance';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { HOME_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
@@ -35,25 +43,18 @@ export interface CampaignHomeScreenProps {
    * an invalid roster).
    */
   onReinforceRival: () => void;
+  /** Navigates to screens/ProgressScreen.tsx - see file header. */
+  onViewProgress: () => void;
 }
 
 export function CampaignHomeScreen({
   onContinue,
   onStartNewRun,
   onReinforceRival,
+  onViewProgress,
 }: CampaignHomeScreenProps) {
-  const {
-    isActive,
-    collection,
-    aiCollection,
-    wins,
-    losses,
-    draws,
-    unlockedAchievementIds,
-    currentStreakType,
-    currentStreakCount,
-    bestWinStreak,
-  } = useCampaignStore();
+  const { isActive, collection, aiCollection, wins, losses, draws, currentStreakType, currentStreakCount } =
+    useCampaignStore();
   const [confirmingNewRun, setConfirmingNewRun] = useState(false);
 
   const collectionTooSmall = collection.length < CAMPAIGN_MIN_HAND_SIZE;
@@ -62,7 +63,6 @@ export function CampaignHomeScreen({
   // campaignRivalMatchSetup.ts, which throws rather than building an
   // undersized/invalid roster if the AI's pool can't support one.
   const canContinue = !collectionTooSmall && !rivalDepleted;
-  const unlockedSet = new Set(unlockedAchievementIds);
 
   return (
     <div className={styles.screen}>
@@ -70,29 +70,9 @@ export function CampaignHomeScreen({
       <div className={styles.panel}>
         <h1 className={styles.title}>Campaign</h1>
 
-        <div className={styles.achievementsSection}>
-          <h2 className={styles.sectionTitle}>
-            Achievements ({unlockedAchievementIds.length}/{ACHIEVEMENTS.length})
-          </h2>
-          <p className={styles.bestStreak}>Best Win Streak: {bestWinStreak}</p>
-          <div className={styles.achievementGrid}>
-            {ACHIEVEMENTS.map((achievement) => {
-              const unlocked = unlockedSet.has(achievement.id);
-              return (
-                <div
-                  key={achievement.id}
-                  className={[
-                    styles.achievementBadge,
-                    unlocked ? styles.achievementUnlocked : styles.achievementLocked,
-                  ].join(' ')}
-                >
-                  <span className={styles.achievementName}>{achievement.name}</span>
-                  <span className={styles.achievementDescription}>{achievement.description}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <button type="button" className={styles.viewProgressLink} onClick={onViewProgress}>
+          View Progress &amp; Achievements &#8594;
+        </button>
 
         {isActive ? (
           <>

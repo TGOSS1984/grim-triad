@@ -28,68 +28,21 @@
   margin: 0;
 }
 
-.achievementsSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  width: 100%;
-}
-
-.sectionTitle {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  color: var(--color-text-primary);
-  margin: 0;
-}
-
-.bestStreak {
+.viewProgressLink {
   font-family: var(--font-body);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  background: transparent;
+  border: none;
   color: var(--color-accent-gold);
-  margin: 0;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: opacity 150ms ease;
 }
 
-.achievementGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-xs);
-}
-
-.achievementBadge {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-muted);
-  text-align: left;
-}
-
-.achievementUnlocked {
-  background: rgba(175, 131, 59, 0.12);
-  border-color: var(--color-accent-gold);
-}
-
-.achievementUnlocked .achievementName {
-  color: var(--color-accent-gold);
-}
-
-.achievementLocked {
-  background: var(--color-surface);
-  opacity: 0.55;
-}
-
-.achievementName {
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: var(--color-text-primary);
-}
-
-.achievementDescription {
-  font-family: var(--font-body);
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+.viewProgressLink:hover {
+  opacity: 0.75;
+  text-decoration: underline;
 }
 
 .description {

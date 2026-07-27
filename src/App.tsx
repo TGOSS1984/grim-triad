@@ -38,6 +38,7 @@ import { RoundSummaryScreen } from './screens/RoundSummaryScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { SeriesResultScreen } from './screens/SeriesResultScreen';
 import { CampaignHomeScreen } from './screens/CampaignHomeScreen';
+import { ProgressScreen } from './screens/ProgressScreen';
 import { CampaignResultScreen, type VictoryModalKind } from './screens/CampaignResultScreen';
 import { useGameStore } from './state/gameStore';
 import { useArmyBuilderStore } from './state/armyBuilderStore';
@@ -73,7 +74,8 @@ type Step =
   | 'roundSummary'
   | 'result'
   | 'seriesResult'
-  | 'campaignHome';
+  | 'campaignHome'
+  | 'progress';
 
 type Mode = 'single' | 'series' | 'campaign';
 
@@ -370,6 +372,24 @@ export default function App() {
     setStep('modeSelect');
   }
 
+  /** Navigates to screens/ProgressScreen.tsx - reachable from Home directly, or from CampaignHomeScreen's own shortcut. */
+  function handleViewProgress() {
+    setStep('progress');
+  }
+
+  /**
+   * Deliberately always returns to 'home', not wherever the player was
+   * before opening Progress - kept simple rather than tracking a
+   * return-to step for what's meant to be a quick reference/stats check,
+   * not a deep navigation flow. If this ends up feeling wrong in practice
+   * (e.g. a player who opened Progress from CampaignHomeScreen expecting
+   * Back to return them there), a return-to step is a small, easy
+   * addition later.
+   */
+  function handleBackFromProgress() {
+    setStep('home');
+  }
+
   function handleSelectSingleMatch(chosenDifficulty: Difficulty) {
     setMode('single');
     setSeriesPoolSize(null);
@@ -636,7 +656,7 @@ export default function App() {
   function renderStep(): ReactNode {
     switch (step) {
     case 'home':
-      return <HomeScreen onNewGame={handleHomeNewGame} />;
+      return <HomeScreen onNewGame={handleHomeNewGame} onViewProgress={handleViewProgress} />;
 
     case 'modeSelect':
       return (
@@ -727,8 +747,12 @@ export default function App() {
           onContinue={handleCampaignContinue}
           onStartNewRun={handleCampaignStartNewRun}
           onReinforceRival={handleReinforceRival}
+          onViewProgress={handleViewProgress}
         />
       );
+
+    case 'progress':
+      return <ProgressScreen onBack={handleBackFromProgress} />;
 
     case 'seriesResult':
       return (

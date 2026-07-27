@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CampaignHomeScreen, type CampaignHomeScreenProps } from './CampaignHomeScreen';
 import { useCampaignStore } from '../state/campaignStore';
-import { ACHIEVEMENTS } from '../state/achievements';
 import { getObtainableUnitIds } from '../data/collectionProgress';
 
 beforeEach(() => {
@@ -27,6 +26,7 @@ function renderScreen(overrides: Partial<CampaignHomeScreenProps> = {}) {
     onContinue: vi.fn(),
     onStartNewRun: vi.fn(),
     onReinforceRival: vi.fn(),
+    onViewProgress: vi.fn(),
     ...overrides,
   };
   render(<CampaignHomeScreen {...props} />);
@@ -187,45 +187,19 @@ describe('CampaignHomeScreen rival depletion (Option B)', () => {
   });
 });
 
-describe('CampaignHomeScreen achievements', () => {
-  it('shows the achievement trophy case even with no active run - achievements are permanent', () => {
-    renderScreen();
-    expect(screen.getByText(`Achievements (0/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
-    expect(screen.getByText('First Blood')).toBeInTheDocument();
-  });
-
-  it('shows the correct unlocked count once achievements have been earned', () => {
-    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-
-    renderScreen();
-
-    expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
-  });
-
-  it('gives an unlocked achievement a distinct visual class from a locked one', () => {
-    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-
-    renderScreen();
-
-    const firstBlood = screen.getByText('First Blood').closest('div');
-    const grandChampion = screen.getByText('Grand Champion').closest('div');
-    expect(firstBlood?.className).toMatch(/achievementUnlocked/);
-    expect(grandChampion?.className).toMatch(/achievementLocked/);
-  });
-
-  it('still shows previously-earned achievements after starting a new run (permanence)', async () => {
+describe('CampaignHomeScreen navigation', () => {
+  it('calls onViewProgress when the "View Progress & Achievements" link is clicked', async () => {
     const user = userEvent.setup();
-    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
+    const { onViewProgress } = renderScreen();
 
+    await user.click(screen.getByRole('button', { name: /View Progress/ }));
+
+    expect(onViewProgress).toHaveBeenCalledOnce();
+  });
+
+  it('shows the View Progress link even with no active run - achievements/progress are permanent, not tied to an active campaign', () => {
     renderScreen();
-    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
-
-    expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View Progress/ })).toBeInTheDocument();
   });
 });
 
@@ -259,26 +233,5 @@ describe('CampaignHomeScreen streaks', () => {
     renderScreen();
 
     expect(screen.getByText('—')).toBeInTheDocument();
-  });
-
-  it('always shows the permanent Best Win Streak, even with no active run', () => {
-    renderScreen();
-    expect(screen.getByText('Best Win Streak: 0')).toBeInTheDocument();
-  });
-
-  it('Best Win Streak survives starting a new run', async () => {
-    const user = userEvent.setup();
-    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-
-    renderScreen();
-    expect(screen.getByText('Best Win Streak: 3')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Start New Run' }));
-    await user.click(screen.getByRole('button', { name: 'Yes, Start Over' }));
-
-    expect(screen.getByText('Best Win Streak: 3')).toBeInTheDocument();
   });
 });

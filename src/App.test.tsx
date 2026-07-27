@@ -8,6 +8,7 @@ import { useSeriesStore } from './state/seriesStore';
 import { useCampaignStore } from './state/campaignStore';
 import { getObtainableUnitIds } from './data/collectionProgress';
 import { useUnlockStore } from './state/unlockStore';
+import { ACHIEVEMENTS } from './state/achievements';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first - used to build a valid 5-card single-match army, and as
@@ -34,6 +35,21 @@ beforeEach(() => {
   useArmyBuilderStore.getState().reset();
   useSeriesStore.getState().reset();
   useCampaignStore.getState().resetCampaign();
+  // resetCampaign() deliberately does NOT clear unlockedAchievementIds,
+  // bestWinStreak, hasCompletedCollection, or hasVanquishedRival in
+  // production (all four survive across runs) - this file's own tests
+  // need a clean slate regardless, same bypass pattern
+  // campaignStore.test.ts/CampaignHomeScreen.test.tsx already use. This
+  // was a real, pre-existing gap here specifically: without it,
+  // achievements unlocked by an EARLIER test in this file (there are
+  // real wins scattered throughout) leak into whichever test happens to
+  // run next and assert an exact "Achievements (N/total)" count.
+  useCampaignStore.setState({
+    unlockedAchievementIds: [],
+    bestWinStreak: 0,
+    hasCompletedCollection: false,
+    hasVanquishedRival: false,
+  });
   useUnlockStore.getState().resetProgress();
   localStorage.clear();
 });
@@ -991,5 +1007,58 @@ describe('cross-mode unlock progress recording (state/unlockStore.ts)', () => {
     await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
 
     expect(screen.queryByRole('heading', { name: /New Units? Unlocked!/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Progress screen navigation', () => {
+  it('navigates Home -> Progress -> back to Home', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Progress & Achievements' }));
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('heading', { name: 'Grim Triad' })).toBeInTheDocument();
+  });
+
+  it('shows real unlock-tier and achievement data on the Progress screen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Progress & Achievements' }));
+
+    expect(screen.getByText('200-250 pts')).toBeInTheDocument();
+    expect(screen.getByText('First Blood')).toBeInTheDocument();
+  });
+
+  it('navigates from CampaignHomeScreen\'s own "View Progress" shortcut too', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'New Game' }));
+    await user.click(screen.getByRole('button', { name: /^Campaign/ }));
+
+    await user.click(screen.getByRole('button', { name: /View Progress/ }));
+
+    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
+  });
+
+  it('reflects a real campaign win on the Progress screen\'s achievement grid', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({ game: { ...game!, phase: 'finished', winner: 'blue' } });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await user.click(screen.getByRole('button', { name: /View Progress/ }));
+
+    expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
+    const firstBlood = screen.getByText('First Blood').closest('div');
+    expect(firstBlood?.className).toMatch(/achievementUnlocked/);
   });
 });
