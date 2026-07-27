@@ -8,14 +8,21 @@
  *
  * .boardEmblem is a purely decorative watermark sitting behind the whole
  * grid (not repeated per-cell - see Board.module.css's own header for
- * why), gracefully absent via CSS alone if no image has been dropped in
- * yet - same "background-image just 404s silently, no onError needed"
- * pattern as BackgroundLayer, since this is decoration, not meaningful
- * content the way a faction icon <img> is.
+ * why), gracefully absent if no image has been dropped in yet - same
+ * "missing art degrades gracefully" philosophy as BackgroundLayer, since
+ * this is decoration, not meaningful content the way a faction icon
+ * <img> is. Unlike most of this app's decorative background images
+ * (which use a plain CSS url(), letting Vite/the browser just 404
+ * silently), this one is set via an inline style computed from
+ * publicAssetPath - a CSS module can't call a JS function, and the
+ * actual URL needs to respect wherever this app is deployed (see that
+ * helper's own header for why a hardcoded path breaks under GitHub
+ * Pages' project-site subpath).
  */
 import type { Position } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { BoardCell, type BoardCardData } from './BoardCell';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 import styles from './Board.module.css';
 
 export interface BoardProps {
@@ -36,7 +43,11 @@ function isHighlighted(highlighted: Position[] | undefined, pos: Position): bool
 export function Board({ cells, elements, highlightedPositions, onCellClick, cardWidth }: BoardProps) {
   return (
     <div className={styles.boardWrapper}>
-      <div className={styles.boardEmblem} aria-hidden="true" />
+      <div
+        className={styles.boardEmblem}
+        style={{ backgroundImage: `url(${publicAssetPath('assets/backgrounds/board-emblem.png')})` }}
+        aria-hidden="true"
+      />
       <div className={styles.grid} role="grid" aria-label="Battle grid">
         {([0, 1, 2] as const).map((row) =>
           ([0, 1, 2] as const).map((col) => {

@@ -10,6 +10,7 @@
  * copy of the same fallback logic.
  */
 import { useState } from 'react';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 
 export interface FactionIconProps {
   slug: string;
@@ -25,7 +26,7 @@ export function FactionIcon({ slug, className }: FactionIconProps) {
   return (
     <img
       className={className}
-      src={`/assets/factions/${slug}/icon.${extension}`}
+      src={publicAssetPath(`assets/factions/${slug}/icon.${extension}`)}
       alt=""
       aria-hidden="true"
       draggable={false}

@@ -16,6 +16,7 @@
  */
 import { useState } from 'react';
 import type { FactionAlignment } from '../../data/factionAlignment';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 
 export interface GroupIconProps {
   alignment: FactionAlignment;
@@ -32,7 +33,7 @@ export function GroupIcon({ alignment, className }: GroupIconProps) {
   return (
     <img
       className={className}
-      src={`/assets/groups/${slug}/icon.${extension}`}
+      src={publicAssetPath(`assets/groups/${slug}/icon.${extension}`)}
       alt=""
       aria-hidden="true"
       draggable={false}

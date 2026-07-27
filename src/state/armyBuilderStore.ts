@@ -60,7 +60,8 @@ import { isUnitUnlocked, getUnitUnlockProgress, type UnlockProgress } from '../d
 import { useUnlockStore, ENABLE_CARD_UNLOCKS } from './unlockStore';
 import type { Unit } from '../data/schema';
 
-export type PointsCap = 500 | 1000 | 2000;
+/** The single-match/series UI cap-picker's own preset values (500/1000/2000), PLUS campaign mode's fixed CAMPAIGN_STARTING_POINTS_CAP (1500, see campaignBalance.ts) - genuinely all four are valid, real values armyBuilderStore's pointsCap can hold, not just the original three presets from before campaign mode existed. */
+export type PointsCap = 500 | 1000 | 1500 | 2000;
 
 export interface ArmyBuilderState {
   rosterName: string | null;

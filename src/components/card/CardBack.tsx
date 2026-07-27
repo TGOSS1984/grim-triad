@@ -14,6 +14,7 @@
  */
 import type { PlayerColour } from '../../engine/types';
 import { FactionIcon } from '../common/FactionIcon';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 import styles from './CardBack.module.css';
 
 export interface CardBackProps {
@@ -32,7 +33,7 @@ export function CardBack({ owner, factionSlug, width, className }: CardBackProps
     <div className={rootClassName} style={style} role="img" aria-label="Face-down card">
       <img
         className={styles.backImage}
-        src={`/assets/cardTemplates/back-${owner}.png`}
+        src={publicAssetPath(`assets/cardTemplates/back-${owner}.png`)}
         alt=""
         draggable={false}
       />

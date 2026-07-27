@@ -66,6 +66,7 @@ import { motion, useAnimation } from 'framer-motion';
 import type { CardStats, CaptureKind, PlayerColour } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { CAPTURE_FLIP_DURATION_MS } from '../../state/animationTiming';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 import { ElementIcon } from '../common/ElementIcon';
 import { CardCaptureFlame } from './CardCaptureFlame';
 import styles from './Card.module.css';
@@ -114,10 +115,6 @@ export interface CardProps {
   element?: ElementId;
   /** The unit's keyword tags (e.g. "Infantry", "Epic Hero") - currently only used to pick the Epic Hero template variant below, but kept as the general catalog keyword list rather than a single isEpicHero boolean, so future keyword-driven visual treatments don't need their own separate prop. */
   keywords?: string[];
-}
-
-function toPublicPath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
 }
 
 /** Renders a stat value as "A" for 10 (highest rank), or the digit otherwise. */
@@ -292,8 +289,8 @@ export function Card({
 
     const src =
       stage === 'fallbackImage' && fallbackPortraitPath
-        ? toPublicPath(fallbackPortraitPath)
-        : toPublicPath(portraitPath);
+        ? publicAssetPath(fallbackPortraitPath)
+        : publicAssetPath(portraitPath);
 
     return (
       <img
@@ -327,7 +324,7 @@ export function Card({
     <>
       <img
         className={styles.frame}
-        src={`/assets/cardTemplates/template-${displayOwner}${isEpicHero ? '-epic' : ''}.png`}
+        src={publicAssetPath(`assets/cardTemplates/template-${displayOwner}${isEpicHero ? '-epic' : ''}.png`)}
         alt=""
         draggable={false}
       />

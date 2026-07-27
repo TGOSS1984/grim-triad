@@ -26,13 +26,16 @@
  * rather than less.
  *
  * Path is documented in layout/backgroundPaths.ts (BOARD_EMBLEM_PATH) for
- * discoverability, but referenced directly here since CSS can't import
- * that constant - drop the real PNG at
- * public/assets/backgrounds/board-emblem.png and it appears automatically,
- * no component changes needed. Until then this simply paints nothing -
- * same graceful "background-image 404s silently" degrade BackgroundLayer
- * already relies on, appropriate here too since this is decoration, not
- * meaningful content.
+ * discoverability. The actual background-image is set via an inline
+ * style in Board.tsx (using utils/publicAssetPath.ts), not a static
+ * url() here - a CSS module can't call a JS function, and the real URL
+ * needs to respect wherever this app is deployed (GitHub Pages' project-
+ * site subpath, for instance) rather than assuming the domain root.
+ * Drop the real PNG at public/assets/backgrounds/board-emblem.png and it
+ * appears automatically, no component changes needed - until then this
+ * simply paints nothing, same graceful "image 404s silently" degrade
+ * BackgroundLayer already relies on, appropriate here too since this is
+ * decoration, not meaningful content.
  *
  * Kept deliberately subtle so it never competes with the cards
  * themselves for attention:
@@ -50,11 +53,10 @@
   position: absolute;
   inset: var(--space-lg);
   z-index: 0;
-  background-image: url('/assets/backgrounds/board-emblem.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  opacity: 0.25;
+  opacity: 0.14;
   -webkit-mask-image: radial-gradient(circle at center, black 45%, transparent 75%);
   mask-image: radial-gradient(circle at center, black 45%, transparent 75%);
   pointer-events: none;

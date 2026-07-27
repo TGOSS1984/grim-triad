@@ -176,7 +176,12 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (!cell.card) return null;
-      const position = { row: rowIndex, col: colIndex };
+      // game.board's own type (engine/types.ts's Board) guarantees exactly
+      // 3 rows of 3 cells, but .map()'s callback index is typed as plain
+      // `number`, not the `0 | 1 | 2` literal union Position actually
+      // requires - this assertion is safe precisely because that
+      // guarantee exists, not a runtime claim being made blindly.
+      const position = { row: rowIndex, col: colIndex } as Position;
       return {
         instanceId: cell.card.instanceId,
         owner: cell.card.owner,

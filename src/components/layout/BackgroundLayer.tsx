@@ -26,20 +26,17 @@
  * elsewhere in the app.
  */
 import styles from './BackgroundLayer.module.css';
+import { publicAssetPath } from '../../utils/publicAssetPath';
 
 export interface BackgroundLayerProps {
   /** Root-relative path to a background image, if one exists yet. */
   imagePath?: string;
 }
 
-function toPublicPath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
-}
-
 export function BackgroundLayer({ imagePath }: BackgroundLayerProps) {
   const hasImage = !!imagePath;
   const style = hasImage
-    ? ({ '--bg-photo': `url(${toPublicPath(imagePath as string)})` } as React.CSSProperties)
+    ? ({ '--bg-photo': `url(${publicAssetPath(imagePath as string)})` } as React.CSSProperties)
     : undefined;
 
   return (

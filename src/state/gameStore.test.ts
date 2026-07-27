@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useGameStore } from './gameStore';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
-import type { Card } from '../engine/types';
+import type { Card, Board } from '../engine/types';
 
 function makeCard(
   owner: 'blue' | 'red',
@@ -303,13 +303,18 @@ describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReacti
     useGameStore.setState({
       game: {
         ...game!,
+        // .map() over a tuple loses the tuple's fixed-length shape in
+        // TS's type system, even though the source (game!.board) and
+        // result are both genuinely always exactly 3x3 - same "provably
+        // safe, not a runtime claim" reasoning as GameScreen.tsx's own
+        // equivalent Position assertion.
         board: game!.board.map((row, r) =>
           row.map((cell, c) => {
             if (r === 0 && c === 1) return { card: redTop };
             if (r === 1 && c === 2) return { card: redRight };
             return cell;
           }),
-        ),
+        ) as Board,
       },
     });
 
@@ -334,7 +339,7 @@ describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReacti
         ...game!,
         board: game!.board.map((row, r) =>
           row.map((cell, c) => (r === 1 && c === 0 ? { card: redBelow } : cell)),
-        ),
+        ) as Board,
       },
     });
 
@@ -370,7 +375,7 @@ describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReacti
         if (r === 2 && c === 2) return cell; // stays empty - blue's own move target
         return { card: filler };
       }),
-    );
+    ) as Board;
     useGameStore.setState({ game: { ...game!, board } });
 
     expect(useGameStore.getState().matchOpponentCapturedFromHuman).toBe(false);
@@ -407,7 +412,7 @@ describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReacti
         if (r === 2 && c === 2) return cell; // stays empty - blue's own move target
         return { card: filler };
       }),
-    );
+    ) as Board;
     useGameStore.setState({ game: { ...game!, board } });
 
     await useGameStore.getState().playCard(blueFiller, { row: 2, col: 2 });
