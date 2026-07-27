@@ -98,7 +98,7 @@
   {
     "slug": "drukhari",
     "name": "Drukhari",
-    "active": false,
+    "active": true,
     "unitCount": 27
   },
   {
@@ -116,7 +116,7 @@
   {
     "slug": "grey-knights",
     "name": "Grey Knights",
-    "active": false,
+    "active": true,
     "unitCount": 27
   },
   {
@@ -140,7 +140,7 @@
   {
     "slug": "imperial-knights",
     "name": "Imperial Knights",
-    "active": false,
+    "active": true,
     "unitCount": 22
   },
   {
