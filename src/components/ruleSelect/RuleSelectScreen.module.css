@@ -17,50 +17,29 @@
   letter-spacing: 0.04em;
 }
 
-.toggleGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: var(--space-md);
-  width: 100%;
-  max-width: 800px;
+/* Standard visually-hidden pattern - content stays in the accessibility
+   tree (unlike display:none) but takes no visual space. Used for the
+   Trade Rule fieldset's legend, which would otherwise duplicate the
+   accordion header's own "Trade Rule" label right above it. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.tradeFieldset {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  width: 100%;
-  max-width: 800px;
-  border: 1px solid var(--color-border-muted);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
-}
-
-.toggleRow {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: baseline;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-muted);
-}
-
-.toggleLabel {
-  font-family: var(--font-body);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.toggleDescription {
-  grid-column: 2 / -1;
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
+/**
+ * Randomize Rules + Continue sit here, directly below the title, ALWAYS
+ * visible regardless of whether either accordion section below is open -
+ * see RuleSelectScreen.tsx's own header for why this placement matters
+ * (a player who just wants to play shouldn't have to scroll past 16
+ * rules' worth of content first).
+ */
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -99,4 +78,150 @@
 .continueButton:hover,
 .continueButton:focus-visible {
   box-shadow: var(--shadow-glow-gold);
+}
+
+/**
+ * Two collapsible sections (Optional Rules, Trade Rule) - same accordion
+ * interaction and visual language as FactionSelect's Imperium/Chaos/Xenos
+ * groups (see components/armyBuilder/FactionSelect.module.css), reused
+ * deliberately rather than inventing a second accordion style elsewhere
+ * in the app. .sections/.section/.sectionHeader/.sectionBody* below are
+ * this screen's own copies (a different CSS module, no shared class
+ * names to collide) rather than a shared accordion component - two
+ * instances of the same small, self-contained pattern was judged simpler
+ * than extracting a generic one for just these two current uses.
+ */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 800px;
+}
+
+.section {
+  border: 1px solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-primary);
+  transition: background-color 150ms ease;
+}
+
+.sectionHeader:hover,
+.sectionHeader:focus-visible {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sectionHeader:focus-visible {
+  outline: 2px solid var(--color-accent-gold);
+  outline-offset: -2px;
+}
+
+.sectionName {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.sectionSummary {
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  transition: color 150ms ease;
+}
+
+.sectionHeaderOpen .sectionSummary {
+  color: var(--color-accent-gold);
+}
+
+.sectionChevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 200ms ease, color 150ms ease;
+}
+
+.sectionChevronOpen {
+  color: var(--color-accent-gold);
+  transform: rotate(180deg);
+}
+
+/* Same grid-template-rows 0fr <-> 1fr accordion animation as
+   FactionSelect.module.css's .groupBody - see that file's own comment
+   for the full reasoning (smooth animation to real content height, and
+   why visibility is delayed on close rather than toggled instantly). */
+.sectionBody {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 240ms ease,
+    visibility 0s 240ms;
+}
+
+.sectionBodyOpen {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 240ms ease;
+}
+
+.sectionBodyInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.toggleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--space-sm);
+  padding: 0 var(--space-md) var(--space-md);
+}
+
+.tradeFieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md) var(--space-md);
+  border: none;
+  margin: 0;
+}
+
+.toggleRow {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-muted);
+}
+
+.toggleLabel {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggleDescription {
+  grid-column: 2 / -1;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }

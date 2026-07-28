@@ -268,6 +268,7 @@ describe('App (single-match flow integration)', () => {
     render(<App />);
     await buildSingleMatchArmy(user);
 
+    await user.click(screen.getByRole('button', { name: /Optional Rules/ }));
     await user.click(screen.getByRole('checkbox', { name: /^Open/ }));
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.click(screen.getByRole('button', { name: 'Flip Coin' }));

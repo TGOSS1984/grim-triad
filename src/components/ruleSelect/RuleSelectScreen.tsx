@@ -18,6 +18,25 @@
  * This screen still owns the actual toggle/radio INTERACTION (the shared
  * module is pure label/description data, no UI concerns), just not the
  * copy itself anymore.
+ *
+ * Layout: 12 optional rules plus 4 trade rule options is a lot of
+ * scrolling on a phone screen before ever reaching Randomize/Continue -
+ * exactly the same problem FactionSelect solved for a long faction list.
+ * Two changes address it, mirroring that same solution:
+ *  - Randomize Rules and Continue sit right below the title, ALWAYS
+ *    visible with no scrolling - a player who doesn't want to fuss with
+ *    individual rules can act immediately, at any screen size.
+ *  - Optional Rules and Trade Rule are each a collapsible accordion
+ *    section (only one open at a time, same interaction as
+ *    FactionSelect's Imperium/Chaos/Xenos groups), both collapsed by
+ *    default. Unlike FactionSelect, there's no single "most relevant"
+ *    group to pre-open here (no current selection to highlight the way a
+ *    chosen faction does) and the fast path above already covers "I just
+ *    want to play" - so starting fully collapsed maximizes the actual
+ *    scroll reduction rather than leaving one large section open by
+ *    default. Each collapsed header still shows a live summary (how many
+ *    optional rules are on; which trade rule is currently selected) so
+ *    the current configuration is visible without opening anything.
  */
 import { useState } from 'react';
 import type { RuleSet } from '../../engine/types';
@@ -31,46 +50,56 @@ export interface RuleSelectScreenProps {
   initialRuleSet?: RuleSet;
 }
 
+type RuleSection = 'optional' | 'trade';
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={[styles.sectionChevron, open ? styles.sectionChevronOpen : ''].join(' ')}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M4 6 L8 10 L12 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function RuleSelectScreen({
   onContinue,
   initialRuleSet = DEFAULT_RULE_SET,
 }: RuleSelectScreenProps) {
   const [ruleSet, setRuleSet] = useState<RuleSet>(initialRuleSet);
+  // Both sections start collapsed - see file header for why this differs
+  // from FactionSelect always having one group open.
+  const [openSection, setOpenSection] = useState<RuleSection | null>(null);
 
   function toggleRule(key: ToggleRuleKey) {
     setRuleSet((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
+  function toggleSection(section: RuleSection) {
+    setOpenSection((current) => (current === section ? null : section));
+  }
+
+  const activeOptionalCount = TOGGLE_RULES.filter((rule) => ruleSet[rule.key]).length;
+  const selectedTradeRule = TRADE_RULES.find((rule) => rule.key === ruleSet.tradeRule);
+
+  const isOptionalOpen = openSection === 'optional';
+  const isTradeOpen = openSection === 'trade';
+
   return (
     <div className={styles.screen}>
       <h2 className={styles.title}>Match Rules</h2>
 
-      <div className={styles.toggleGrid} role="group" aria-label="Optional rule modifiers">
-        {TOGGLE_RULES.map((rule) => (
-          <label key={rule.key} className={styles.toggleRow}>
-            <input type="checkbox" checked={ruleSet[rule.key]} onChange={() => toggleRule(rule.key)} />
-            <span className={styles.toggleLabel}>{rule.label}</span>
-            <span className={styles.toggleDescription}>{rule.description}</span>
-          </label>
-        ))}
-      </div>
-
-      <fieldset className={styles.tradeFieldset}>
-        <legend className={styles.title}>Trade Rule</legend>
-        {TRADE_RULES.map((option) => (
-          <label key={option.key} className={styles.toggleRow}>
-            <input
-              type="radio"
-              name="tradeRule"
-              checked={ruleSet.tradeRule === option.key}
-              onChange={() => setRuleSet((prev) => ({ ...prev, tradeRule: option.key }))}
-            />
-            <span className={styles.toggleLabel}>{option.label}</span>
-            <span className={styles.toggleDescription}>{option.description}</span>
-          </label>
-        ))}
-      </fieldset>
-
+      {/* Always visible, no scrolling required - see file header. */}
       <div className={styles.actions}>
         <button
           type="button"
@@ -82,6 +111,88 @@ export function RuleSelectScreen({
         <button type="button" className={styles.continueButton} onClick={() => onContinue(ruleSet)}>
           Continue
         </button>
+      </div>
+
+      <div className={styles.sections}>
+        <div className={styles.section}>
+          <button
+            type="button"
+            className={[styles.sectionHeader, isOptionalOpen ? styles.sectionHeaderOpen : ''].join(
+              ' ',
+            )}
+            aria-expanded={isOptionalOpen}
+            aria-controls="rule-section-optional"
+            onClick={() => toggleSection('optional')}
+          >
+            <span className={styles.sectionName}>Optional Rules</span>
+            <span className={styles.sectionSummary}>
+              {activeOptionalCount} active
+            </span>
+            <Chevron open={isOptionalOpen} />
+          </button>
+          <div
+            id="rule-section-optional"
+            className={[styles.sectionBody, isOptionalOpen ? styles.sectionBodyOpen : ''].join(' ')}
+          >
+            <div className={styles.sectionBodyInner}>
+              <div
+                className={styles.toggleGrid}
+                role="group"
+                aria-label="Optional rule modifiers"
+              >
+                {TOGGLE_RULES.map((rule) => (
+                  <label key={rule.key} className={styles.toggleRow}>
+                    <input
+                      type="checkbox"
+                      checked={ruleSet[rule.key]}
+                      onChange={() => toggleRule(rule.key)}
+                    />
+                    <span className={styles.toggleLabel}>{rule.label}</span>
+                    <span className={styles.toggleDescription}>{rule.description}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <button
+            type="button"
+            className={[styles.sectionHeader, isTradeOpen ? styles.sectionHeaderOpen : ''].join(
+              ' ',
+            )}
+            aria-expanded={isTradeOpen}
+            aria-controls="rule-section-trade"
+            onClick={() => toggleSection('trade')}
+          >
+            <span className={styles.sectionName}>Trade Rule</span>
+            <span className={styles.sectionSummary}>{selectedTradeRule?.label}</span>
+            <Chevron open={isTradeOpen} />
+          </button>
+          <div
+            id="rule-section-trade"
+            className={[styles.sectionBody, isTradeOpen ? styles.sectionBodyOpen : ''].join(' ')}
+          >
+            <div className={styles.sectionBodyInner}>
+              <fieldset className={styles.tradeFieldset}>
+                <legend className={styles.srOnly}>Trade Rule</legend>
+                {TRADE_RULES.map((option) => (
+                  <label key={option.key} className={styles.toggleRow}>
+                    <input
+                      type="radio"
+                      name="tradeRule"
+                      checked={ruleSet.tradeRule === option.key}
+                      onChange={() => setRuleSet((prev) => ({ ...prev, tradeRule: option.key }))}
+                    />
+                    <span className={styles.toggleLabel}>{option.label}</span>
+                    <span className={styles.toggleDescription}>{option.description}</span>
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
