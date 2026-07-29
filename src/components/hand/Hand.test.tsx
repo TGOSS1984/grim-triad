@@ -88,3 +88,22 @@ describe('Hand', () => {
     }
   });
 });
+
+describe('Hand captured score badge', () => {
+  it('shows no captured-score badge when capturedCount is omitted', () => {
+    render(<Hand cards={cards} owner="blue" faceUp />);
+    expect(screen.queryByText('Captured')).not.toBeInTheDocument();
+  });
+
+  it('shows the captured-score badge with the given value when capturedCount is provided', () => {
+    render(<Hand cards={cards} owner="blue" faceUp capturedCount={3} />);
+
+    expect(screen.getByText('Captured')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('shows a captured count of 0 (a genuine value, not treated the same as omitted)', () => {
+    render(<Hand cards={cards} owner="blue" faceUp capturedCount={0} />);
+    expect(screen.getByText('Captured')).toBeInTheDocument();
+  });
+});

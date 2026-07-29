@@ -8,11 +8,25 @@
  *    the Open rule isn't active - see engine/rules/open.ts). Hand itself
  *    doesn't know about rules; the caller decides faceUp per the active
  *    RuleSet and passes it in.
+ *
+ * `capturedCount`, when given, renders a second animated badge (see
+ * AnimatedScoreBadge.tsx) alongside the existing hand-count one - "how
+ * many cards are on the board in this side's colour right now" (board
+ * control, the same number the end-of-game screens already show as
+ * "Blue: X"), made LIVE during play rather than only visible once the
+ * match ends. Deliberately paired with the hand count rather than placed
+ * somewhere new: this is the one place in the layout that's already a
+ * per-side, always-visible, correctly-responsive column on both desktop
+ * and mobile, so reusing it means the live score inherits that
+ * responsiveness for free instead of needing its own placement logic.
+ * Optional (undefined = hidden entirely) because Hand has no other
+ * consumer needing this today - see GameScreen.tsx, the only caller.
  */
 import type { CardStats, PlayerColour } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
 import { Card } from '../card/Card';
 import { CardBack } from '../card/CardBack';
+import { AnimatedScoreBadge } from './AnimatedScoreBadge';
 import styles from './Hand.module.css';
 
 export interface HandCardData {
@@ -39,6 +53,8 @@ export interface HandProps {
   onSelectCard?: (instanceId: string) => void;
   cardWidth?: number;
   side?: 'left' | 'right';
+  /** Live board-control count for this side, animated on change - see file header. Omit to hide the badge entirely. */
+  capturedCount?: number;
 }
 
 export function Hand({
@@ -50,6 +66,7 @@ export function Hand({
   onSelectCard,
   cardWidth,
   side = 'left',
+  capturedCount,
 }: HandProps) {
   const interactive = faceUp && !!onSelectCard;
   const style = cardWidth
@@ -58,8 +75,13 @@ export function Hand({
 
   return (
     <div className={[styles.hand, styles[`side-${side}`]].join(' ')} style={style}>
-      <div className={styles.count} aria-hidden="true">
-        {cards.length}
+      <div className={styles.badgeRow}>
+        <div className={styles.count} aria-hidden="true">
+          {cards.length}
+        </div>
+        {capturedCount !== undefined && (
+          <AnimatedScoreBadge value={capturedCount} label="Captured" />
+        )}
       </div>
       <div className={styles.stack} role="list" aria-label={`${owner} hand, ${cards.length} cards`}>
         {cards.map((card) =>

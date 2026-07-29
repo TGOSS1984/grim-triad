@@ -167,7 +167,18 @@ function removeFromHand(hand: Card[], instanceId: string): Card[] {
   return hand.filter((c) => c.instanceId !== instanceId);
 }
 
-function countCardsOnBoard(board: Board, colour: PlayerColour): number {
+/**
+ * How many cells on the board are currently occupied by `colour`'s
+ * cards - i.e. board control, the same number the end-of-game result
+ * screens show as "Blue: X / Red: Y" and determineWinner below compares
+ * to decide the match outcome. Exported (not module-private) so
+ * screens/ResultScreen.tsx and screens/CampaignResultScreen.tsx can
+ * import this ONE implementation instead of each keeping their own
+ * duplicate copy (they used to), and so screens/GameScreen.tsx can reuse
+ * the exact same computation for a LIVE score during play, not just at
+ * the end.
+ */
+export function countCardsOnBoard(board: Board, colour: PlayerColour): number {
   let count = 0;
   for (const row of board) {
     for (const cell of row) {

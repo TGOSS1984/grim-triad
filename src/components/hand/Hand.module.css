@@ -22,6 +22,24 @@
   line-height: 1;
 }
 
+/**
+ * Wraps the hand-count number and the new live captured-score badge
+ * (AnimatedScoreBadge) as one compact unit. Deliberately just a small
+ * vertical stack with no breakpoint-specific overrides of its own: at the
+ * desktop/tall-column layout this sits at the top of the hand exactly
+ * where the bare count used to; at the <=820px horizontal-row layout
+ * below, .badgeRow itself becomes one of the row's flex items (alongside
+ * .stack) - staying a compact vertical stack internally keeps it from
+ * eating into the horizontal space the card row needs, rather than
+ * needing its own separate mobile-specific arrangement.
+ */
+.badgeRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
 .stack {
   display: flex;
   flex-direction: column;

@@ -1,0 +1,39 @@
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.value {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--color-text-primary);
+  text-shadow: var(--shadow-glow-gold);
+  /* Colour/glow transition back to the resting gold treatment once a
+     flash class is removed - the scale "pop" itself is driven by Framer
+     Motion (see AnimatedScoreBadge.tsx), this only covers the colour. */
+  transition:
+    color 400ms ease,
+    text-shadow 400ms ease;
+}
+
+.valueUp {
+  color: #6bffa0;
+  text-shadow: 0 0 10px rgba(107, 255, 160, 0.85);
+}
+
+.valueDown {
+  color: #ff6b6b;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.85);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}

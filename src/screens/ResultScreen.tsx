@@ -16,8 +16,8 @@
  */
 import { useGameStore } from '../state/gameStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
+import { countCardsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
-import type { Board, PlayerColour } from '../engine/types';
 import styles from './ResultScreen.module.css';
 
 export interface ResultScreenProps {
@@ -37,10 +37,6 @@ export interface ResultScreenProps {
    * state actually is.
    */
   onSuddenDeath: () => void;
-}
-
-function countCardsOnBoard(board: Board, colour: PlayerColour): number {
-  return board.flat().filter((cell) => cell.card?.owner === colour).length;
 }
 
 const TRADE_RULE_LABELS: Record<string, string> = {

@@ -15,6 +15,7 @@ import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
 import { computeEffectiveStats } from '../engine/rules/effectiveStats';
 import { emptyPositions } from '../engine/board';
+import { countCardsOnBoard } from '../engine/gameReducer';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
 import { resolvePrimaryCaptureTriggerKind } from '../engine/captureTriggerKind';
@@ -173,6 +174,19 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
     game.lastCapture?.comboTriggered ?? false,
   );
 
+  /**
+   * Live "captured" score for each side - board control, the exact same
+   * countCardsOnBoard the end-of-game result screens use, just computed
+   * fresh on every render here instead of once at match end. Passed into
+   * Hand below, which renders it via AnimatedScoreBadge - naturally
+   * increases the moment a capture happens (whether from the human's own
+   * move or the AI's), and naturally increases from the human's own
+   * plain placements too (an empty cell filled is still board control),
+   * matching how the final score is actually made up.
+   */
+  const blueCapturedCount = countCardsOnBoard(game.board, 'blue');
+  const redCapturedCount = countCardsOnBoard(game.board, 'red');
+
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (!cell.card) return null;
@@ -306,6 +320,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
             factionSlug={blueFactionSlug}
             side="left"
             cardWidth={cardWidth}
+            capturedCount={blueCapturedCount}
             selectedCardId={humanPlayer === 'blue' ? selectedCardId : undefined}
             onSelectCard={
               humanPlayer === 'blue' && isHumanTurn
@@ -334,6 +349,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
             factionSlug={redFactionSlug}
             side="right"
             cardWidth={cardWidth}
+            capturedCount={redCapturedCount}
             selectedCardId={humanPlayer === 'red' ? selectedCardId : undefined}
             onSelectCard={
               humanPlayer === 'red' && isHumanTurn

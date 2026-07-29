@@ -48,12 +48,12 @@
 import { useGameStore } from '../state/gameStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
+import { countCardsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
 import { CampaignVictoryModal } from '../components/campaign/CampaignVictoryModal';
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
 import { getCollectionProgress } from '../data/collectionProgress';
 import { ACHIEVEMENTS } from '../state/achievements';
-import type { Board, PlayerColour } from '../engine/types';
 import styles from './CampaignResultScreen.module.css';
 
 const COMPLETE_COLLECTION_ACHIEVEMENT = ACHIEVEMENTS.find((a) => a.id === 'complete-collection')!;
@@ -70,10 +70,6 @@ export interface CampaignResultScreenProps {
   onDismissVictoryModal: () => void;
   /** Only actually offered as a button when victoryModalKind is 'rival-vanquished' - see CampaignVictoryModal's own onReinforce prop. */
   onReinforceRival: () => void;
-}
-
-function countCardsOnBoard(board: Board, colour: PlayerColour): number {
-  return board.flat().filter((cell) => cell.card?.owner === colour).length;
 }
 
 const TRADE_RULE_LABELS: Record<string, string> = {

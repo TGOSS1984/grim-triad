@@ -263,6 +263,73 @@ describe('GameScreen', () => {
     );
   });
 
+  it('the live "Captured" score updates end-to-end after a real multi-card capture', async () => {
+    const user = userEvent.setup();
+
+    // Same fixture as the SAME! callout test above: placing the trigger
+    // card captures 2 red cards via Same, taking blue's board control
+    // from 1 (the card just placed) to 3.
+    const triggerCard: Card = {
+      instanceId: 'blue-trigger',
+      unitId: BA_CAPTAIN,
+      owner: 'blue',
+      stats: { top: 5, bottom: 1, left: 1, right: 5 },
+    };
+    const redTop: Card = {
+      instanceId: 'red-top',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 5, left: 1, right: 1 },
+    };
+    const redRight: Card = {
+      instanceId: 'red-right',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 1, left: 5, right: 1 },
+    };
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    // Before the move: blue controls nothing yet, red controls 2.
+    const scoreLabels = screen.getAllByText('Captured');
+    expect(scoreLabels).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getByLabelText('Empty cell, row 2, column 2'));
+
+    // The score animates (see AnimatedScoreBadge's own real-timer-based
+    // tests for the animation mechanics themselves) - this only confirms
+    // it eventually reflects the real capture end-to-end, from a genuine
+    // move through to the rendered Hand.
+    await waitFor(
+      () => {
+        const blueScore = scoreLabels[0].previousElementSibling;
+        expect(blueScore).toHaveTextContent('3');
+      },
+      { timeout: 3000 },
+    );
+  });
+
   it('shows no rule trigger callout for an ordinary base capture with no Same/Plus/Chain active', async () => {
     const user = userEvent.setup();
 
