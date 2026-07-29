@@ -57,6 +57,7 @@ describe('RuleSelectScreen actions (always visible, no accordion interaction nee
       underdog: true,
       epicHeroPresence: true,
       tradeRule: 'diff',
+      winCondition: 'cards',
     });
   });
 });

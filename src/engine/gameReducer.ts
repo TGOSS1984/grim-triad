@@ -33,6 +33,7 @@ export const DEFAULT_RULE_SET: RuleSet = {
   underdog: false,
   epicHeroPresence: false,
   tradeRule: 'one',
+  winCondition: 'cards',
 };
 
 /** A card must cost at least this much MORE than the capturing card to trigger Underdog - see RuleSet.underdog's own doc. */
@@ -170,8 +171,10 @@ function removeFromHand(hand: Card[], instanceId: string): Card[] {
 /**
  * How many cells on the board are currently occupied by `colour`'s
  * cards - i.e. board control, the same number the end-of-game result
- * screens show as "Blue: X / Red: Y" and determineWinner below compares
- * to decide the match outcome. Exported (not module-private) so
+ * screens show as "Blue: X / Red: Y", and what determineWinner below
+ * compares to decide the match outcome under the default 'cards' win
+ * condition (see sumPointsOnBoard just below this function for the
+ * 'points' condition's equivalent). Exported (not module-private) so
  * screens/ResultScreen.tsx and screens/CampaignResultScreen.tsx can
  * import this ONE implementation instead of each keeping their own
  * duplicate copy (they used to), and so screens/GameScreen.tsx can reuse
@@ -188,7 +191,48 @@ export function countCardsOnBoard(board: Board, colour: PlayerColour): number {
   return count;
 }
 
-function determineWinner(board: Board): PlayerColour | 'draw' {
+/**
+ * Total points cost of every `colour` card currently on the board - the
+ * 'points' win condition's own version of countCardsOnBoard above,
+ * checked the same way in the same place (determineWinner below).
+ * card.points is optional on the engine's own Card type (see
+ * types.ts's own doc - most existing Card fixtures across the codebase
+ * don't set it), so a card with no points recorded contributes 0 rather
+ * than throwing or silently breaking the tally - this matters mainly for
+ * older test fixtures built before points was threaded through
+ * (state/matchSetup.ts's unitIdsToHand), not real hands built through
+ * the actual app, which always set it.
+ */
+export function sumPointsOnBoard(board: Board, colour: PlayerColour): number {
+  let total = 0;
+  for (const row of board) {
+    for (const cell of row) {
+      if (cell.card?.owner === colour) total += cell.card.points ?? 0;
+    }
+  }
+  return total;
+}
+
+/**
+ * Which side wins a full board, per the active RuleSet's winCondition -
+ * 'cards' (board control - the default, unchanged from before
+ * winCondition existed) or 'points' (total points cost of controlled
+ * cards). Both branches follow the identical "strictly more wins,
+ * otherwise a draw" shape, just comparing a different number - kept as
+ * two explicit branches rather than one generic "compare these two
+ * numbers" helper, since each branch's own board-scanning function
+ * (countCardsOnBoard / sumPointsOnBoard) is independently useful and
+ * already exported for other callers (the live score, the result
+ * screens) to use directly.
+ */
+function determineWinner(board: Board, ruleSet: RuleSet): PlayerColour | 'draw' {
+  if (ruleSet.winCondition === 'points') {
+    const blue = sumPointsOnBoard(board, 'blue');
+    const red = sumPointsOnBoard(board, 'red');
+    if (blue > red) return 'blue';
+    if (red > blue) return 'red';
+    return 'draw';
+  }
   const blue = countCardsOnBoard(board, 'blue');
   const red = countCardsOnBoard(board, 'red');
   if (blue > red) return 'blue';
@@ -268,7 +312,7 @@ export function applyMove(state: GameState, move: Move): GameState {
     players,
     activePlayer: nextActivePlayer,
     phase: boardFull ? 'finished' : state.phase,
-    winner: boardFull ? determineWinner(board) : null,
+    winner: boardFull ? determineWinner(board, state.ruleSet) : null,
     history: [...state.history, move],
     lastCapture: { positions: captured, comboTriggered, captureKinds },
   };

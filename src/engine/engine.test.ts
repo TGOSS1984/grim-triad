@@ -1,17 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { applyMove, createGame, DEFAULT_RULE_SET, IllegalMoveError } from './gameReducer';
-import type { Card, Move, PlayerState } from './types';
+import {
+  applyMove,
+  createGame,
+  DEFAULT_RULE_SET,
+  IllegalMoveError,
+  countCardsOnBoard,
+  sumPointsOnBoard,
+} from './gameReducer';
+import { createEmptyBoard } from './board';
+import type { Board, Card, Move, PlayerState, Position } from './types';
 
 function makeCard(
   owner: 'blue' | 'red',
   instanceId: string,
   stats = { top: 5, bottom: 5, left: 5, right: 5 },
+  points?: number,
 ): Card {
-  return { instanceId, unitId: `unit-${instanceId}`, owner, stats };
+  return { instanceId, unitId: `unit-${instanceId}`, owner, stats, points };
 }
 
 function makeHand(owner: 'blue' | 'red', count: number): Card[] {
   return Array.from({ length: count }, (_, i) => makeCard(owner, `${owner}-${i}`));
+}
+
+/** Places a card directly on the board without going through the reducer - same convention as capture.test.ts's own helper, used here to construct an already-8-of-9-full board so a test can drive just the ONE final move that fills it, rather than needing to simulate a full alternating game. */
+function place(board: Board, card: Card, pos: Position): void {
+  board[pos.row][pos.col].card = card;
 }
 
 function newTestGame() {
@@ -170,6 +184,99 @@ describe('applyMove', () => {
     expect(state.winner).toBe('blue');
   });
 
+  it('declares blue winner via POINTS even while controlling fewer cards, when winCondition is "points"', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+
+    // 8 of 9 cells already filled directly (bypassing a full alternating
+    // game, which strict turn-order would make fiddly to orchestrate for
+    // an exact final tally) - blue holds just 1 cell but it's worth 500,
+    // red holds 7 cells worth only 10 each. The 9th, final move (red,
+    // completing the board) is the one actually driven through
+    // applyMove, so determineWinner's real branching gets exercised, not
+    // just asserted against directly.
+    place(state.board, makeCard('blue', 'blue-expensive', undefined, 500), { row: 1, col: 1 });
+    const redPositions: Position[] = [
+      { row: 0, col: 0 },
+      { row: 0, col: 1 },
+      { row: 0, col: 2 },
+      { row: 1, col: 0 },
+      { row: 1, col: 2 },
+      { row: 2, col: 0 },
+      { row: 2, col: 1 },
+    ];
+    for (const pos of redPositions) {
+      place(state.board, makeCard('red', `red-${pos.row}-${pos.col}`, undefined, 10), pos);
+    }
+
+    const finalRedCard = makeCard('red', 'red-final', undefined, 10);
+    state.activePlayer = 'red';
+    state.players.red.hand = [finalRedCard];
+
+    const next = applyMove(state, { player: 'red', card: finalRedCard, position: { row: 2, col: 2 } });
+
+    expect(next.phase).toBe('finished');
+    expect(countCardsOnBoard(next.board, 'blue')).toBe(1);
+    expect(countCardsOnBoard(next.board, 'red')).toBe(8);
+    expect(sumPointsOnBoard(next.board, 'blue')).toBe(500);
+    expect(sumPointsOnBoard(next.board, 'red')).toBe(80);
+    expect(next.winner).toBe('blue');
+  });
+
+  it('the identical board loses for blue under the default "cards" win condition - confirms the points test above is really testing the branch, not a fluke', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'cards' };
+
+    place(state.board, makeCard('blue', 'blue-expensive', undefined, 500), { row: 1, col: 1 });
+    const redPositions: Position[] = [
+      { row: 0, col: 0 },
+      { row: 0, col: 1 },
+      { row: 0, col: 2 },
+      { row: 1, col: 0 },
+      { row: 1, col: 2 },
+      { row: 2, col: 0 },
+      { row: 2, col: 1 },
+    ];
+    for (const pos of redPositions) {
+      place(state.board, makeCard('red', `red-${pos.row}-${pos.col}`, undefined, 10), pos);
+    }
+
+    const finalRedCard = makeCard('red', 'red-final', undefined, 10);
+    state.activePlayer = 'red';
+    state.players.red.hand = [finalRedCard];
+
+    const next = applyMove(state, { player: 'red', card: finalRedCard, position: { row: 2, col: 2 } });
+
+    expect(next.winner).toBe('red');
+  });
+
+  it('a "points" match ends in a draw when both sides hold equal total points, even with unequal card counts', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+
+    // Blue: 1 cell worth 100. Red: 2 cells worth 50 each - equal totals,
+    // unequal counts. The rest of the board is filled with 0-point
+    // filler on both sides so it doesn't affect either total.
+    place(state.board, makeCard('blue', 'blue-100', undefined, 100), { row: 0, col: 0 });
+    place(state.board, makeCard('red', 'red-50-a', undefined, 50), { row: 0, col: 1 });
+    place(state.board, makeCard('red', 'red-50-b', undefined, 50), { row: 0, col: 2 });
+    place(state.board, makeCard('blue', 'blue-filler-1', undefined, 0), { row: 1, col: 0 });
+    place(state.board, makeCard('red', 'red-filler-1', undefined, 0), { row: 1, col: 1 });
+    place(state.board, makeCard('blue', 'blue-filler-2', undefined, 0), { row: 1, col: 2 });
+    place(state.board, makeCard('red', 'red-filler-2', undefined, 0), { row: 2, col: 0 });
+    place(state.board, makeCard('blue', 'blue-filler-3', undefined, 0), { row: 2, col: 1 });
+
+    const finalCard = makeCard('red', 'red-filler-final', undefined, 0);
+    state.activePlayer = 'red';
+    state.players.red.hand = [finalCard];
+
+    const next = applyMove(state, { player: 'red', card: finalCard, position: { row: 2, col: 2 } });
+
+    expect(next.phase).toBe('finished');
+    expect(sumPointsOnBoard(next.board, 'blue')).toBe(sumPointsOnBoard(next.board, 'red'));
+    expect(next.winner).toBe('draw');
+  });
+
   it('records an empty lastCapture when the move captures nothing', () => {
     const state = newTestGame();
     const move: Move = { player: 'blue', card: state.players.blue.hand[0], position: { row: 0, col: 0 } };
@@ -194,6 +301,31 @@ describe('applyMove', () => {
       comboTriggered: false,
       captureKinds: ['base'],
     });
+  });
+});
+
+describe('sumPointsOnBoard (direct, engine/gameReducer.ts)', () => {
+  it('sums points for only the given colour', () => {
+    const board = createEmptyBoard();
+    board[0][0].card = makeCard('blue', 'b1', undefined, 100);
+    board[0][1].card = makeCard('blue', 'b2', undefined, 50);
+    board[1][0].card = makeCard('red', 'r1', undefined, 300);
+
+    expect(sumPointsOnBoard(board, 'blue')).toBe(150);
+    expect(sumPointsOnBoard(board, 'red')).toBe(300);
+  });
+
+  it('returns 0 for an empty board', () => {
+    const board = createEmptyBoard();
+    expect(sumPointsOnBoard(board, 'blue')).toBe(0);
+  });
+
+  it('treats a card with no points recorded as contributing 0, not throwing', () => {
+    const board = createEmptyBoard();
+    board[0][0].card = makeCard('blue', 'no-points-set'); // points left undefined
+
+    expect(() => sumPointsOnBoard(board, 'blue')).not.toThrow();
+    expect(sumPointsOnBoard(board, 'blue')).toBe(0);
   });
 });
 

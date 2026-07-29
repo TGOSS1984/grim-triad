@@ -10,7 +10,7 @@
  */
 import type { RuleSet } from '../engine/types';
 
-export type ToggleRuleKey = keyof Omit<RuleSet, 'tradeRule'>;
+export type ToggleRuleKey = keyof Omit<RuleSet, 'tradeRule' | 'winCondition'>;
 
 export interface ToggleRuleInfo {
   key: ToggleRuleKey;

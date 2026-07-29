@@ -25,6 +25,7 @@ describe('randomRuleSet', () => {
       underdog: true,
       epicHeroPresence: true,
       tradeRule: 'diff',
+      winCondition: 'cards',
     });
   });
 

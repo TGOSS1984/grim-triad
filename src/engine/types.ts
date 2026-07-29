@@ -190,6 +190,23 @@ export interface RuleSet {
    */
   epicHeroPresence: boolean;
   tradeRule: 'one' | 'diff' | 'direct' | 'all';
+  /**
+   * How the match's winner is actually decided once the board is full -
+   * a different axis entirely from every boolean rule above (which all
+   * affect what happens DURING a capture) and from tradeRule (which only
+   * affects what happens to the cards AFTER the winner is already known).
+   * This decides how "who won" itself is read:
+   *  - 'cards': the default and only behaviour before this field existed
+   *    - whoever controls more CELLS on the board wins (see
+   *    countCardsOnBoard below).
+   *  - 'points': whoever controls more total POINTS COST of cards wins
+   *    instead - see sumPointsOnBoard below. A side could hold fewer,
+   *    more expensive cards and still win outright.
+   * Always exactly one value, same "required, single-select, sensible
+   * default" shape as tradeRule - not a boolean toggle, since there's no
+   * meaningful "off" state for how a winner is decided.
+   */
+  winCondition: 'cards' | 'points';
 }
 
 export interface PlayerState {
