@@ -1,30 +1,41 @@
 /**
  * A static reference screen explaining how a match actually works - the
  * basic capture mechanic, every optional rule modifier, every trade
- * rule, and what each game mode offers. Pure presentational (no store
- * access, matching HomeScreen/ModeSelectScreen's pattern) - this is
- * reference content, not live game state.
+ * rule, every win condition, and what each game mode offers. Pure
+ * presentational (no store access, matching HomeScreen/ModeSelectScreen's
+ * pattern) - this is reference content, not live game state.
  *
  * Tabbed rather than one long scroll or an accordion (contrast
  * FactionSelect's accordion, or CampaignVictoryModal's single-screen
  * layout): "Optional Rules" alone is 12 items, long enough that an
  * accordion panel would dominate the screen even collapsed, and a single
- * scroll would bury "Game Modes" beneath 16 rules' worth of text. Tabs
+ * scroll would bury "Game Modes" beneath 16+ rules' worth of text. Tabs
  * keep exactly one section's content on screen at a time regardless of
  * that section's own length.
  *
- * Rule/trade rule copy is imported from data/ruleDescriptions.ts, not
- * duplicated here - see that module's own header for why: this screen
- * and RuleSelectScreen's picker need to describe the same 16 rules
- * identically, and two independently-maintained copies would drift.
- * GAME_MODES below is NOT similarly extracted - ModeSelectScreen's own
- * blurbs are single-sentence teasers for a selection screen, while this
- * needs fuller explanations for a reference screen; they're related but
- * not the same copy the way rule descriptions are, so there's no shared
- * source to extract without forcing one of the two purposes to compromise.
+ * Win Condition gets its own tab rather than being folded into Trade
+ * Rules, even though a short 2-option list could easily fit alongside
+ * Trade Rules' own list in one tab - this mirrors RuleSelectScreen's own
+ * choice to give Win Condition its own accordion section rather than
+ * merging it with Trade Rule (see that screen's own header for the full
+ * reasoning: they're genuinely independent decisions). Matching that same
+ * structure here means a player sees the identical grouping in both the
+ * reference and the actual picker, rather than this screen inventing a
+ * different organization for the same underlying rules.
+ *
+ * Rule/trade rule/win condition copy is imported from
+ * data/ruleDescriptions.ts, not duplicated here - see that module's own
+ * header for why: this screen and RuleSelectScreen's picker need to
+ * describe the same rules identically, and two independently-maintained
+ * copies would drift. GAME_MODES below is NOT similarly extracted -
+ * ModeSelectScreen's own blurbs are single-sentence teasers for a
+ * selection screen, while this needs fuller explanations for a reference
+ * screen; they're related but not the same copy the way rule descriptions
+ * are, so there's no shared source to extract without forcing one of the
+ * two purposes to compromise.
  */
 import { useState } from 'react';
-import { TOGGLE_RULES, TRADE_RULES } from '../data/ruleDescriptions';
+import { TOGGLE_RULES, TRADE_RULES, WIN_CONDITIONS } from '../data/ruleDescriptions';
 import { BackgroundLayer } from '../components/layout/BackgroundLayer';
 import { HOME_BACKGROUND_PATH } from '../components/layout/backgroundPaths';
 import styles from './HowToPlayScreen.module.css';
@@ -33,12 +44,13 @@ export interface HowToPlayScreenProps {
   onBack: () => void;
 }
 
-type Tab = 'basics' | 'rules' | 'tradeRules' | 'modes';
+type Tab = 'basics' | 'rules' | 'tradeRules' | 'winCondition' | 'modes';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'basics', label: 'The Basics' },
   { id: 'rules', label: 'Optional Rules' },
   { id: 'tradeRules', label: 'Trade Rules' },
+  { id: 'winCondition', label: 'Win Condition' },
   { id: 'modes', label: 'Game Modes' },
 ];
 
@@ -112,9 +124,10 @@ export function HowToPlayScreen({ onBack }: HowToPlayScreenProps) {
                 this base mechanic; none of them replace it.
               </p>
               <p>
-                Once all 9 cells are filled, the match ends. Whoever controls more cards on the
-                board wins - a tie is a draw. What happens to the cards themselves afterward
-                depends on the active Trade Rule (see that tab).
+                Once all 9 cells are filled, the match ends. By default, whoever controls more
+                cards on the board wins - a tie is a draw - but the active Win Condition can
+                change that (see that tab). What happens to the cards themselves afterward
+                depends on the active Trade Rule (see that tab too).
               </p>
             </div>
           )}
@@ -141,6 +154,25 @@ export function HowToPlayScreen({ onBack }: HowToPlayScreenProps) {
                   <li key={rule.key} className={styles.ruleRow}>
                     <span className={styles.ruleLabel}>{rule.label}</span>
                     <p className={styles.ruleDescription}>{rule.description}</p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {activeTab === 'winCondition' && (
+            <>
+              <p className={styles.tradeRulesIntro}>
+                Exactly one Win Condition is active per match, deciding how the winner itself is
+                determined once the board is full - a different decision from the Trade Rule
+                above, which only decides what happens to the cards once the winner is already
+                known.
+              </p>
+              <ul className={styles.ruleList} aria-label="Win conditions">
+                {WIN_CONDITIONS.map((condition) => (
+                  <li key={condition.key} className={styles.ruleRow}>
+                    <span className={styles.ruleLabel}>{condition.label}</span>
+                    <p className={styles.ruleDescription}>{condition.description}</p>
                   </li>
                 ))}
               </ul>
