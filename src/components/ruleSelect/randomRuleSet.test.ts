@@ -49,4 +49,23 @@ describe('randomRuleSet', () => {
 
     expect(randomRuleSet().tradeRule).toBe('direct');
   });
+
+  it('produces a valid winCondition value across many rolls', () => {
+    for (let i = 0; i < 50; i++) {
+      const { winCondition } = randomRuleSet();
+      expect(['cards', 'points']).toContain(winCondition);
+    }
+  });
+
+  it('actually rolls both winCondition values across many rolls, not stuck on one', () => {
+    const seen = new Set(Array.from({ length: 50 }, () => randomRuleSet().winCondition));
+    expect(seen.has('cards')).toBe(true);
+    expect(seen.has('points')).toBe(true);
+  });
+
+  it('rolls "points" specifically when Math.random favours it', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.9); // randomBool() = false -> 'points'
+
+    expect(randomRuleSet().winCondition).toBe('points');
+  });
 });

@@ -47,12 +47,6 @@ export function randomRuleSet(options: RandomRuleSetOptions = {}): RuleSet {
     underdog: randomBool(),
     epicHeroPresence: randomBool(),
     tradeRule: tradeOptions[Math.floor(Math.random() * tradeOptions.length)],
-    // Not yet randomized - RuleSet.winCondition is new (see
-    // engine/types.ts), and this function's own randomization of it is
-    // deliberately a separate, later commit alongside the UI that lets a
-    // player actually choose it manually. Always 'cards' for now (the
-    // only behaviour that existed before this field did), not a
-    // regression - just not yet doing the new thing.
-    winCondition: 'cards',
+    winCondition: randomBool() ? 'cards' : 'points',
   };
 }

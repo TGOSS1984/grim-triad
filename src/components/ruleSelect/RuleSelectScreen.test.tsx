@@ -240,3 +240,82 @@ describe('RuleSelectScreen rule selection', () => {
     expect(screen.getByRole('checkbox', { name: /^Chain/ })).toBeChecked();
   });
 });
+
+describe('RuleSelectScreen Win Condition section', () => {
+  it('starts collapsed, showing "Cards" (the default) as its summary', () => {
+    render(<RuleSelectScreen onContinue={vi.fn()} />);
+
+    const header = screen.getByRole('button', { name: /Win Condition/ });
+    expect(header).toHaveAttribute('aria-expanded', 'false');
+    expect(header).toHaveTextContent('Cards');
+  });
+
+  it('shows both options when opened, with Cards selected by default', async () => {
+    const user = userEvent.setup();
+    render(<RuleSelectScreen onContinue={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /Win Condition/ }));
+
+    expect(screen.getByRole('radio', { name: /^Cards/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /^Points/ })).not.toBeChecked();
+  });
+
+  it('selecting Points updates the radio state and the collapsed summary', async () => {
+    const user = userEvent.setup();
+    render(<RuleSelectScreen onContinue={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /Win Condition/ }));
+    await user.click(screen.getByRole('radio', { name: /^Points/ }));
+
+    expect(screen.getByRole('radio', { name: /^Points/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /^Cards/ })).not.toBeChecked();
+
+    await user.click(screen.getByRole('button', { name: /Win Condition/ })); // collapse
+    expect(screen.getByRole('button', { name: /Win Condition/ })).toHaveTextContent('Points');
+  });
+
+  it('opening Win Condition closes whichever other section was open - same accordion, now with three sections', async () => {
+    const user = userEvent.setup();
+    render(<RuleSelectScreen onContinue={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /Trade Rule/ }));
+    expect(screen.getByRole('button', { name: /Trade Rule/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    await user.click(screen.getByRole('button', { name: /Win Condition/ }));
+
+    expect(screen.getByRole('button', { name: /Win Condition/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /Trade Rule/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('the selected win condition is included when Continue is clicked', async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    render(<RuleSelectScreen onContinue={onContinue} />);
+
+    await user.click(screen.getByRole('button', { name: /Win Condition/ }));
+    await user.click(screen.getByRole('radio', { name: /^Points/ }));
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(onContinue).toHaveBeenCalledWith({ ...DEFAULT_RULE_SET, winCondition: 'points' });
+  });
+
+  it('respects winCondition from an initialRuleSet prop', () => {
+    render(
+      <RuleSelectScreen
+        onContinue={vi.fn()}
+        initialRuleSet={{ ...DEFAULT_RULE_SET, winCondition: 'points' }}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /Win Condition/ })).toHaveTextContent('Points');
+  });
+});

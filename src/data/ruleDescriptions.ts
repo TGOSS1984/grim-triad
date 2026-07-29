@@ -1,12 +1,16 @@
 /**
- * Human-readable descriptions of every optional rule modifier and trade
- * rule (engine/types.ts's RuleSet). Extracted from RuleSelectScreen (this
- * copy used to live there as a private array) so more than one UI can
- * show the same explanations without them drifting apart - originally
- * RuleSelectScreen's own picker, now also screens/HowToPlayScreen.tsx's
- * rules reference. A pure refactor: this data is unchanged from what
+ * Human-readable descriptions of every optional rule modifier, trade
+ * rule, and win condition (engine/types.ts's RuleSet). Extracted from
+ * RuleSelectScreen (this copy used to live there as a private array) so
+ * more than one UI can show the same explanations without them drifting
+ * apart - originally RuleSelectScreen's own picker, now also
+ * screens/HowToPlayScreen.tsx's rules reference. A pure refactor for the
+ * original TOGGLE_RULES/TRADE_RULES: this data is unchanged from what
  * RuleSelectScreen already had, just relocated so it has one home instead
- * of being copy-pasted a second time.
+ * of being copy-pasted a second time. WIN_CONDITIONS is new alongside
+ * RuleSet.winCondition itself, added the same way tradeRule already
+ * works here - not a toggle (see ToggleRuleKey's own Omit below), a
+ * required single-select with its own short list.
  */
 import type { RuleSet } from '../engine/types';
 
@@ -97,4 +101,24 @@ export const TRADE_RULES: TradeRuleInfo[] = [
     description: 'Each side keeps whatever they controlled at the end - no transfer.',
   },
   { key: 'all', label: 'All', description: "Winner takes every one of the loser's cards." },
+];
+
+export interface WinConditionInfo {
+  key: RuleSet['winCondition'];
+  label: string;
+  description: string;
+}
+
+export const WIN_CONDITIONS: WinConditionInfo[] = [
+  {
+    key: 'cards',
+    label: 'Cards',
+    description: 'Whoever controls more cards on the board when it fills up wins.',
+  },
+  {
+    key: 'points',
+    label: 'Points',
+    description:
+      'Whoever controls more total points cost of cards wins instead - a few expensive cards can outweigh a lot of cheap ones.',
+  },
 ];

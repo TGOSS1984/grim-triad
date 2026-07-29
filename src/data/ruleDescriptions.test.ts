@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { TOGGLE_RULES, TRADE_RULES } from './ruleDescriptions';
+import { TOGGLE_RULES, TRADE_RULES, WIN_CONDITIONS } from './ruleDescriptions';
 import { DEFAULT_RULE_SET } from '../engine/gameReducer';
 
 describe('TOGGLE_RULES', () => {
   it('has exactly one entry per boolean key on RuleSet (every toggle rule is described, none extra)', () => {
-    const ruleSetKeys = Object.keys(DEFAULT_RULE_SET).filter((k) => k !== 'tradeRule').sort();
+    const ruleSetKeys = Object.keys(DEFAULT_RULE_SET)
+      .filter((k) => k !== 'tradeRule' && k !== 'winCondition')
+      .sort();
     const describedKeys = TOGGLE_RULES.map((r) => r.key).sort();
     expect(describedKeys).toEqual(ruleSetKeys);
   });
@@ -38,5 +40,29 @@ describe('TRADE_RULES', () => {
       expect(rule.label.length).toBeGreaterThan(0);
       expect(rule.description.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('WIN_CONDITIONS', () => {
+  it('has exactly one entry per RuleSet["winCondition"] value', () => {
+    const keys = WIN_CONDITIONS.map((c) => c.key).sort();
+    expect(keys).toEqual(['cards', 'points']);
+  });
+
+  it('has no duplicate keys', () => {
+    const keys = WIN_CONDITIONS.map((c) => c.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('every entry has a non-empty label and description', () => {
+    for (const condition of WIN_CONDITIONS) {
+      expect(condition.label.length).toBeGreaterThan(0);
+      expect(condition.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('includes "cards" matching the default, pre-existing behaviour', () => {
+    expect(DEFAULT_RULE_SET.winCondition).toBe('cards');
+    expect(WIN_CONDITIONS.map((c) => c.key)).toContain('cards');
   });
 });
