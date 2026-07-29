@@ -13,8 +13,8 @@ import { createEmptyBoard } from '../engine/board';
 const BA_CAPTAIN = 'blood-angels-blood-angels-captain'; // "Blood Angels Captain"
 const NECRON_LYCHGUARD = 'necrons-lychguard'; // "Lychguard"
 
-function makeCard(unitId: string, owner: 'blue' | 'red', instanceId: string): Card {
-  return { instanceId, unitId, owner, stats: { top: 5, bottom: 5, left: 5, right: 5 } };
+function makeCard(unitId: string, owner: 'blue' | 'red', instanceId: string, points?: number): Card {
+  return { instanceId, unitId, owner, stats: { top: 5, bottom: 5, left: 5, right: 5 }, points };
 }
 
 /** Builds a finished GameState directly (bypassing full play) for screen-level testing. */
@@ -81,8 +81,37 @@ describe('CampaignResultScreen', () => {
   it('shows the board-control score for both sides', () => {
     useGameStore.setState({ game: finishedGame() });
     renderScreen();
-    expect(screen.getByText('Blue: 2')).toBeInTheDocument();
-    expect(screen.getByText('Red: 1')).toBeInTheDocument();
+    expect(screen.getByText('Blue: 2 cards')).toBeInTheDocument();
+    expect(screen.getByText('Red: 1 card')).toBeInTheDocument();
+  });
+
+  it('shows no points row when winCondition is "cards" (the default)', () => {
+    useGameStore.setState({ game: finishedGame() });
+    renderScreen();
+    expect(screen.queryByText('Decided by total points')).not.toBeInTheDocument();
+    expect(screen.queryByText(/pts/)).not.toBeInTheDocument();
+  });
+
+  it('shows a points row with the real totals and a "decided by" caption when winCondition is "points"', () => {
+    const board = createEmptyBoard();
+    board[0][0].card = makeCard(BA_CAPTAIN, 'blue', 'blue-1', 100);
+    board[0][1].card = makeCard(BA_CAPTAIN, 'blue', 'blue-2', 50);
+    board[1][0].card = makeCard(NECRON_LYCHGUARD, 'red', 'red-1', 300);
+
+    useGameStore.setState({
+      game: finishedGame({
+        board,
+        winner: 'red',
+        ruleSet: { ...DEFAULT_RULE_SET, winCondition: 'points' },
+      }),
+    });
+    renderScreen();
+
+    expect(screen.getByText('Decided by total points')).toBeInTheDocument();
+    expect(screen.getByText('Blue: 150 pts')).toBeInTheDocument();
+    expect(screen.getByText('Red: 300 pts')).toBeInTheDocument();
+    expect(screen.getByText('Blue: 2 cards')).toBeInTheDocument();
+    expect(screen.getByText('Red: 1 card')).toBeInTheDocument();
   });
 
   it('shows the real named trade transfer list (via the shared TradeTransferList component)', () => {

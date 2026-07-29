@@ -16,7 +16,7 @@
  */
 import { useGameStore } from '../state/gameStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
-import { countCardsOnBoard } from '../engine/gameReducer';
+import { countCardsOnBoard, sumPointsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
 import styles from './ResultScreen.module.css';
 
@@ -61,6 +61,19 @@ export function ResultScreen({ onPlayAgain, onReturnToMenu, onSuddenDeath }: Res
   const redCount = countCardsOnBoard(game.board, 'red');
   const isDraw = game.winner === 'draw';
   const canSuddenDeath = isDraw && game.ruleSet.suddenDeath;
+  /**
+   * Card count alone doesn't explain the outcome when the match was
+   * decided by points - a side can hold fewer, more expensive cards and
+   * still win outright (see engine/gameReducer.ts's determineWinner). So
+   * when winCondition is 'points', a second points-total row is shown
+   * alongside the card count (not instead of it - board control is still
+   * useful context either way, same "both together" reasoning
+   * GameScreen's own live score already uses), with an explicit label
+   * naming which one actually decided this match.
+   */
+  const isPointsWinCondition = game.ruleSet.winCondition === 'points';
+  const bluePoints = isPointsWinCondition ? sumPointsOnBoard(game.board, 'blue') : null;
+  const redPoints = isPointsWinCondition ? sumPointsOnBoard(game.board, 'red') : null;
 
   const tradeResult =
     !isDraw && game.winner ? resolveTradeRule(game) : null;
@@ -72,9 +85,23 @@ export function ResultScreen({ onPlayAgain, onReturnToMenu, onSuddenDeath }: Res
       </h1>
 
       <div className={styles.score}>
-        <span className={styles.scoreBlue}>Blue: {blueCount}</span>
-        <span className={styles.scoreRed}>Red: {redCount}</span>
+        <span className={styles.scoreBlue}>
+          Blue: {blueCount} card{blueCount === 1 ? '' : 's'}
+        </span>
+        <span className={styles.scoreRed}>
+          Red: {redCount} card{redCount === 1 ? '' : 's'}
+        </span>
       </div>
+
+      {isPointsWinCondition && (
+        <>
+          <p className={styles.scoreCaption}>Decided by total points</p>
+          <div className={styles.score}>
+            <span className={styles.scoreBlue}>Blue: {bluePoints} pts</span>
+            <span className={styles.scoreRed}>Red: {redPoints} pts</span>
+          </div>
+        </>
+      )}
 
       {tradeResult && (
         <div className={styles.tradeSection}>

@@ -35,6 +35,16 @@
   color: var(--color-player-red);
 }
 
+/** Labels the second (points) score row - see ResultScreen.tsx's own doc on isPointsWinCondition for why a second row exists at all. */
+.scoreCaption {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-accent-gold);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .tradeSection {
   display: flex;
   flex-direction: column;

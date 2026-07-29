@@ -48,7 +48,7 @@
 import { useGameStore } from '../state/gameStore';
 import { useCampaignStore } from '../state/campaignStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
-import { countCardsOnBoard } from '../engine/gameReducer';
+import { countCardsOnBoard, sumPointsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
 import { CampaignVictoryModal } from '../components/campaign/CampaignVictoryModal';
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
@@ -102,6 +102,18 @@ export function CampaignResultScreen({
   const redCount = countCardsOnBoard(game.board, 'red');
   const isDraw = game.winner === 'draw';
 
+  /**
+   * Same "show both, label which one decided it" treatment as
+   * ResultScreen.tsx - see that file's own doc on isPointsWinCondition
+   * for the full reasoning. Kept identical between the two screens
+   * deliberately, same as their shared countCardsOnBoard import: a
+   * campaign match and a single match should explain a points-decided
+   * outcome the same way.
+   */
+  const isPointsWinCondition = game.ruleSet.winCondition === 'points';
+  const bluePoints = isPointsWinCondition ? sumPointsOnBoard(game.board, 'blue') : null;
+  const redPoints = isPointsWinCondition ? sumPointsOnBoard(game.board, 'red') : null;
+
   const tradeResult = !isDraw && game.winner ? resolveTradeRule(game) : null;
 
   const ownedIds = new Set(collection);
@@ -114,9 +126,23 @@ export function CampaignResultScreen({
       </h1>
 
       <div className={styles.score}>
-        <span className={styles.scoreBlue}>Blue: {blueCount}</span>
-        <span className={styles.scoreRed}>Red: {redCount}</span>
+        <span className={styles.scoreBlue}>
+          Blue: {blueCount} card{blueCount === 1 ? '' : 's'}
+        </span>
+        <span className={styles.scoreRed}>
+          Red: {redCount} card{redCount === 1 ? '' : 's'}
+        </span>
       </div>
+
+      {isPointsWinCondition && (
+        <>
+          <p className={styles.scoreCaption}>Decided by total points</p>
+          <div className={styles.score}>
+            <span className={styles.scoreBlue}>Blue: {bluePoints} pts</span>
+            <span className={styles.scoreRed}>Red: {redPoints} pts</span>
+          </div>
+        </>
+      )}
 
       {tradeResult && (
         <div className={styles.tradeSection}>
