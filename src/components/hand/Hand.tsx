@@ -21,6 +21,14 @@
  * responsiveness for free instead of needing its own placement logic.
  * Optional (undefined = hidden entirely) because Hand has no other
  * consumer needing this today - see GameScreen.tsx, the only caller.
+ *
+ * `pointsTotal`, same shape and same reasoning, adds a THIRD badge for
+ * this side's total points cost of controlled cards - GameScreen only
+ * ever passes this when the match's active winCondition is actually
+ * 'points' (see engine/types.ts's RuleSet.winCondition), so it's absent
+ * entirely for the vast majority of matches still using the default
+ * 'cards' condition, where a secondary points score would just be
+ * clutter with nothing riding on it.
  */
 import type { CardStats, PlayerColour } from '../../engine/types';
 import type { ElementId } from '../../data/elements';
@@ -55,6 +63,8 @@ export interface HandProps {
   side?: 'left' | 'right';
   /** Live board-control count for this side, animated on change - see file header. Omit to hide the badge entirely. */
   capturedCount?: number;
+  /** Live total points cost of controlled cards for this side, animated on change - see file header. Only ever passed when winCondition is 'points'; omit to hide the badge entirely. */
+  pointsTotal?: number;
 }
 
 export function Hand({
@@ -67,6 +77,7 @@ export function Hand({
   cardWidth,
   side = 'left',
   capturedCount,
+  pointsTotal,
 }: HandProps) {
   const interactive = faceUp && !!onSelectCard;
   const style = cardWidth
@@ -82,6 +93,7 @@ export function Hand({
         {capturedCount !== undefined && (
           <AnimatedScoreBadge value={capturedCount} label="Captured" />
         )}
+        {pointsTotal !== undefined && <AnimatedScoreBadge value={pointsTotal} label="Points" />}
       </div>
       <div className={styles.stack} role="list" aria-label={`${owner} hand, ${cards.length} cards`}>
         {cards.map((card) =>

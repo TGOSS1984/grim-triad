@@ -107,3 +107,30 @@ describe('Hand captured score badge', () => {
     expect(screen.getByText('Captured')).toBeInTheDocument();
   });
 });
+
+describe('Hand points-total badge', () => {
+  it('shows no points-total badge when pointsTotal is omitted', () => {
+    render(<Hand cards={cards} owner="blue" faceUp />);
+    expect(screen.queryByText('Points')).not.toBeInTheDocument();
+  });
+
+  it('shows the points-total badge with the given value when pointsTotal is provided', () => {
+    render(<Hand cards={cards} owner="blue" faceUp pointsTotal={340} />);
+
+    expect(screen.getByText('Points')).toBeInTheDocument();
+    expect(screen.getByText('340')).toBeInTheDocument();
+  });
+
+  it('shows a points total of 0 (a genuine value, not treated the same as omitted)', () => {
+    render(<Hand cards={cards} owner="blue" faceUp pointsTotal={0} />);
+    expect(screen.getByText('Points')).toBeInTheDocument();
+  });
+
+  it('shows the captured-count and points-total badges together, independently of one another', () => {
+    render(<Hand cards={cards} owner="blue" faceUp capturedCount={2} pointsTotal={150} />);
+
+    expect(screen.getByText('Captured')).toBeInTheDocument();
+    expect(screen.getByText('Points')).toBeInTheDocument();
+    expect(screen.getByText('150')).toBeInTheDocument();
+  });
+});

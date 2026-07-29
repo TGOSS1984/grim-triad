@@ -330,6 +330,93 @@ describe('GameScreen', () => {
     );
   });
 
+  it('shows no live Points score when winCondition is "cards" (the default) - only Captured', () => {
+    startTestGame();
+    render(<GameScreen humanPlayer="blue" />);
+
+    expect(screen.queryByText('Points')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Captured')).toHaveLength(2);
+  });
+
+  it('shows a live Points score for both sides when winCondition is "points"', () => {
+    startTestGame({ winCondition: 'points' });
+    render(<GameScreen humanPlayer="blue" />);
+
+    expect(screen.getAllByText('Points')).toHaveLength(2);
+    // Both sides still also show Captured - Points is an addition, not a
+    // replacement (see Hand.tsx's own doc on why both badges coexist).
+    expect(screen.getAllByText('Captured')).toHaveLength(2);
+  });
+
+  it('the live Points score updates end-to-end after a real capture, reflecting points cost, not card count', async () => {
+    const user = userEvent.setup();
+
+    // Reuses the exact same Same-capture fixture as the Captured-score
+    // test above, but with real points values: capturing both red cards
+    // (10 points each) should take blue's points total from 0 to 25
+    // (its own 5-point trigger card + 2x10 captured), even though only 3
+    // cards changed hands (a card COUNT of 3, a points TOTAL of 25 -
+    // deliberately different numbers, confirming this is really summing
+    // points, not just re-showing the card count under a new label).
+    const triggerCard: Card = {
+      instanceId: 'blue-trigger',
+      unitId: BA_CAPTAIN,
+      owner: 'blue',
+      stats: { top: 5, bottom: 1, left: 1, right: 5 },
+      points: 5,
+    };
+    const redTop: Card = {
+      instanceId: 'red-top',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 5, left: 1, right: 1 },
+      points: 10,
+    };
+    const redRight: Card = {
+      instanceId: 'red-right',
+      unitId: NECRON_LYCHGUARD,
+      owner: 'red',
+      stats: { top: 1, bottom: 1, left: 5, right: 1 },
+      points: 10,
+    };
+
+    useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true, winCondition: 'points' },
+    });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    render(<GameScreen humanPlayer="blue" />);
+
+    const pointsLabels = screen.getAllByText('Points');
+    expect(pointsLabels).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: /Blood Angels Captain/ }));
+    await user.click(screen.getByLabelText('Empty cell, row 2, column 2'));
+
+    await waitFor(
+      () => {
+        const bluePointsScore = pointsLabels[0].previousElementSibling;
+        expect(bluePointsScore).toHaveTextContent('25');
+      },
+      { timeout: 3000 },
+    );
+  });
+
   it('shows no rule trigger callout for an ordinary base capture with no Same/Plus/Chain active', async () => {
     const user = userEvent.setup();
 

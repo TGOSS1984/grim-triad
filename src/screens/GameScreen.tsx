@@ -15,7 +15,7 @@ import { getUnitById, getFactionSlugForUnit } from '../data/activeFactions';
 import { isHandVisibleTo } from '../engine/rules/open';
 import { computeEffectiveStats } from '../engine/rules/effectiveStats';
 import { emptyPositions } from '../engine/board';
-import { countCardsOnBoard } from '../engine/gameReducer';
+import { countCardsOnBoard, sumPointsOnBoard } from '../engine/gameReducer';
 import { CAPTURE_FLIP_STAGGER_MS } from '../state/animationTiming';
 import type { Card as EngineCard, CaptureKind, GameState, PlayerColour, Position } from '../engine/types';
 import { resolvePrimaryCaptureTriggerKind } from '../engine/captureTriggerKind';
@@ -187,6 +187,18 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
   const blueCapturedCount = countCardsOnBoard(game.board, 'blue');
   const redCapturedCount = countCardsOnBoard(game.board, 'red');
 
+  /**
+   * Live points-total score for each side - only actually relevant when
+   * this match's active RuleSet.winCondition is 'points' (see
+   * engine/types.ts), so it's undefined (hiding Hand's third badge
+   * entirely - see that component's own doc) for the vast majority of
+   * matches still using the default 'cards' condition, where a second
+   * running score would just be clutter nobody asked to see.
+   */
+  const isPointsWinCondition = game.ruleSet.winCondition === 'points';
+  const bluePointsTotal = isPointsWinCondition ? sumPointsOnBoard(game.board, 'blue') : undefined;
+  const redPointsTotal = isPointsWinCondition ? sumPointsOnBoard(game.board, 'red') : undefined;
+
   const boardCells: (BoardCardData | null)[][] = game.board.map((row, rowIndex) =>
     row.map((cell, colIndex) => {
       if (!cell.card) return null;
@@ -321,6 +333,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
             side="left"
             cardWidth={cardWidth}
             capturedCount={blueCapturedCount}
+            pointsTotal={bluePointsTotal}
             selectedCardId={humanPlayer === 'blue' ? selectedCardId : undefined}
             onSelectCard={
               humanPlayer === 'blue' && isHumanTurn
@@ -350,6 +363,7 @@ export function GameScreen({ humanPlayer, backgroundImagePath: backgroundOverrid
             side="right"
             cardWidth={cardWidth}
             capturedCount={redCapturedCount}
+            pointsTotal={redPointsTotal}
             selectedCardId={humanPlayer === 'red' ? selectedCardId : undefined}
             onSelectCard={
               humanPlayer === 'red' && isHumanTurn
