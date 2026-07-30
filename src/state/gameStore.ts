@@ -35,9 +35,31 @@
  * progress, not "combos that happened in a game they were part of");
  * matchOpponentCapturedFromHuman only ever gets set by an AI move, since
  * only the AI can capture cards FROM the human.
+ *
+ * matchBlueCaptureBreakdown / matchRedCaptureBreakdown: a different,
+ * BOTH-sides running tally for the same underlying reason (game.history
+ * doesn't retain which rule captured what, so this has to be tracked
+ * live too) but a different shape and purpose - a per-side breakdown of
+ * every capture kind (base/same/plus/chain), covering BOTH players'
+ * moves rather than just the human's, feeding the result screens' "why
+ * you won" summary rather than unlockStore. Kept as its own pair of
+ * fields (not folded into the unlock-tracking ones above) since a
+ * cascaded 3-card capture should count as 3 individual entries split
+ * across whichever kind actually captured each one, not resolved down to
+ * one "primary" kind for the whole move the way the unlock/callout
+ * tracking deliberately does.
  */
 import { create } from 'zustand';
-import type { Card, Element, GameState, PlayerColour, PlayerState, Position, RuleSet } from '../engine/types';
+import type {
+  Card,
+  CaptureKind,
+  Element,
+  GameState,
+  PlayerColour,
+  PlayerState,
+  Position,
+  RuleSet,
+} from '../engine/types';
 import { createGame, applyMove, DEFAULT_RULE_SET } from '../engine/gameReducer';
 import { startSuddenDeathRematch } from '../engine/rules/suddenDeath';
 import { resolvePrimaryCaptureTriggerKind } from '../engine/captureTriggerKind';
@@ -59,6 +81,14 @@ export interface StartGameOptions {
   aiOptions?: AIOptions;
 }
 
+/** Per-side tally of how many cards were captured by each mechanism this match - see file header. */
+export interface CaptureBreakdown {
+  base: number;
+  same: number;
+  plus: number;
+  chain: number;
+}
+
 export interface GameStoreState {
   game: GameState | null;
   aiPlayer: PlayerColour | null;
@@ -69,6 +99,10 @@ export interface GameStoreState {
   matchChainReactionCount: number;
   /** True once the opponent has captured at least one card from the human at any point this match - see file header. */
   matchOpponentCapturedFromHuman: boolean;
+  /** Blue's own captures this match, broken down by kind - see file header. */
+  matchBlueCaptureBreakdown: CaptureBreakdown;
+  /** Red's own captures this match, broken down by kind - see file header. */
+  matchRedCaptureBreakdown: CaptureBreakdown;
 
   startGame: (options: StartGameOptions) => Promise<void>;
   /** Plays a card for the current human turn, then auto-plays the AI's turn(s) if applicable. */
@@ -112,6 +146,66 @@ function trackAIMoveForUnlocks(
   }
 }
 
+function emptyCaptureBreakdown(): CaptureBreakdown {
+  return { base: 0, same: 0, plus: 0, chain: 0 };
+}
+
+/**
+ * Adds one move's worth of capture kinds onto an existing breakdown,
+ * returning a NEW object (not mutating `existing`). Each entry in
+ * `kinds` is tallied individually by whichever rule captured THAT
+ * specific card - a 3-card cascade capturing via same+cascade+cascade
+ * adds 1 to `same` and 2 to `chain`, not "1 same move" - deliberately
+ * different from engine/captureTriggerKind.ts's resolver, which
+ * collapses a whole move down to one "primary" kind for the rule-trigger
+ * callout banner. That collapse is right for a single on-screen banner
+ * (you can't show two banners for one move); it would be wrong here,
+ * where the whole point is an accurate count of how many cards were
+ * actually captured by each mechanism.
+ */
+function addCaptureKindsToBreakdown(
+  existing: CaptureBreakdown,
+  kinds: CaptureKind[] | undefined,
+): CaptureBreakdown {
+  if (!kinds || kinds.length === 0) return existing;
+  const next = { ...existing };
+  for (const kind of kinds) {
+    if (kind === 'base') next.base++;
+    else if (kind === 'same') next.same++;
+    else if (kind === 'plus') next.plus++;
+    else if (kind === 'cascade') next.chain++;
+  }
+  return next;
+}
+
+/**
+ * After ANY move - the human's or the AI's alike, unlike
+ * trackHumanMoveForUnlocks above which is deliberately human-only - tallies
+ * that move's captures onto whichever side actually made it. `mover` is
+ * the move's own player, not necessarily state.activePlayer at call time
+ * (which may have already advanced past it) - always pass the mover
+ * explicitly rather than reading it back off current store state.
+ */
+function trackCaptureBreakdown(
+  get: () => GameStoreState,
+  set: (partial: Partial<GameStoreState>) => void,
+  mover: PlayerColour,
+  resultingGame: GameState,
+): void {
+  const kinds = resultingGame.lastCapture?.captureKinds;
+  if (!kinds || kinds.length === 0) return;
+
+  if (mover === 'blue') {
+    set({
+      matchBlueCaptureBreakdown: addCaptureKindsToBreakdown(get().matchBlueCaptureBreakdown, kinds),
+    });
+  } else {
+    set({
+      matchRedCaptureBreakdown: addCaptureKindsToBreakdown(get().matchRedCaptureBreakdown, kinds),
+    });
+  }
+}
+
 /**
  * Repeatedly applies the AI's chosen move while it's the AI's turn and the
  * game is still live, waiting before each one long enough for the
@@ -145,6 +239,7 @@ async function playAITurnsWithDelay(
     const next = applyMove(current, move);
     set({ game: next });
     trackAIMoveForUnlocks(set, next);
+    trackCaptureBreakdown(get, set, aiPlayer, next);
   }
 }
 
@@ -155,6 +250,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   matchSameOrPlusComboCount: 0,
   matchChainReactionCount: 0,
   matchOpponentCapturedFromHuman: false,
+  matchBlueCaptureBreakdown: emptyCaptureBreakdown(),
+  matchRedCaptureBreakdown: emptyCaptureBreakdown(),
 
   startGame: async ({
     bluePlayer,
@@ -173,6 +270,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       matchSameOrPlusComboCount: 0,
       matchChainReactionCount: 0,
       matchOpponentCapturedFromHuman: false,
+      matchBlueCaptureBreakdown: emptyCaptureBreakdown(),
+      matchRedCaptureBreakdown: emptyCaptureBreakdown(),
     });
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
@@ -191,6 +290,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const afterHuman = applyMove(game, { player: game.activePlayer, card, position });
     set({ game: afterHuman });
     trackHumanMoveForUnlocks(get, set, afterHuman);
+    trackCaptureBreakdown(get, set, game.activePlayer, afterHuman);
 
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
@@ -210,6 +310,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       matchSameOrPlusComboCount: 0,
       matchChainReactionCount: 0,
       matchOpponentCapturedFromHuman: false,
+      matchBlueCaptureBreakdown: emptyCaptureBreakdown(),
+      matchRedCaptureBreakdown: emptyCaptureBreakdown(),
     });
     await playAITurnsWithDelay(aiPlayer, aiOptions, get, set);
   },
@@ -222,5 +324,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       matchSameOrPlusComboCount: 0,
       matchChainReactionCount: 0,
       matchOpponentCapturedFromHuman: false,
+      matchBlueCaptureBreakdown: emptyCaptureBreakdown(),
+      matchRedCaptureBreakdown: emptyCaptureBreakdown(),
     }),
 }));

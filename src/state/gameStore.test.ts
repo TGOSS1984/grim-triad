@@ -444,3 +444,197 @@ describe('unlock progress tracking (matchSameOrPlusComboCount / matchChainReacti
     expect(state.matchOpponentCapturedFromHuman).toBe(false);
   });
 });
+
+describe('capture-kind breakdown tracking (matchBlueCaptureBreakdown / matchRedCaptureBreakdown)', () => {
+  const EMPTY_BREAKDOWN = { base: 0, same: 0, plus: 0, chain: 0 };
+
+  it('starts every match with both sides at zero across every kind', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+
+    const state = useGameStore.getState();
+    expect(state.matchBlueCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+    expect(state.matchRedCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+  });
+
+  it("tallies the HUMAN's own Same capture onto matchBlueCaptureBreakdown.same, one entry per card captured", async () => {
+    const triggerCard = makeCard('blue', 'trigger', { top: 5, bottom: 1, left: 1, right: 5 });
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+      ruleSet: { ...DEFAULT_RULE_SET, same: true },
+    });
+
+    const redTop = makeCard('red', 'red-top', { top: 1, bottom: 5, left: 1, right: 1 });
+    const redRight = makeCard('red', 'red-right', { top: 1, bottom: 1, left: 5, right: 1 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 1) return { card: redTop };
+            if (r === 1 && c === 2) return { card: redRight };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    await useGameStore.getState().playCard(triggerCard, { row: 1, col: 1 });
+
+    // 2 cards captured, both via Same - not "1 Same move".
+    expect(useGameStore.getState().matchBlueCaptureBreakdown).toEqual({
+      base: 0,
+      same: 2,
+      plus: 0,
+      chain: 0,
+    });
+    expect(useGameStore.getState().matchRedCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+  });
+
+  it("tallies the HUMAN's own plain base capture onto matchBlueCaptureBreakdown.base", async () => {
+    const triggerCard = makeCard('blue', 'trigger', { top: 5, bottom: 9, left: 1, right: 1 });
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard] },
+      redPlayer: { colour: 'red', hand: [] },
+      startingPlayer: 'blue',
+    });
+
+    const redBelow = makeCard('red', 'red-below', { top: 1, bottom: 1, left: 1, right: 1 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => (r === 1 && c === 0 ? { card: redBelow } : cell)),
+        ) as Board,
+      },
+    });
+
+    await useGameStore.getState().playCard(triggerCard, { row: 0, col: 0 });
+
+    expect(useGameStore.getState().matchBlueCaptureBreakdown).toEqual({
+      base: 1,
+      same: 0,
+      plus: 0,
+      chain: 0,
+    });
+  });
+
+  it("tallies the AI's own capture onto matchRedCaptureBreakdown, NOT matchBlueCaptureBreakdown - both sides are tracked here, unlike the human-only unlock tracking above", async () => {
+    const blueFiller = makeCard('blue', 'blue-filler', { top: 2, bottom: 2, left: 2, right: 2 });
+    const redCapture = makeCard('red', 'red-capture', { top: 9, bottom: 9, left: 9, right: 9 });
+
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [blueFiller] },
+      redPlayer: { colour: 'red', hand: [redCapture] },
+      startingPlayer: 'blue',
+      aiPlayer: 'red',
+    });
+
+    // Same deterministic single-legal-move rig as
+    // matchOpponentCapturedFromHuman's own test above.
+    const weakBlue = makeCard('blue', 'weak-blue', { top: 1, bottom: 1, left: 1, right: 1 });
+    const filler = makeCard('red', 'other-filler', { top: 2, bottom: 2, left: 2, right: 2 });
+    const { game } = useGameStore.getState();
+    const board = game!.board.map((row, r) =>
+      row.map((cell, c) => {
+        if (r === 0 && c === 0) return { card: weakBlue }; // capture target
+        if (r === 0 && c === 1) return cell; // stays empty - the AI's only legal move, adjacent to weakBlue
+        if (r === 2 && c === 2) return cell; // stays empty - blue's own move target
+        return { card: filler };
+      }),
+    ) as Board;
+    useGameStore.setState({ game: { ...game!, board } });
+
+    await useGameStore.getState().playCard(blueFiller, { row: 2, col: 2 });
+
+    expect(useGameStore.getState().matchRedCaptureBreakdown).toEqual({
+      base: 1,
+      same: 0,
+      plus: 0,
+      chain: 0,
+    });
+    expect(useGameStore.getState().matchBlueCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+  });
+
+  it('accumulates across multiple moves rather than being overwritten by the latest one', async () => {
+    const triggerCard = makeCard('blue', 'trigger', { top: 9, bottom: 9, left: 9, right: 9 });
+    const secondCard = makeCard('blue', 'second', { top: 9, bottom: 9, left: 9, right: 9 });
+    const redFiller = makeCard('red', 'red-filler', { top: 1, bottom: 1, left: 1, right: 1 });
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: [triggerCard, secondCard] },
+      redPlayer: { colour: 'red', hand: [redFiller] },
+      startingPlayer: 'blue',
+    });
+
+    const redA = makeCard('red', 'red-a', { top: 1, bottom: 1, left: 1, right: 1 });
+    const redB = makeCard('red', 'red-b', { top: 1, bottom: 1, left: 1, right: 1 });
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board: game!.board.map((row, r) =>
+          row.map((cell, c) => {
+            if (r === 0 && c === 0) return { card: redA };
+            if (r === 2 && c === 2) return { card: redB };
+            return cell;
+          }),
+        ) as Board,
+      },
+    });
+
+    // No aiPlayer configured (local-turns style, matching this test's own
+    // needs) - playCard's own precondition only rejects a call when
+    // game.activePlayer === aiPlayer, which never fires here, so calling
+    // it directly for red's turn too is legitimate, not a workaround.
+    await useGameStore.getState().playCard(triggerCard, { row: 0, col: 1 });
+    expect(useGameStore.getState().matchBlueCaptureBreakdown.base).toBe(1);
+
+    await useGameStore.getState().playCard(redFiller, { row: 2, col: 0 }); // red's turn, captures nothing, and not adjacent to either blue move
+    await useGameStore.getState().playCard(secondCard, { row: 1, col: 2 });
+    expect(useGameStore.getState().matchBlueCaptureBreakdown.base).toBe(2);
+  });
+
+  it('startGame resets both sides\' breakdowns back to zero', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+    useGameStore.setState({
+      matchBlueCaptureBreakdown: { base: 3, same: 1, plus: 0, chain: 2 },
+      matchRedCaptureBreakdown: { base: 1, same: 0, plus: 1, chain: 0 },
+    });
+
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+
+    const state = useGameStore.getState();
+    expect(state.matchBlueCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+    expect(state.matchRedCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+  });
+
+  it('reset() clears both sides\' breakdowns back to zero', async () => {
+    await useGameStore.getState().startGame({
+      bluePlayer: { colour: 'blue', hand: makeHand('blue', 5) },
+      redPlayer: { colour: 'red', hand: makeHand('red', 5) },
+      startingPlayer: 'blue',
+    });
+    useGameStore.setState({
+      matchBlueCaptureBreakdown: { base: 3, same: 1, plus: 0, chain: 2 },
+    });
+
+    useGameStore.getState().reset();
+
+    expect(useGameStore.getState().matchBlueCaptureBreakdown).toEqual(EMPTY_BREAKDOWN);
+  });
+});
