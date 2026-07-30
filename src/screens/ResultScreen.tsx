@@ -18,6 +18,7 @@ import { useGameStore } from '../state/gameStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
 import { countCardsOnBoard, sumPointsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
+import { CaptureBreakdownTable } from '../components/common/CaptureBreakdownTable';
 import styles from './ResultScreen.module.css';
 
 export interface ResultScreenProps {
@@ -48,6 +49,8 @@ const TRADE_RULE_LABELS: Record<string, string> = {
 
 export function ResultScreen({ onPlayAgain, onReturnToMenu, onSuddenDeath }: ResultScreenProps) {
   const game = useGameStore((s) => s.game);
+  const blueCaptureBreakdown = useGameStore((s) => s.matchBlueCaptureBreakdown);
+  const redCaptureBreakdown = useGameStore((s) => s.matchRedCaptureBreakdown);
 
   if (!game || game.phase !== 'finished') {
     return (
@@ -102,6 +105,11 @@ export function ResultScreen({ onPlayAgain, onReturnToMenu, onSuddenDeath }: Res
           </div>
         </>
       )}
+
+      <div className={styles.tradeSection}>
+        <h2 className={styles.subtitle}>Captures</h2>
+        <CaptureBreakdownTable blue={blueCaptureBreakdown} red={redCaptureBreakdown} />
+      </div>
 
       {tradeResult && (
         <div className={styles.tradeSection}>

@@ -1,0 +1,55 @@
+.table {
+  border-collapse: collapse;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+.table th,
+.table td {
+  padding: var(--space-xs) var(--space-sm);
+  text-align: center;
+}
+
+.kindHeader {
+  text-align: left;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.blueHeader {
+  color: var(--color-player-blue);
+}
+
+.redHeader {
+  color: var(--color-player-red);
+}
+
+.kindLabel {
+  text-align: left;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.blueCell {
+  color: var(--color-player-blue);
+}
+
+.redCell {
+  color: var(--color-player-red);
+}
+
+.totalRow th,
+.totalRow td {
+  border-top: 1px solid var(--color-border-muted);
+  padding-top: var(--space-sm);
+  font-weight: 600;
+}
+
+.noCaptures {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}

@@ -114,6 +114,25 @@ describe('CampaignResultScreen', () => {
     expect(screen.getByText('Red: 1 card')).toBeInTheDocument();
   });
 
+  it('shows "No captures this match." by default (fresh gameStore, nothing tallied)', () => {
+    useGameStore.setState({ game: finishedGame() });
+    renderScreen();
+    expect(screen.getByText('No captures this match.')).toBeInTheDocument();
+  });
+
+  it('shows the real capture breakdown from gameStore when there is one', () => {
+    useGameStore.setState({
+      game: finishedGame(),
+      matchBlueCaptureBreakdown: { base: 2, same: 1, plus: 0, chain: 0 },
+      matchRedCaptureBreakdown: { base: 0, same: 0, plus: 1, chain: 0 },
+    });
+    renderScreen();
+
+    expect(screen.getByRole('heading', { name: 'Captures' })).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.queryByText('No captures this match.')).not.toBeInTheDocument();
+  });
+
   it('shows the real named trade transfer list (via the shared TradeTransferList component)', () => {
     useGameStore.setState({
       game: finishedGame({ winner: 'blue', ruleSet: { ...DEFAULT_RULE_SET, tradeRule: 'one' } }),

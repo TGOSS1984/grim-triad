@@ -50,6 +50,7 @@ import { useCampaignStore } from '../state/campaignStore';
 import { resolveTradeRule } from '../engine/rules/tradeRules';
 import { countCardsOnBoard, sumPointsOnBoard } from '../engine/gameReducer';
 import { TradeTransferList } from '../components/common/TradeTransferList';
+import { CaptureBreakdownTable } from '../components/common/CaptureBreakdownTable';
 import { CampaignVictoryModal } from '../components/campaign/CampaignVictoryModal';
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
 import { getCollectionProgress } from '../data/collectionProgress';
@@ -88,6 +89,8 @@ export function CampaignResultScreen({
   onReinforceRival,
 }: CampaignResultScreenProps) {
   const game = useGameStore((s) => s.game);
+  const blueCaptureBreakdown = useGameStore((s) => s.matchBlueCaptureBreakdown);
+  const redCaptureBreakdown = useGameStore((s) => s.matchRedCaptureBreakdown);
   const { collection, wins, losses, draws } = useCampaignStore();
 
   if (!game || game.phase !== 'finished') {
@@ -143,6 +146,11 @@ export function CampaignResultScreen({
           </div>
         </>
       )}
+
+      <div className={styles.tradeSection}>
+        <h2 className={styles.subtitle}>Captures</h2>
+        <CaptureBreakdownTable blue={blueCaptureBreakdown} red={redCaptureBreakdown} />
+      </div>
 
       {tradeResult && (
         <div className={styles.tradeSection}>
