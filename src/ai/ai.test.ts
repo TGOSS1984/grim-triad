@@ -7,8 +7,9 @@ function makeCard(
   owner: 'blue' | 'red',
   instanceId: string,
   stats = { top: 5, bottom: 5, left: 5, right: 5 },
+  points?: number,
 ): Card {
-  return { instanceId, unitId: `unit-${instanceId}`, owner, stats };
+  return { instanceId, unitId: `unit-${instanceId}`, owner, stats, points };
 }
 
 function makeHand(owner: 'blue' | 'red', count: number): Card[] {
@@ -64,6 +65,48 @@ describe('scoreMove (immediate captures, lookahead disabled)', () => {
     const nonCapturingScore = scoreMove(state, nonCapturingMove, { lookaheadWeight: 0 });
 
     expect(capturingScore).toBeGreaterThan(nonCapturingScore);
+  });
+
+  it('under winCondition "cards" (the default), capturing an expensive card scores the same as capturing a cheap one - still just "1 capture"', () => {
+    const state = newTestGame();
+    state.board[1][1].card = makeCard(
+      'red',
+      'red-weak',
+      { top: 1, bottom: 1, left: 1, right: 1 },
+      500, // expensive, but winCondition is 'cards' - shouldn't matter
+    );
+    const strongCard = makeCard('blue', 'blue-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.blue.hand[0] = strongCard;
+    const move = { player: 'blue' as const, card: strongCard, position: { row: 0 as const, col: 1 as const } };
+
+    const score = scoreMove(state, move, { lookaheadWeight: 0 });
+
+    // Same as the plain 1-capture case regardless of the captured card's
+    // points - 1 capture * weight(2).
+    expect(score).toBe(2);
+  });
+
+  it('under winCondition "points", capturing an expensive card scores higher than capturing a cheap one, even though both are "1 capture"', () => {
+    const cheapState = newTestGame();
+    cheapState.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+    cheapState.board[1][1].card = makeCard('red', 'red-cheap', { top: 1, bottom: 1, left: 1, right: 1 }, 10);
+    const cheapCard = makeCard('blue', 'blue-strong-1', { top: 9, bottom: 9, left: 9, right: 9 });
+    cheapState.players.blue.hand[0] = cheapCard;
+    const cheapMove = { player: 'blue' as const, card: cheapCard, position: { row: 0 as const, col: 1 as const } };
+    const cheapScore = scoreMove(cheapState, cheapMove, { lookaheadWeight: 0 });
+
+    const expensiveState = newTestGame();
+    expensiveState.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+    expensiveState.board[1][1].card = makeCard('red', 'red-expensive', { top: 1, bottom: 1, left: 1, right: 1 }, 500);
+    const expensiveCard = makeCard('blue', 'blue-strong-2', { top: 9, bottom: 9, left: 9, right: 9 });
+    expensiveState.players.blue.hand[0] = expensiveCard;
+    const expensiveMove = { player: 'blue' as const, card: expensiveCard, position: { row: 0 as const, col: 1 as const } };
+    const expensiveScore = scoreMove(expensiveState, expensiveMove, { lookaheadWeight: 0 });
+
+    expect(expensiveScore).toBeGreaterThan(cheapScore);
+    // Specifically: points(500) * weight(2) vs points(10) * weight(2).
+    expect(expensiveScore).toBe(1000);
+    expect(cheapScore).toBe(20);
   });
 
   it('scores a plain multi-side Same capture without a cascading chain (no combo bonus)', () => {
@@ -178,6 +221,48 @@ describe('chooseMove', () => {
     expect(adjacent).toContainEqual(chosen.position);
   });
 
+  it('under winCondition "points", prefers capturing the far more expensive of two available targets, not just any capture', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+    // Two capturable red targets, far enough apart that a single blue
+    // placement can only ever be adjacent to (and so only ever capture)
+    // one of them - a genuine choice between the two, not a move that
+    // happens to get both.
+    state.board[0][0].card = makeCard('red', 'red-cheap', { top: 1, bottom: 1, left: 1, right: 1 }, 10);
+    state.board[2][2].card = makeCard('red', 'red-expensive', { top: 1, bottom: 1, left: 1, right: 1 }, 500);
+    const strongCard = makeCard('blue', 'blue-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.blue.hand = [strongCard];
+
+    const chosen = chooseMove(state, 'blue', { lookaheadWeight: 0 });
+
+    const adjacentToExpensive = [
+      { row: 1, col: 2 },
+      { row: 2, col: 1 },
+    ];
+    expect(adjacentToExpensive).toContainEqual(chosen.position);
+  });
+
+  it('the same board under winCondition "cards" has no reason to prefer either capture - confirms the points test above is really testing the points branch', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'cards' };
+    state.board[0][0].card = makeCard('red', 'red-cheap', { top: 1, bottom: 1, left: 1, right: 1 }, 10);
+    state.board[2][2].card = makeCard('red', 'red-expensive', { top: 1, bottom: 1, left: 1, right: 1 }, 500);
+    const strongCard = makeCard('blue', 'blue-strong', { top: 9, bottom: 9, left: 9, right: 9 });
+    state.players.blue.hand = [strongCard];
+
+    // Every capturing move scores identically under 'cards' (1 capture
+    // each) - the top score is shared by moves adjacent to EITHER target,
+    // not exclusively the expensive one.
+    const adjacentToCheap = { row: 0, col: 1 } as const;
+    const adjacentToExpensive = { row: 1, col: 2 } as const;
+    const cheapMove = { player: 'blue' as const, card: strongCard, position: adjacentToCheap };
+    const expensiveMove = { player: 'blue' as const, card: strongCard, position: adjacentToExpensive };
+
+    expect(scoreMove(state, cheapMove, { lookaheadWeight: 0 })).toBe(
+      scoreMove(state, expensiveMove, { lookaheadWeight: 0 }),
+    );
+  });
+
   it('throws when the player has no cards in hand', () => {
     const state = newTestGame();
     state.players.blue.hand = [];
@@ -272,6 +357,40 @@ describe('evaluatePosition', () => {
     state.board[0][0].card = makeCard('blue', 'b1');
     // 8 empty cells remain - should not affect the count either way.
     expect(evaluatePosition(state, 'blue')).toBe(1);
+  });
+
+  it('under winCondition "cards" (the default), card count governs even when one side\'s cards are far more expensive', () => {
+    const state = newTestGame();
+    state.board[0][0].card = makeCard('blue', 'b1', undefined, 500);
+    state.board[1][1].card = makeCard('red', 'r1', undefined, 10);
+    state.board[1][2].card = makeCard('red', 'r2', undefined, 10);
+
+    // Blue: 1 expensive card. Red: 2 cheap cards. Under 'cards', red is
+    // ahead (2 - 1 = 1 from red's perspective) despite being far behind
+    // on points.
+    expect(evaluatePosition(state, 'red')).toBe(1);
+    expect(evaluatePosition(state, 'blue')).toBe(-1);
+  });
+
+  it('under winCondition "points", a side with fewer but far more expensive cards is correctly read as ahead', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+    state.board[0][0].card = makeCard('blue', 'b1', undefined, 500);
+    state.board[1][1].card = makeCard('red', 'r1', undefined, 10);
+    state.board[1][2].card = makeCard('red', 'r2', undefined, 10);
+
+    // Same board as the 'cards' test above, opposite read: blue is ahead
+    // by points (500 vs 20) despite controlling fewer cards.
+    expect(evaluatePosition(state, 'blue')).toBe(480);
+    expect(evaluatePosition(state, 'red')).toBe(-480);
+  });
+
+  it('under winCondition "points", treats a card with no points recorded as contributing 0', () => {
+    const state = newTestGame();
+    state.ruleSet = { ...DEFAULT_RULE_SET, winCondition: 'points' };
+    state.board[0][0].card = makeCard('blue', 'no-points'); // points left undefined
+
+    expect(evaluatePosition(state, 'blue')).toBe(0);
   });
 });
 

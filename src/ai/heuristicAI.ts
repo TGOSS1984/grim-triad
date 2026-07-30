@@ -4,8 +4,8 @@
  * Two genuinely different move-selection paths, not one algorithm with a
  * bigger knob:
  *  - searchDepth 1 (default, Easy/Normal): the original heuristic path -
- *    scoreMove weighs immediate captures against a raw CAPTURE-COUNT
- *    estimate of the opponent's best reply (bestImmediateCaptureCount),
+ *    scoreMove weighs immediate captures against a raw capture-VALUE
+ *    estimate of the opponent's best reply (bestImmediateCaptureValue),
  *    not a real simulation of what the board looks like afterward. Cheap,
  *    always fast, unchanged from the original v1 AI.
  *  - searchDepth 2+ (Hard): real minimax. Actually applies the candidate
@@ -18,20 +18,59 @@
  *    heuristic only sees as "opponent's best reply captures N cards",
  *    not what board position that actually leaves).
  *
+ * Points-aware: both paths above originally scored purely by capture
+ * COUNT, regardless of the match's active RuleSet.winCondition (see
+ * engine/types.ts) - meaning under the 'points' win condition, the AI
+ * would happily trade its own expensive card for the opponent's cheap
+ * one, or fail to prioritize capturing a valuable target over a
+ * worthless one, because it had no idea points existed at all.
+ * captureValue below is the one place this now branches: 'cards' keeps
+ * the original count-based behaviour byte-for-byte; 'points' sums each
+ * captured card's own points cost instead. Every call site that used to
+ * read a raw capture count (scoreMove's immediate/lookahead terms,
+ * evaluatePosition's board-control tally) now goes through this same
+ * helper, so the two terms being compared within a single scoring
+ * decision are always on the same scale - never points-value compared
+ * against a raw count within the same formula.
+ *
  * No ML, no search beyond what searchDepth is configured to - see
  * ROADMAP.md Section 6 and ai/difficulty.ts for how each difficulty tier
  * is tuned.
  */
-import type { GameState, Move, PlayerColour } from '../engine/types';
+import type { Board, GameState, Move, PlayerColour, Position, RuleSet } from '../engine/types';
 import { emptyPositions } from '../engine/board';
 import { resolveCaptures } from '../engine/ruleEngine';
-import { applyMove } from '../engine/gameReducer';
+import { applyMove, sumPointsOnBoard } from '../engine/gameReducer';
 import type { ScoredMove, AIOptions } from './types';
 
 const DEFAULT_LOOKAHEAD_WEIGHT = 1.5;
 const IMMEDIATE_CAPTURE_WEIGHT = 2;
 const COMBO_BONUS = 1;
 const DEFAULT_SEARCH_DEPTH = 1;
+
+/**
+ * How much a set of captured POSITIONS is actually "worth" toward
+ * winning this specific match - card count under the default 'cards'
+ * win condition (unchanged from before this existed), or total points
+ * cost under 'points'. `board` must be the board as it stood WHEN those
+ * captures were resolved (i.e. the same board resolveCaptures itself was
+ * called against, pre-move) - CaptureResult.captured is Position[], not
+ * Card[] (see engine/types.ts's own doc on why: it's a position list
+ * paired with a same-length/order captureKinds list), so the actual
+ * captured cards' points have to be read off that original board, not
+ * out of the result itself. The one branch point every capture-count-
+ * based scoring decision in this file now goes through - see file
+ * header.
+ */
+function captureValue(capturedPositions: Position[], board: Board, ruleSet: RuleSet): number {
+  if (ruleSet.winCondition === 'points') {
+    return capturedPositions.reduce((total, pos) => {
+      const card = board[pos.row][pos.col].card;
+      return total + (card?.points ?? 0);
+    }, 0);
+  }
+  return capturedPositions.length;
+}
 
 /** Every legal (card, position) pairing for `player` in the current state. */
 export function getLegalMoves(state: GameState, player: PlayerColour): Move[] {
@@ -46,12 +85,13 @@ export function getLegalMoves(state: GameState, player: PlayerColour): Move[] {
   return moves;
 }
 
-/** The most captures a single move by `player` could achieve against `state` - used for the shallow heuristic's lookahead penalty (searchDepth 1 only - see this file's header). */
-function bestImmediateCaptureCount(state: GameState, player: PlayerColour): number {
+/** The strongest single move by `player` against `state`, by captureValue (count under 'cards', points under 'points' - see that function's own doc) - used for the shallow heuristic's lookahead penalty (searchDepth 1 only - see this file's header). */
+function bestImmediateCaptureValue(state: GameState, player: PlayerColour): number {
   let best = 0;
   for (const move of getLegalMoves(state, player)) {
     const result = resolveCaptures(state.board, move.card, move.position, state.ruleSet);
-    if (result.captured.length > best) best = result.captured.length;
+    const value = captureValue(result.captured, state.board, state.ruleSet);
+    if (value > best) best = value;
   }
   return best;
 }
@@ -73,14 +113,14 @@ export function scoreMove(state: GameState, move: Move, options: AIOptions = {})
   const lookaheadWeight = options.lookaheadWeight ?? DEFAULT_LOOKAHEAD_WEIGHT;
 
   const immediate = resolveCaptures(state.board, move.card, move.position, state.ruleSet);
-  let score = immediate.captured.length * IMMEDIATE_CAPTURE_WEIGHT;
+  let score = captureValue(immediate.captured, state.board, state.ruleSet) * IMMEDIATE_CAPTURE_WEIGHT;
   if (immediate.comboTriggered) score += COMBO_BONUS;
 
   if (lookaheadWeight > 0) {
     const nextState = applyMove(state, move);
     if (nextState.phase !== 'finished') {
       const opponent: PlayerColour = move.player === 'blue' ? 'red' : 'blue';
-      const opponentBest = bestImmediateCaptureCount(nextState, opponent);
+      const opponentBest = bestImmediateCaptureValue(nextState, opponent);
       score -= opponentBest * lookaheadWeight;
     }
   }
@@ -89,14 +129,26 @@ export function scoreMove(state: GameState, move: Move, options: AIOptions = {})
 }
 
 /**
- * Real position evaluation from `perspective`'s point of view: board
- * control difference (cards `perspective` owns on the board, minus cards
- * the opponent owns). This is what minimax bottoms out into at the search
- * horizon - a genuine "who's actually winning here" read of the board,
- * not a proxy like capture count.
+ * Real position evaluation from `perspective`'s point of view: under the
+ * default 'cards' win condition, board control difference (cards
+ * `perspective` owns on the board, minus cards the opponent owns) -
+ * unchanged from before RuleSet.winCondition existed. Under 'points',
+ * total points cost of controlled cards instead (via
+ * gameReducer.ts's sumPointsOnBoard, the same computation the live score
+ * and result screens already use), so a search that ends with
+ * `perspective` holding fewer but far more expensive cards is correctly
+ * read as ahead, not behind. This is what minimax bottoms out into at the
+ * search horizon - a genuine "who's actually winning here" read of the
+ * board for THIS match's actual win condition, not always a proxy like
+ * raw capture count.
  */
 export function evaluatePosition(state: GameState, perspective: PlayerColour): number {
   const opponent: PlayerColour = perspective === 'blue' ? 'red' : 'blue';
+
+  if (state.ruleSet.winCondition === 'points') {
+    return sumPointsOnBoard(state.board, perspective) - sumPointsOnBoard(state.board, opponent);
+  }
+
   let perspectiveCount = 0;
   let opponentCount = 0;
   for (const row of state.board) {
