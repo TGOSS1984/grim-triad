@@ -21,6 +21,7 @@ function ctx(overrides: Partial<AchievementContext> = {}): AchievementContext {
     draws: 0,
     bestWinStreak: 0,
     aiCollection: nonDepletedAiCollection,
+    hasWonOnPointsWithFewerCards: false,
     ...overrides,
   };
 }
@@ -175,6 +176,29 @@ describe('Rival Vanquished', () => {
 
   it('unlocks with a completely empty AI pool', () => {
     expect(rivalVanquished.isUnlocked(ctx({ aiCollection: [] }))).toBe(true);
+  });
+});
+
+describe('Points, Not Numbers', () => {
+  const pointsNotNumbers = ACHIEVEMENTS.find((a) => a.id === 'points-not-numbers')!;
+
+  it('does not unlock when hasWonOnPointsWithFewerCards is false', () => {
+    expect(pointsNotNumbers.isUnlocked(ctx({ hasWonOnPointsWithFewerCards: false }))).toBe(false);
+  });
+
+  it('unlocks when hasWonOnPointsWithFewerCards is true', () => {
+    expect(pointsNotNumbers.isUnlocked(ctx({ hasWonOnPointsWithFewerCards: true }))).toBe(true);
+  });
+
+  it('is unaffected by every other field in the context - a direct pass-through, not re-derived from anything else', () => {
+    const context = ctx({
+      hasWonOnPointsWithFewerCards: true,
+      collection: [],
+      wins: 0,
+      losses: 100,
+      aiCollection: [],
+    });
+    expect(pointsNotNumbers.isUnlocked(context)).toBe(true);
   });
 });
 

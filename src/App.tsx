@@ -58,7 +58,7 @@ import { getNewlyUnlockedBatches, type NewlyUnlockedBatch } from './data/unlockC
 import { CardUnlockReveal } from './components/unlocks/CardUnlockReveal';
 import { resolveTradeRule } from './engine/rules/tradeRules';
 import type { PlayerColour, RuleSet } from './engine/types';
-import { DEFAULT_RULE_SET } from './engine/gameReducer';
+import { DEFAULT_RULE_SET, countCardsOnBoard } from './engine/gameReducer';
 import { computeGameEndDelayMs } from './state/animationTiming';
 import { DIFFICULTY_PROFILES, DEFAULT_DIFFICULTY } from './ai/difficulty';
 import type { Difficulty } from './ai/difficulty';
@@ -289,7 +289,11 @@ export default function App() {
         if (!game.winner) return; // defensive - shouldn't happen once phase is 'finished'
 
         if (game.winner === 'draw') {
-          useCampaignStore.getState().recordMatchResult('draw', [], []);
+          // A draw can never qualify for the points-underdog achievement
+          // (see recordMatchResult's own doc) - it's specifically a WIN
+          // condition, so this is always false here, not something to
+          // compute.
+          useCampaignStore.getState().recordMatchResult('draw', [], [], false);
           setStep('result');
           return;
         }
@@ -320,7 +324,19 @@ export default function App() {
         // stays correct even if that assumption ever changes.
         const wasComplete = useCampaignStore.getState().hasCompletedCollection;
         const wasVanquished = useCampaignStore.getState().hasVanquishedRival;
-        useCampaignStore.getState().recordMatchResult(outcome, gained, lost);
+        // The points-underdog achievement: a genuine win, decided by
+        // points, where the human held fewer cards on the board than the
+        // opponent at the end - see campaignStore.ts's own doc on
+        // hasWonOnPointsWithFewerCards for why this has to be computed
+        // HERE (this is the one place that actually has the live board,
+        // ruleSet, and confirmed outcome all at once - campaignStore
+        // itself only ever sees unit-id arrays, never the board).
+        const opponent: PlayerColour = HUMAN_PLAYER === 'blue' ? 'red' : 'blue';
+        const wonOnPointsWithFewerCards =
+          outcome === 'win' &&
+          game.ruleSet.winCondition === 'points' &&
+          countCardsOnBoard(game.board, HUMAN_PLAYER) < countCardsOnBoard(game.board, opponent);
+        useCampaignStore.getState().recordMatchResult(outcome, gained, lost, wonOnPointsWithFewerCards);
         const isCompleteNow = useCampaignStore.getState().hasCompletedCollection;
         const isVanquishedNow = useCampaignStore.getState().hasVanquishedRival;
 

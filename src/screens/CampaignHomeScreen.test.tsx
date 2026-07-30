@@ -63,9 +63,9 @@ describe('CampaignHomeScreen with an active run', () => {
   });
 
   it('shows the current collection size and win/loss/draw record', () => {
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('draw', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('draw', [], [], false);
 
     renderScreen();
 
@@ -91,7 +91,7 @@ describe('CampaignHomeScreen with an active run', () => {
   });
 
   it('disables Continue and shows a warning once the collection drops below 5 cards', () => {
-    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard', 'necrons-immortals']);
+    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard', 'necrons-immortals'], false);
 
     renderScreen();
 
@@ -127,7 +127,7 @@ describe('CampaignHomeScreen rival depletion (Option B)', () => {
   it('disables Continue and shows a distinct warning once the AI pool drops below 5 cards, even with a healthy collection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3); // leaves 3 for the AI
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
 
     renderScreen();
 
@@ -146,7 +146,7 @@ describe('CampaignHomeScreen rival depletion (Option B)', () => {
   it('shows a "Reinforce Rival" button only when the AI pool is depleted', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
 
     renderScreen();
 
@@ -165,7 +165,7 @@ describe('CampaignHomeScreen rival depletion (Option B)', () => {
     const user = userEvent.setup();
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
 
     const { onReinforceRival } = renderScreen();
 
@@ -177,7 +177,7 @@ describe('CampaignHomeScreen rival depletion (Option B)', () => {
   it('re-enables Continue once the store itself reflects a reinforced pool (integration of the store action, not just the button click)', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
     useCampaignStore.getState().reinforceRival();
 
     renderScreen();
@@ -206,8 +206,8 @@ describe('CampaignHomeScreen navigation', () => {
 describe('CampaignHomeScreen streaks', () => {
   it('shows the current win streak count and label', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     renderScreen();
 
@@ -217,9 +217,9 @@ describe('CampaignHomeScreen streaks', () => {
 
   it('shows the current loss streak with the correct label', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
 
     renderScreen();
 

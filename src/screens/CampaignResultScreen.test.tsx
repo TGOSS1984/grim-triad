@@ -151,9 +151,9 @@ describe('CampaignResultScreen', () => {
 
   it('shows the current campaign win/loss/draw record', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
     useGameStore.setState({ game: finishedGame() });
 
     renderScreen();

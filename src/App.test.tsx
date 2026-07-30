@@ -9,6 +9,8 @@ import { useCampaignStore } from './state/campaignStore';
 import { getObtainableUnitIds } from './data/collectionProgress';
 import { useUnlockStore } from './state/unlockStore';
 import { ACHIEVEMENTS } from './state/achievements';
+import { createEmptyBoard } from './engine/board';
+import type { Board, Card } from './engine/types';
 
 // Real generated Blood Angels units (see src/data/units.generated.json),
 // cheapest-first - used to build a valid 5-card single-match army, and as
@@ -36,19 +38,22 @@ beforeEach(() => {
   useSeriesStore.getState().reset();
   useCampaignStore.getState().resetCampaign();
   // resetCampaign() deliberately does NOT clear unlockedAchievementIds,
-  // bestWinStreak, hasCompletedCollection, or hasVanquishedRival in
-  // production (all four survive across runs) - this file's own tests
-  // need a clean slate regardless, same bypass pattern
-  // campaignStore.test.ts/CampaignHomeScreen.test.tsx already use. This
-  // was a real, pre-existing gap here specifically: without it,
-  // achievements unlocked by an EARLIER test in this file (there are
-  // real wins scattered throughout) leak into whichever test happens to
-  // run next and assert an exact "Achievements (N/total)" count.
+  // bestWinStreak, hasCompletedCollection, hasVanquishedRival, or
+  // hasWonOnPointsWithFewerCards in production (all five survive across
+  // runs) - this file's own tests need a clean slate regardless, same
+  // bypass pattern campaignStore.test.ts/CampaignHomeScreen.test.tsx
+  // already use. This was a real, pre-existing gap here specifically:
+  // without it, achievements unlocked by an EARLIER test in this file
+  // (there are real wins scattered throughout) leak into whichever test
+  // happens to run next and assert an exact "Achievements (N/total)"
+  // count, or (as caught while adding the points-underdog achievement's
+  // own tests) a specific achievement's locked/unlocked class.
   useCampaignStore.setState({
     unlockedAchievementIds: [],
     bestWinStreak: 0,
     hasCompletedCollection: false,
     hasVanquishedRival: false,
+    hasWonOnPointsWithFewerCards: false,
   });
   useUnlockStore.getState().resetProgress();
   localStorage.clear();
@@ -1061,6 +1066,120 @@ describe('Progress screen navigation', () => {
     expect(screen.getByText(`Achievements (1/${ACHIEVEMENTS.length})`)).toBeInTheDocument();
     const firstBlood = screen.getByText('First Blood').closest('div');
     expect(firstBlood?.className).toMatch(/achievementUnlocked/);
+  });
+
+  it('unlocks the "Points, Not Numbers" achievement end-to-end: a real campaign win, decided by points, with fewer cards than the opponent', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Blue: 1 cell, 500 points. Red: 2 cells, 10 points each - fewer
+    // cards, far more points, under an explicitly 'points' win
+    // condition - the exact scenario the achievement is for.
+    const board: Board = createEmptyBoard();
+    const blueCard: Card = {
+      instanceId: 'blue-expensive',
+      unitId: 'test-unit',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 500,
+    };
+    const redCardA: Card = {
+      instanceId: 'red-cheap-a',
+      unitId: 'test-unit',
+      owner: 'red',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 10,
+    };
+    const redCardB: Card = {
+      instanceId: 'red-cheap-b',
+      unitId: 'test-unit',
+      owner: 'red',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 10,
+    };
+    board[0][0].card = blueCard;
+    board[0][1].card = redCardA;
+    board[1][0].card = redCardB;
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: {
+        ...game!,
+        board,
+        phase: 'finished',
+        winner: 'blue',
+        ruleSet: { ...game!.ruleSet, winCondition: 'points' },
+      },
+    });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await user.click(screen.getByRole('button', { name: /View Progress/ }));
+
+    const pointsNotNumbers = screen.getByText('Points, Not Numbers').closest('div');
+    expect(pointsNotNumbers?.className).toMatch(/achievementUnlocked/);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+  });
+
+  it('does NOT unlock "Points, Not Numbers" for an identical win under the default "cards" condition', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await buildCampaignArmy(user);
+    await user.click(screen.getByRole('button', { name: 'Flip Coin' }));
+    await screen.findByText('Your turn', {}, { timeout: 3000 });
+
+    // Same board shape as above (blue: fewer cards, more points), but
+    // winCondition stays the default 'cards' - confirms the achievement
+    // genuinely depends on the win condition actually being 'points',
+    // not just "held fewer, pricier cards" in isolation.
+    const board: Board = createEmptyBoard();
+    const blueCard: Card = {
+      instanceId: 'blue-expensive',
+      unitId: 'test-unit',
+      owner: 'blue',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 500,
+    };
+    const redCardA: Card = {
+      instanceId: 'red-cheap-a',
+      unitId: 'test-unit',
+      owner: 'red',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 10,
+    };
+    const redCardB: Card = {
+      instanceId: 'red-cheap-b',
+      unitId: 'test-unit',
+      owner: 'red',
+      stats: { top: 5, bottom: 5, left: 5, right: 5 },
+      points: 10,
+    };
+    board[0][0].card = blueCard;
+    board[0][1].card = redCardA;
+    board[1][0].card = redCardB;
+
+    // Blue must actually WIN by card count too for this to be a valid
+    // 'cards' outcome - flip the board so blue holds MORE cells instead,
+    // since 1-vs-2 would make blue the loser under 'cards', not a
+    // meaningful control for this test.
+    board[1][1].card = { ...blueCard, instanceId: 'blue-expensive-2' };
+    board[1][2].card = { ...blueCard, instanceId: 'blue-expensive-3' };
+
+    const { game } = useGameStore.getState();
+    useGameStore.setState({
+      game: { ...game!, board, phase: 'finished', winner: 'blue' }, // ruleSet unchanged - default 'cards'
+    });
+    await screen.findByRole('heading', { name: 'Blue Wins!' }, { timeout: 3000 });
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await user.click(screen.getByRole('button', { name: /View Progress/ }));
+
+    const pointsNotNumbers = screen.getByText('Points, Not Numbers').closest('div');
+    expect(pointsNotNumbers?.className).toMatch(/achievementLocked/);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(false);
   });
 });
 

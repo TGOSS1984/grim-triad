@@ -7,15 +7,16 @@ const STORAGE_KEY = 'grim-triad-campaign';
 beforeEach(() => {
   useCampaignStore.getState().resetCampaign();
   // resetCampaign() deliberately does NOT clear unlockedAchievementIds,
-  // bestWinStreak, hasCompletedCollection, or hasVanquishedRival in
-  // production (all four are meant to survive across runs) - tests need
-  // a clean slate regardless, so this bypasses that via a direct
-  // setState rather than the public action.
+  // bestWinStreak, hasCompletedCollection, hasVanquishedRival, or
+  // hasWonOnPointsWithFewerCards in production (all five are meant to
+  // survive across runs) - tests need a clean slate regardless, so this
+  // bypasses that via a direct setState rather than the public action.
   useCampaignStore.setState({
     unlockedAchievementIds: [],
     bestWinStreak: 0,
     hasCompletedCollection: false,
     hasVanquishedRival: false,
+    hasWonOnPointsWithFewerCards: false,
   });
   localStorage.clear();
 });
@@ -47,7 +48,7 @@ describe('campaignStore', () => {
 
   it('startCampaign resets any prior win/loss/draw record', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().wins).toBe(1);
 
     useCampaignStore.getState().startCampaign(['b']);
@@ -57,10 +58,10 @@ describe('campaignStore', () => {
   it('recordMatchResult increments the correct counter for win/loss/draw', () => {
     useCampaignStore.getState().startCampaign([]);
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('draw', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('draw', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     const state = useCampaignStore.getState();
     expect(state.wins).toBe(2);
@@ -70,21 +71,21 @@ describe('campaignStore', () => {
 
   it('recordMatchResult adds gained units to the collection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', ['necrons-immortals'], []);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-immortals'], [], false);
 
     expect(useCampaignStore.getState().collection).toEqual(['necrons-lychguard', 'necrons-immortals']);
   });
 
   it('recordMatchResult removes lost units from the collection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-immortals']);
-    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard'], false);
 
     expect(useCampaignStore.getState().collection).toEqual(['necrons-immortals']);
   });
 
   it('removes exactly ONE matching entry per lost id, not every copy (multiset, not a set)', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard', 'necrons-lychguard', 'necrons-immortals']);
-    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard'], false);
 
     // Still has one Lychguard left - only one copy should have been removed.
     expect(useCampaignStore.getState().collection).toEqual(['necrons-lychguard', 'necrons-immortals']);
@@ -92,7 +93,7 @@ describe('campaignStore', () => {
 
   it('a lost id not present in the collection is simply a no-op, not a crash', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('loss', [], ['not-actually-owned']);
+    useCampaignStore.getState().recordMatchResult('loss', [], ['not-actually-owned'], false);
 
     expect(useCampaignStore.getState().collection).toEqual(['necrons-lychguard']);
   });
@@ -101,14 +102,14 @@ describe('campaignStore', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     useCampaignStore
       .getState()
-      .recordMatchResult('win', ['necrons-overlord', 'necrons-immortals'], ['necrons-lychguard']);
+      .recordMatchResult('win', ['necrons-overlord', 'necrons-immortals'], ['necrons-lychguard'], false);
 
     expect(useCampaignStore.getState().collection).toEqual(['necrons-overlord', 'necrons-immortals']);
   });
 
   it('resetCampaign clears the collection, record, and current streak back to the initial state', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], [], false);
 
     useCampaignStore.getState().resetCampaign();
 
@@ -125,7 +126,7 @@ describe('campaignStore', () => {
 
   it('auto-persists to localStorage on every state change, with no explicit save action', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], [], false);
 
     const raw = localStorage.getItem(STORAGE_KEY);
     expect(raw).not.toBeNull();
@@ -142,7 +143,7 @@ describe('campaignStore achievements', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('first-blood');
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
   });
@@ -150,18 +151,18 @@ describe('campaignStore achievements', () => {
   it('unlocks Grim Determination after 10 losses, not before', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     for (let i = 0; i < 9; i++) {
-      useCampaignStore.getState().recordMatchResult('loss', [], []);
+      useCampaignStore.getState().recordMatchResult('loss', [], [], false);
     }
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('grim-determination');
 
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('grim-determination');
   });
 
   it('does NOT unlock an achievement it does not yet qualify for', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     // 1 win unlocks First Blood but not Blooded Veteran (needs 10).
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('blooded-veteran');
@@ -173,7 +174,7 @@ describe('campaignStore achievements', () => {
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('collector-recruit');
 
     // Lose 20 of the 25 units - well below the 25-unique threshold now.
-    useCampaignStore.getState().recordMatchResult('loss', [], twentyFive.slice(0, 20));
+    useCampaignStore.getState().recordMatchResult('loss', [], twentyFive.slice(0, 20), false);
     expect(useCampaignStore.getState().collection).toHaveLength(5);
 
     // Still unlocked - achievements are permanent once earned.
@@ -182,7 +183,7 @@ describe('campaignStore achievements', () => {
 
   it('resetCampaign does NOT clear unlockedAchievementIds - achievements survive across runs', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('first-blood');
 
     useCampaignStore.getState().resetCampaign();
@@ -214,7 +215,7 @@ describe('campaignStore hasCompletedCollection', () => {
     expect(useCampaignStore.getState().hasCompletedCollection).toBe(false);
 
     // Winning the last missing unit completes the set.
-    useCampaignStore.getState().recordMatchResult('win', [firstUnit], []);
+    useCampaignStore.getState().recordMatchResult('win', [firstUnit], [], false);
 
     expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
   });
@@ -224,7 +225,7 @@ describe('campaignStore hasCompletedCollection', () => {
     useCampaignStore.getState().startCampaign(everyObtainableUnit);
     expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
 
-    useCampaignStore.getState().recordMatchResult('loss', [], everyObtainableUnit.slice(0, 100));
+    useCampaignStore.getState().recordMatchResult('loss', [], everyObtainableUnit.slice(0, 100), false);
 
     expect(useCampaignStore.getState().hasCompletedCollection).toBe(true);
   });
@@ -260,7 +261,7 @@ describe('campaignStore aiCollection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     expect(useCampaignStore.getState().aiCollection).toContain('necrons-overlord');
 
-    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], [], false);
 
     expect(useCampaignStore.getState().aiCollection).not.toContain('necrons-overlord');
     expect(useCampaignStore.getState().collection).toContain('necrons-overlord');
@@ -269,7 +270,7 @@ describe('campaignStore aiCollection', () => {
   it("recordMatchResult adds what the human LOST to the AI's pool (mirror of the human's own collection)", () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
 
-    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('loss', [], ['necrons-lychguard'], false);
 
     expect(useCampaignStore.getState().collection).not.toContain('necrons-lychguard');
     // Already had one copy from the full-sweep seed - now has two: the
@@ -293,7 +294,7 @@ describe('campaignStore aiCollection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     // Deplete the AI's pool substantially in run 1.
     const halfTheObtainableSet = Array.from(getObtainableUnitIds()).slice(0, 400);
-    useCampaignStore.getState().recordMatchResult('win', halfTheObtainableSet, []);
+    useCampaignStore.getState().recordMatchResult('win', halfTheObtainableSet, [], false);
     expect(useCampaignStore.getState().aiCollection.length).toBeLessThan(
       getObtainableUnitIds().size,
     );
@@ -315,7 +316,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('flips true once a win drains the AI pool below CAMPAIGN_MIN_HAND_SIZE', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3); // leaves exactly 3
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
 
     expect(useCampaignStore.getState().aiCollection).toHaveLength(3);
     expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
@@ -324,7 +325,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('does not flip true while the pool still has exactly CAMPAIGN_MIN_HAND_SIZE units left', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const allButFive = Array.from(getObtainableUnitIds()).slice(0, -5); // leaves exactly 5
-    useCampaignStore.getState().recordMatchResult('win', allButFive, []);
+    useCampaignStore.getState().recordMatchResult('win', allButFive, [], false);
 
     expect(useCampaignStore.getState().aiCollection).toHaveLength(5);
     expect(useCampaignStore.getState().hasVanquishedRival).toBe(false);
@@ -333,7 +334,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('unlocks the Rival Vanquished achievement at the same moment it flips', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('rival-vanquished');
   });
@@ -341,7 +342,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('reinforceRival refills the AI pool back to a full sweep', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
     expect(useCampaignStore.getState().aiCollection).toHaveLength(3);
 
     useCampaignStore.getState().reinforceRival();
@@ -351,7 +352,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
 
   it('reinforceRival does NOT touch collection, wins/losses, or streaks', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], []);
+    useCampaignStore.getState().recordMatchResult('win', ['necrons-overlord'], [], false);
     const before = useCampaignStore.getState();
 
     useCampaignStore.getState().reinforceRival();
@@ -367,7 +368,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('hasVanquishedRival stays true even after reinforceRival refills the pool - permanent, like hasCompletedCollection', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
     expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
 
     useCampaignStore.getState().reinforceRival();
@@ -378,7 +379,7 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   it('survives resetCampaign - permanent across runs', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
     const almostEverything = Array.from(getObtainableUnitIds()).slice(0, -3);
-    useCampaignStore.getState().recordMatchResult('win', almostEverything, []);
+    useCampaignStore.getState().recordMatchResult('win', almostEverything, [], false);
     expect(useCampaignStore.getState().hasVanquishedRival).toBe(true);
 
     useCampaignStore.getState().resetCampaign();
@@ -387,26 +388,92 @@ describe('campaignStore hasVanquishedRival / reinforceRival', () => {
   });
 });
 
+describe('campaignStore hasWonOnPointsWithFewerCards', () => {
+  it('starts false', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(false);
+  });
+
+  it('stays false when a win is recorded with wonOnPointsWithFewerCards=false', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(false);
+  });
+
+  it('flips true the moment a match is recorded with wonOnPointsWithFewerCards=true', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], true);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+  });
+
+  it('unlocks the "Points, Not Numbers" achievement at the same moment it flips', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], true);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('points-not-numbers');
+  });
+
+  it('stays true even after a LATER match is recorded with wonOnPointsWithFewerCards=false - monotonic, never unset', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], true);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+  });
+
+  it('survives resetCampaign - permanent across runs', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], true);
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+
+    useCampaignStore.getState().resetCampaign();
+
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+  });
+
+  it('survives resetCampaign and remains reflected in the achievement list after starting a fresh run', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('win', [], [], true);
+    useCampaignStore.getState().resetCampaign();
+
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+    expect(useCampaignStore.getState().unlockedAchievementIds).toContain('points-not-numbers');
+  });
+
+  it('a draw never sets it, even if somehow passed true (defensive - App.tsx should never actually do this)', () => {
+    useCampaignStore.getState().startCampaign(['necrons-lychguard']);
+    useCampaignStore.getState().recordMatchResult('draw', [], [], true);
+    // recordMatchResult itself doesn't gate on outcome - it trusts the
+    // caller, same as unlockStore's own wasFlawless parameter - so this
+    // documents that trust rather than asserting a false-for-draws
+    // special case that doesn't actually exist in this store.
+    expect(useCampaignStore.getState().hasWonOnPointsWithFewerCards).toBe(true);
+  });
+});
+
 describe('campaignStore streaks', () => {
   it('extends the current streak on consecutive wins', () => {
     useCampaignStore.getState().startCampaign(['a']);
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().currentStreakType).toBe('win');
     expect(useCampaignStore.getState().currentStreakCount).toBe(1);
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().currentStreakCount).toBe(2);
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().currentStreakCount).toBe(3);
   });
 
   it('extends the current streak on consecutive losses too, independently from wins', () => {
     useCampaignStore.getState().startCampaign(['a']);
 
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
 
     expect(useCampaignStore.getState().currentStreakType).toBe('loss');
     expect(useCampaignStore.getState().currentStreakCount).toBe(2);
@@ -414,10 +481,10 @@ describe('campaignStore streaks', () => {
 
   it('a draw breaks any streak back to none/0', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
-    useCampaignStore.getState().recordMatchResult('draw', [], []);
+    useCampaignStore.getState().recordMatchResult('draw', [], [], false);
 
     expect(useCampaignStore.getState().currentStreakType).toBe('none');
     expect(useCampaignStore.getState().currentStreakCount).toBe(0);
@@ -425,10 +492,10 @@ describe('campaignStore streaks', () => {
 
   it('switching from a win streak to a loss starts a fresh streak of 1, not a continuation', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
 
     expect(useCampaignStore.getState().currentStreakType).toBe('loss');
     expect(useCampaignStore.getState().currentStreakCount).toBe(1);
@@ -436,14 +503,14 @@ describe('campaignStore streaks', () => {
 
   it('bestWinStreak tracks the highest win streak ever reached, not just the most recent one', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().bestWinStreak).toBe(3);
 
     // Break the streak and start a smaller one - best should NOT drop.
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     expect(useCampaignStore.getState().currentStreakCount).toBe(1);
     expect(useCampaignStore.getState().bestWinStreak).toBe(3);
@@ -451,17 +518,17 @@ describe('campaignStore streaks', () => {
 
   it('a loss streak never counts toward bestWinStreak', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
-    useCampaignStore.getState().recordMatchResult('loss', [], []);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
+    useCampaignStore.getState().recordMatchResult('loss', [], [], false);
 
     expect(useCampaignStore.getState().bestWinStreak).toBe(0);
   });
 
   it('resetCampaign clears the CURRENT streak but bestWinStreak survives - permanent, like achievements', () => {
     useCampaignStore.getState().startCampaign(['a']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
     expect(useCampaignStore.getState().bestWinStreak).toBe(2);
 
     useCampaignStore.getState().resetCampaign();
@@ -474,11 +541,11 @@ describe('campaignStore streaks', () => {
   it('unlocks the On a Roll achievement at a 5-win streak', () => {
     useCampaignStore.getState().startCampaign(['a']);
     for (let i = 0; i < 4; i++) {
-      useCampaignStore.getState().recordMatchResult('win', [], []);
+      useCampaignStore.getState().recordMatchResult('win', [], [], false);
     }
     expect(useCampaignStore.getState().unlockedAchievementIds).not.toContain('on-a-roll');
 
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     expect(useCampaignStore.getState().unlockedAchievementIds).toContain('on-a-roll');
   });

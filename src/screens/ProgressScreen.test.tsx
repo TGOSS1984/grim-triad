@@ -82,7 +82,7 @@ describe('ProgressScreen achievements section', () => {
 
   it('shows the correct unlocked count once achievements have been earned', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     renderScreen();
 
@@ -91,7 +91,7 @@ describe('ProgressScreen achievements section', () => {
 
   it('gives an unlocked achievement a distinct visual class from a locked one', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     renderScreen();
 
@@ -103,8 +103,8 @@ describe('ProgressScreen achievements section', () => {
 
   it('shows the permanent Best Win Streak', () => {
     useCampaignStore.getState().startCampaign(['necrons-lychguard']);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
-    useCampaignStore.getState().recordMatchResult('win', [], []);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
+    useCampaignStore.getState().recordMatchResult('win', [], [], false);
 
     renderScreen();
 

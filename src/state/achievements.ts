@@ -38,6 +38,16 @@
  * player's OWN "Continue Campaign" button when THEIR collection gets too
  * small - same rule, applied symmetrically to the other side now that it
  * has a persistent pool of its own too.
+ *
+ * "Points, Not Numbers" is a genuinely different SHAPE from every other
+ * achievement here: the others are all re-derivable live from
+ * collection/wins/aiCollection (see AchievementContext's own doc on
+ * hasWonOnPointsWithFewerCards for the full reasoning), but "won a match
+ * by points while holding fewer cards" leaves no artifact behind in any
+ * of that state - it's checked directly against a dedicated permanent
+ * flag campaignStore tracks for exactly this achievement, computed by
+ * App.tsx (the one place that has the live board and confirmed outcome
+ * at once) and threaded through recordMatchResult's own parameter.
  */
 import { ACTIVE_FACTIONS, getUnitsForRoster } from '../data/activeFactions';
 import { getCollectionProgress } from '../data/collectionProgress';
@@ -52,6 +62,8 @@ export interface AchievementContext {
   bestWinStreak: number;
   /** The AI rival's own persistent pool for THIS run (see campaignStore's aiCollection) - used by the Rival Vanquished achievement below. */
   aiCollection: string[];
+  /** Whether the player has EVER won a match by points while holding fewer cards than the opponent (see campaignStore's own permanent flag of the same name) - used by the Points, Not Numbers achievement below. Unlike every other field here, this can't be re-derived from anything else in this context; it's a direct pass-through of campaignStore's own permanent record. */
+  hasWonOnPointsWithFewerCards: boolean;
 }
 
 export interface Achievement {
@@ -161,6 +173,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'Rival Vanquished',
     description: "Reduce your AI rival's pool to its final cards.",
     isUnlocked: (ctx) => ctx.aiCollection.length < CAMPAIGN_MIN_HAND_SIZE,
+  },
+  {
+    id: 'points-not-numbers',
+    name: 'Points, Not Numbers',
+    description: 'Win a match by total points while controlling fewer cards than your opponent.',
+    isUnlocked: (ctx) => ctx.hasWonOnPointsWithFewerCards,
   },
 ];
 

@@ -96,6 +96,23 @@
  * else (collection, wins/losses, streaks, achievements) - "reinforcements
  * arrived" is purely an AI-pool event, not a new run and not a match
  * result of any kind.
+ *
+ * `hasWonOnPointsWithFewerCards` is PERMANENT too, but a genuinely
+ * different SHAPE from hasCompletedCollection/hasVanquishedRival above:
+ * those two are re-derivable at any moment from other state already in
+ * this store (collection completeness, aiCollection's current size), so
+ * their own achievement checks in achievements.ts just recompute them
+ * live from a snapshot rather than reading a flag. "Won a match by
+ * points while holding fewer cards than the opponent" leaves no such
+ * artifact behind anywhere else in this store's own state - there's
+ * nothing to re-derive it from after the fact - so it genuinely needs a
+ * dedicated permanent boolean, same monotonic-OR pattern as the other
+ * two, just for a fact this store has no other way to remember. Computed
+ * by the CALLER (App.tsx, where the live board/ruleSet/winner actually
+ * are - this store only ever sees unit-id arrays, never the board
+ * itself) and passed into recordMatchResult's own new parameter, same
+ * "caller computes what this store can't see, store just remembers it"
+ * pattern unlockStore's own wasFlawless parameter already established.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -129,6 +146,8 @@ export interface CampaignState {
   aiCollection: string[];
   /** True once the AI's pool has, at any point across ANY run, been ground down below CAMPAIGN_MIN_HAND_SIZE - permanent, never reset (not even by reinforceRival). See file header. */
   hasVanquishedRival: boolean;
+  /** True once the player has, at any point across ANY run, won a match by total points while controlling fewer cards than the opponent - permanent, never reset. See file header for why this needs a dedicated flag rather than being re-derived like hasCompletedCollection/hasVanquishedRival. */
+  hasWonOnPointsWithFewerCards: boolean;
 
   /** Starts a new campaign run with a starting collection (the player's initial army). Overwrites any existing run - callers should confirm with the player before calling this if a run is already active. */
   startCampaign: (startingCollection: string[]) => void;
@@ -139,9 +158,21 @@ export interface CampaignState {
    * from the player's collection and added to the AI's (one matching
    * entry each, not every copy - see file header). Safe to call with
    * empty gained/lost arrays for a Direct trade rule or a draw.
+   *
+   * `wonOnPointsWithFewerCards`: whether THIS match qualifies for the
+   * points-underdog achievement (see file header on
+   * hasWonOnPointsWithFewerCards for why this store can't compute it
+   * itself) - always pass `false` for a non-qualifying match rather than
+   * omitting the argument; this only ever ORs into the permanent flag,
+   * never clears it, so a `false` here is always safe.
    */
-  recordMatchResult: (outcome: 'win' | 'loss' | 'draw', gained: string[], lost: string[]) => void;
-  /** Ends the current campaign run entirely, clearing all persisted progress (including aiCollection) EXCEPT unlockedAchievementIds, bestWinStreak, hasCompletedCollection, and hasVanquishedRival (see file header). */
+  recordMatchResult: (
+    outcome: 'win' | 'loss' | 'draw',
+    gained: string[],
+    lost: string[],
+    wonOnPointsWithFewerCards: boolean,
+  ) => void;
+  /** Ends the current campaign run entirely, clearing all persisted progress (including aiCollection) EXCEPT unlockedAchievementIds, bestWinStreak, hasCompletedCollection, hasVanquishedRival, and hasWonOnPointsWithFewerCards (see file header). */
   resetCampaign: () => void;
   /** Reseeds aiCollection back to a full sweep - the recovery path once the AI's pool is too depleted to field a match. Does not touch collection, wins/losses, streaks, or achievements - see file header. */
   reinforceRival: () => void;
@@ -167,6 +198,7 @@ function unionUnlockedAchievements(
     draws: number;
     bestWinStreak: number;
     aiCollection: string[];
+    hasWonOnPointsWithFewerCards: boolean;
   },
 ): string[] {
   const newlyUnlocked = getCurrentlyUnlockedAchievementIds(snapshot);
@@ -181,6 +213,11 @@ function resolveHasCompletedCollection(alreadyCompleted: boolean, collection: st
 /** Monotonic OR, same pattern as resolveHasCompletedCollection: once the AI's pool has ever been ground down below CAMPAIGN_MIN_HAND_SIZE, this stays true even after reinforceRival refills it back up. */
 function resolveHasVanquishedRival(alreadyVanquished: boolean, aiCollection: string[]): boolean {
   return alreadyVanquished || aiCollection.length < CAMPAIGN_MIN_HAND_SIZE;
+}
+
+/** Monotonic OR, same pattern as the other resolveHas* helpers - simpler than those two since there's no other state to inspect here, just the caller-computed fact for THIS match (see recordMatchResult's own doc on wonOnPointsWithFewerCards for why the caller, not this store, computes it). */
+function resolveHasWonOnPointsWithFewerCards(already: boolean, thisMatch: boolean): boolean {
+  return already || thisMatch;
 }
 
 export const useCampaignStore = create<CampaignState>()(
@@ -198,6 +235,7 @@ export const useCampaignStore = create<CampaignState>()(
       hasCompletedCollection: false,
       aiCollection: [],
       hasVanquishedRival: false,
+      hasWonOnPointsWithFewerCards: false,
 
       startCampaign: (startingCollection) => {
         const collection = [...startingCollection];
@@ -233,11 +271,12 @@ export const useCampaignStore = create<CampaignState>()(
             draws,
             bestWinStreak,
             aiCollection,
+            hasWonOnPointsWithFewerCards: get().hasWonOnPointsWithFewerCards,
           }),
         });
       },
 
-      recordMatchResult: (outcome, gained, lost) => {
+      recordMatchResult: (outcome, gained, lost, wonOnPointsWithFewerCards) => {
         const {
           collection,
           aiCollection,
@@ -250,6 +289,7 @@ export const useCampaignStore = create<CampaignState>()(
           bestWinStreak,
           hasCompletedCollection,
           hasVanquishedRival,
+          hasWonOnPointsWithFewerCards,
         } = get();
         const nextCollection = [...removeOneEach(collection, lost), ...gained];
         // Mirror image of nextCollection above: whatever the human
@@ -284,6 +324,10 @@ export const useCampaignStore = create<CampaignState>()(
             nextCollection,
           ),
           hasVanquishedRival: resolveHasVanquishedRival(hasVanquishedRival, nextAiCollection),
+          hasWonOnPointsWithFewerCards: resolveHasWonOnPointsWithFewerCards(
+            hasWonOnPointsWithFewerCards,
+            wonOnPointsWithFewerCards,
+          ),
           unlockedAchievementIds: unionUnlockedAchievements(unlockedAchievementIds, {
             collection: nextCollection,
             wins: nextWins,
@@ -291,17 +335,21 @@ export const useCampaignStore = create<CampaignState>()(
             draws: nextDraws,
             bestWinStreak: nextBestWinStreak,
             aiCollection: nextAiCollection,
+            hasWonOnPointsWithFewerCards: resolveHasWonOnPointsWithFewerCards(
+              hasWonOnPointsWithFewerCards,
+              wonOnPointsWithFewerCards,
+            ),
           }),
         });
       },
 
       resetCampaign: () => {
         // unlockedAchievementIds, bestWinStreak, hasCompletedCollection,
-        // and hasVanquishedRival are deliberately omitted here - see file
-        // header. Everything else genuinely resets, including the
-        // CURRENT streak (which is per-run) and aiCollection (a new run
-        // means a new rival, not the same depleted one - see file
-        // header).
+        // hasVanquishedRival, and hasWonOnPointsWithFewerCards are
+        // deliberately omitted here - see file header. Everything else
+        // genuinely resets, including the CURRENT streak (which is
+        // per-run) and aiCollection (a new run means a new rival, not
+        // the same depleted one - see file header).
         set({
           isActive: false,
           collection: [],
