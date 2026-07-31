@@ -8,12 +8,22 @@
  * classification, and points cost.
  *
  * Faction rollup: several Space Marine chapters (Blood Angels, Dark Angels,
- * Space Wolves, Black Templars, Deathwatch) are modelled as their own
- * top-level "Faction" values in the source workbook, each holding only
+ * Space Wolves, Black Templars, Deathwatch, Ultramarines, Imperial Fists,
+ * Raven Guard, White Scars, Iron Hands, Salamanders) are modelled as their
+ * own top-level "Faction" values in the source workbook, each holding only
  * their chapter-unique units (verified directly against the workbook - see
  * ROADMAP.md Section 4.2). In-game we want these grouped under the parent
  * "Space Marines" faction (for card colour/template) with the chapter
- * surfaced separately as `subfaction` (for army-builder roster filtering).
+ * surfaced separately as `subfaction` (for army-builder roster filtering) -
+ * this is also what lets a chapter's own roster automatically fold in the
+ * shared generic Space Marine unit pool (see activeFactions.ts's
+ * getUnitsForRoster), not just its own handful of unique units.
+ *
+ * Grey Knights is deliberately NOT in this rollup, despite also being a
+ * Space Marine successor chapter in the fluff - thematically and
+ * mechanically distinct enough (their own doctrine, largely their own
+ * wargear) that sharing the vanilla Marine pool wouldn't be a genuine
+ * improvement the way it is for the chapters above.
  *
  * Row exclusion: a row is dropped from v1 data if it's missing an essential
  * field, or if its Verification Status doesn't match one of the accepted
@@ -40,13 +50,19 @@ const SHEET_NAME = 'Master Catalogue';
  */
 const VERIFIED_STATUS_SUBSTRINGS = ['Matched', 'Added from current Munitorum Field Manual'];
 
-/** Space Marine chapter factions that roll up under the parent "Space Marines" faction. */
+/** Space Marine chapter factions that roll up under the parent "Space Marines" faction - see this file's own header for why Grey Knights is deliberately excluded. */
 const CHAPTER_ROLLUP: Record<string, string> = {
   'Blood Angels': 'Space Marines',
   'Dark Angels': 'Space Marines',
   'Space Wolves': 'Space Marines',
   'Black Templars': 'Space Marines',
   Deathwatch: 'Space Marines',
+  Ultramarines: 'Space Marines',
+  'Imperial Fists': 'Space Marines',
+  'Raven Guard': 'Space Marines',
+  'White Scars': 'Space Marines',
+  'Iron Hands': 'Space Marines',
+  Salamanders: 'Space Marines',
 };
 
 export interface RawCatalogueRow {

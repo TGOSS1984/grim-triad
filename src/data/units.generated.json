@@ -2,7 +2,7 @@
   {
     "id": "salamanders-adrax-agatone",
     "name": "Adrax Agatone",
-    "faction": "Salamanders",
+    "faction": "Space Marines",
     "subfaction": "Salamanders",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -442,7 +442,7 @@
   {
     "id": "imperial-fists-darnath-lysander",
     "name": "Darnath Lysander",
-    "faction": "Imperial Fists",
+    "faction": "Space Marines",
     "subfaction": "Imperial Fists",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -860,7 +860,7 @@
   {
     "id": "raven-guard-kayvaan-shrike",
     "name": "Kayvaan Shrike",
-    "faction": "Raven Guard",
+    "faction": "Space Marines",
     "subfaction": "Raven Guard",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -882,7 +882,7 @@
   {
     "id": "white-scars-kor-sarro-khan",
     "name": "Kor'sarro Khan",
-    "faction": "White Scars",
+    "faction": "Space Marines",
     "subfaction": "White Scars",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -1656,7 +1656,7 @@
   {
     "id": "imperial-fists-tor-garadon",
     "name": "Tor Garadon",
-    "faction": "Imperial Fists",
+    "faction": "Space Marines",
     "subfaction": "Imperial Fists",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -21093,7 +21093,7 @@
   {
     "id": "raven-guard-aethon-shaan",
     "name": "Aethon Shaan",
-    "faction": "Raven Guard",
+    "faction": "Space Marines",
     "subfaction": "Raven Guard",
     "battlefieldRole": "Infantry / Other",
     "unitType": "Infantry",
@@ -21159,7 +21159,7 @@
   {
     "id": "iron-hands-caanok-var",
     "name": "Caanok Var",
-    "faction": "Iron Hands",
+    "faction": "Space Marines",
     "subfaction": "Iron Hands",
     "battlefieldRole": "Character",
     "unitType": "Character",
@@ -21445,7 +21445,7 @@
   {
     "id": "iron-hands-iron-father-feirros",
     "name": "Iron Father Feirros",
-    "faction": "Iron Hands",
+    "faction": "Space Marines",
     "subfaction": "Iron Hands",
     "battlefieldRole": "Character",
     "unitType": "Character",
@@ -21533,7 +21533,7 @@
   {
     "id": "white-scars-suboden-khan",
     "name": "Suboden Khan",
-    "faction": "White Scars",
+    "faction": "Space Marines",
     "subfaction": "White Scars",
     "battlefieldRole": "Character",
     "unitType": "Character",
@@ -21599,7 +21599,7 @@
   {
     "id": "salamanders-vulkan-he-stan",
     "name": "Vulkan He’Stan",
-    "faction": "Salamanders",
+    "faction": "Space Marines",
     "subfaction": "Salamanders",
     "battlefieldRole": "Character",
     "unitType": "Character",

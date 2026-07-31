@@ -146,7 +146,7 @@
   {
     "slug": "iron-hands",
     "name": "Iron Hands",
-    "active": false,
+    "active": true,
     "unitCount": 2
   },
   {
@@ -170,13 +170,13 @@
   {
     "slug": "raven-guard",
     "name": "Raven Guard",
-    "active": false,
+    "active": true,
     "unitCount": 2
   },
   {
     "slug": "salamanders",
     "name": "Salamanders",
-    "active": false,
+    "active": true,
     "unitCount": 2
   },
   {
@@ -218,7 +218,7 @@
   {
     "slug": "white-scars",
     "name": "White Scars",
-    "active": false,
+    "active": true,
     "unitCount": 2
   },
   {

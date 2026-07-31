@@ -67,20 +67,21 @@ describe('getFactionsContainingUnit (real data)', () => {
     expect(getFactionsContainingUnit('dark-angels-lion-el-jonson')).toEqual(['Dark Angels']);
   });
 
-  it('a shared generic Space Marine unit belongs to every active CHAPTER that includes the generic pool', () => {
-    // Ultramarines is deliberately excluded from this assertion: unlike
-    // Black Templars/Blood Angels/Dark Angels/Space Wolves, its units are
-    // modeled with faction: 'Ultramarines' directly rather than
-    // faction: 'Space Marines', subfaction: 'Ultramarines' - so
-    // getUnitsForRoster's chapter-detection correctly does NOT merge the
-    // generic pool into it. Confirmed against the real generated data,
-    // not an oversight in either the fixture or the code under test.
+  it('a shared generic Space Marine unit belongs to every active chapter that includes the generic pool', () => {
+    // Ultramarines used to be deliberately excluded from this assertion:
+    // its units were modeled with faction: 'Ultramarines' directly rather
+    // than faction: 'Space Marines', subfaction: 'Ultramarines', a real
+    // data-pipeline gap (see scripts/parseCatalogue.ts's CHAPTER_ROLLUP)
+    // fixed once more Space Marine chapters were activated and this
+    // asymmetry became visible in the actual army builder, not just a
+    // theoretical inconsistency. Ultramarines now behaves the same as
+    // every other chapter here.
     const factions = getFactionsContainingUnit('space-marines-thunderhawk-gunship');
     expect(factions).toContain('Black Templars');
     expect(factions).toContain('Blood Angels');
     expect(factions).toContain('Dark Angels');
     expect(factions).toContain('Space Wolves');
-    expect(factions).not.toContain('Ultramarines');
+    expect(factions).toContain('Ultramarines');
   });
 
   it('a Necrons-only unit belongs to exactly Necrons', () => {

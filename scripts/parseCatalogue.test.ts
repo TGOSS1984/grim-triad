@@ -139,6 +139,14 @@ describe('parseCatalogue (integration, real workbook)', () => {
     expect(dante?.subfaction).toBe('Blood Angels');
   });
 
+  it('also rolls up the newer chapters (Ultramarines, Imperial Fists, Raven Guard, White Scars, Iron Hands, Salamanders) - these were originally missing from CHAPTER_ROLLUP, modelled as their own standalone top-level factions instead, which meant they never picked up the shared generic Space Marine unit pool the way Blood Angels/Dark Angels/etc already did', () => {
+    const units = parseCatalogue(workbookPath);
+    const guilliman = units.find((u) => u.name === 'Roboute Guilliman');
+    expect(guilliman).toBeDefined();
+    expect(guilliman?.faction).toBe('Space Marines');
+    expect(guilliman?.subfaction).toBe('Ultramarines');
+  });
+
   it('every parsed unit has a positive points value and a non-empty id', () => {
     const units = parseCatalogue(workbookPath);
     for (const unit of units) {
