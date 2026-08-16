@@ -24,7 +24,7 @@ A Warhammer 40,000–themed card battler in the style of *Triple Triad* — draf
 
 </div>
 
-![Gameplay screenshot placeholder](docs/images/screenshot-gameplay-placeholder.png)
+![Gameplay screenshot placeholder](public/assets/screenshots/device-mockup.png)
 
 ---
 
