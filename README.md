@@ -56,7 +56,7 @@ A Warhammer 40,000–themed card battler in the style of *Triple Triad* — draf
 
 ## 📸 Screenshots
 
-> Placeholders below — swap each for a real screenshot as the UI settles. Suggested crop: full browser window, dark theme, no dev tools visible.
+> A collection of images from the live site
 
 ### 🏠 Home
 
