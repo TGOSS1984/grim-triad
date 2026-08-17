@@ -60,42 +60,42 @@ A Warhammer 40,000–themed card battler in the style of *Triple Triad* — draf
 
 ### 🏠 Home
 
-![Home screenshot placeholder](docs/images/screenshot-home-placeholder.png)
+![Home screenshot placeholder](public/assets/screenshots/how-to-play.png)
 > *Landing screen — New Game, Progress & Achievements, How to Play*
 
 ---
 
 ### 🛡️ Faction & Army Builder
 
-![Army Builder screenshot placeholder](docs/images/screenshot-armybuilder-placeholder.png)
+![Army Builder screenshot placeholder](public/assets/screenshots/faction-army-builder.png)
 > *Accordion faction select (Imperium / Chaos / Xenos), points-capped roster building, list and carousel browsing views*
 
 ---
 
 ### ⚔️ Battle
 
-![Battle screenshot placeholder](docs/images/screenshot-battle-placeholder.png)
+![Battle screenshot placeholder](public/assets/screenshots/battle.png)
 > *The 3×3 grid mid-match, with a SAME! rule trigger callout and active rule chips*
 
 ---
 
 ### 🏆 Campaign Home
 
-![Campaign screenshot placeholder](docs/images/screenshot-campaign-placeholder.png)
+![Campaign screenshot placeholder](public/assets/screenshots/campaign.png)
 > *Persistent collection size, win/loss record, streaks, and rival status*
 
 ---
 
 ### 📊 Progress & Achievements
 
-![Progress screenshot placeholder](docs/images/screenshot-progress-placeholder.png)
+![Progress screenshot placeholder](public/assets/screenshots/progress-acheivements.png)
 > *Card unlock tiers with live progress bars, alongside the full achievement grid*
 
 ---
 
 ### 📱 Mobile
 
-![Mobile screenshot placeholder](docs/images/screenshot-mobile-placeholder.png)
+![Mobile screenshot placeholder](public/assets/screenshots/mobile-view.png)
 > *Responsive layout across breakpoints*
 
 ---
